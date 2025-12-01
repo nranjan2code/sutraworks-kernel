@@ -8,18 +8,8 @@
 #![no_std]
 #![no_main]
 
-extern crate alloc;
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// MODULES
-// ═══════════════════════════════════════════════════════════════════════════════
-
-pub mod arch;
-pub mod drivers;
-pub mod kernel;
-pub mod intent;
-pub mod perception;
-pub mod fs;
+// Use the library
+use intent_kernel::*;
 
 use core::panic::PanicInfo;
 

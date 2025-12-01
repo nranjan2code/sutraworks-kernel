@@ -435,19 +435,8 @@ pub fn read_line(buffer: &mut [u8]) -> usize {
 // PRINT MACROS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-pub fn _print(args: fmt::Arguments) {
+pub fn print(args: fmt::Arguments) {
     use core::fmt::Write;
     let mut uart = UART0.lock();
     let _ = uart.write_fmt(args);
-}
-
-#[macro_export]
-macro_rules! kprint {
-    ($($arg:tt)*) => ($crate::drivers::uart::_print(format_args!($($arg)*)));
-}
-
-#[macro_export]
-macro_rules! kprintln {
-    () => ($crate::kprint!("\n"));
-    ($($arg:tt)*) => ($crate::kprint!("{}\n", format_args!($($arg)*)));
 }

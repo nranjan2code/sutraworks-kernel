@@ -12,8 +12,16 @@ categories = ["no-std", "embedded", "hardware-support"]
 
 [lib]
 name = "intent_kernel"
+path = "src/lib.rs"
+
+[[bin]]
+name = "kernel"
 path = "src/main.rs"
-crate-type = ["staticlib"]
+
+[[test]]
+name = "kernel_tests"
+path = "tests/kernel_tests.rs"
+harness = false  # Use custom test framework
 
 # We're building for bare metal
 [profile.dev]

@@ -1,0 +1,26 @@
+# Rust
+target/
+**/*.rs.bk
+
+# Build artifacts
+build/
+*.o
+*.d
+*.a
+*.rlib
+*.so
+*.dylib
+*.dll
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*.swo
+*~
+
+# Kernel specific
+kernel/target/

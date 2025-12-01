@@ -191,6 +191,29 @@ check:
 	cd $(KERNEL_DIR) && cargo check --target $(TARGET)
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# TESTING
+# ═══════════════════════════════════════════════════════════════════════════════
+
+.PHONY: test test-unit test-integration
+
+# Run all tests
+test: test-unit
+
+# Run unit tests
+test-unit:
+	@echo "╔═══════════════════════════════════════════════════════════════╗"
+	@echo "║  Running Unit Tests                                          ║"
+	@echo "╚═══════════════════════════════════════════════════════════════╝"
+	cd $(KERNEL_DIR) && \
+	RUSTFLAGS="$(RUSTFLAGS)" cargo test --target $(TARGET) --test kernel_tests
+	@echo ""
+	@echo "✓ All unit tests passed!"
+
+# Run integration tests (future)
+test-integration:
+	@echo "Integration tests not yet implemented"
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # TOOLCHAIN SETUP
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -236,5 +259,9 @@ help:
 	@echo "║    make fmt      - Format code                                ║"
 	@echo "║    make lint     - Run clippy lints                           ║"
 	@echo "║    make check    - Check without building                     ║"
+	@echo "║                                                               ║"
+	@echo "║  Testing:                                                     ║"
+	@echo "║    make test     - Run all tests                              ║"
+	@echo "║    make test-unit - Run unit tests                            ║"
 	@echo "║                                                               ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
