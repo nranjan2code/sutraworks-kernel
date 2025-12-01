@@ -33,19 +33,6 @@ pub extern "C" fn instruction_barrier() {
     // Mock barrier - no-op for tests
 }
 
-// Mock linker symbols
-#[no_mangle]
-pub static __heap_start: u64 = 0x8000_0000;
-
-#[no_mangle]
-pub static __heap_end: u64 = 0x9000_0000;
-
-#[no_mangle]
-pub static __dma_start: u64 = 0x9000_0000;
-
-#[no_mangle]
-pub static __dma_end: u64 = 0xA000_0000;
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // MACROS FOR TEST OUTPUT
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -112,7 +99,19 @@ fn run_all_tests() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[no_mangle]
+#[unsafe(naked)]
+#[link_section = ".text.boot"]
 pub extern "C" fn _start() -> ! {
+    core::arch::naked_asm!(
+        "ldr x30, =__stack_top",
+        "mov sp, x30",
+        "bl test_main_entry",
+        "b .",
+    );
+}
+
+#[no_mangle]
+pub extern "C" fn test_main_entry() -> ! {
     // Initialize kernel subsystems for testing
     intent_kernel::init_for_tests();
     

@@ -1,0 +1,2 @@
+[target.aarch64-unknown-none]
+runner = "./run_test.sh"

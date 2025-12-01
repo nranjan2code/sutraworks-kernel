@@ -9,14 +9,14 @@
 ## Phase 1: Production Foundation (4-6 weeks) 🎯 CRITICAL
 
 ### 1.1 Testing Infrastructure
-- [ ] Set up `custom_test_frameworks` for no_std
-- [ ] Create test harness for QEMU
+- [x] Set up `custom_test_frameworks` for no_std
+- [x] Create test harness for QEMU
 - [ ] Add CI/CD pipeline (GitHub Actions)
-- [ ] Unit tests for memory allocator (buddy, slab, neural)
-- [ ] Unit tests for capability system (mint, derive, revoke, validate)
+- [x] Unit tests for memory allocator (buddy, slab, neural)
+- [x] Unit tests for capability system (mint, derive, revoke, validate)
 - [ ] Unit tests for scheduler (process creation, context switch, preemption)
 - [ ] Unit tests for page tables (map, unmap, permissions)
-- [ ] Unit tests for intent parser (tokenization, concept matching)
+- [x] Unit tests for intent parser (tokenization, concept matching)
 - [ ] Integration tests (boot, drivers, multi-process, syscalls)
 - [ ] Hardware-in-the-loop tests on real Pi 5
 - [ ] **Target:** 80%+ code coverage
@@ -498,12 +498,13 @@
 - ✅ Memory allocator (Buddy + Slab)
 - ✅ Basic capability system
 - ✅ Basic intent parser (keyword matching)
+- ✅ Unit Testing Infrastructure (QEMU + Custom Test Framework)
 
 **What's Missing:**
 - ❌ Real virtual memory isolation
 - ❌ Real multi-processing
 - ❌ Real AI (embeddings, inference)
-- ❌ Tests (0% coverage)
+- ⚠️ Tests (Basic unit tests added, coverage low)
 - ❌ Security enforcement
 - ❌ Production hardening
 

@@ -25,7 +25,12 @@ pub use rng::Rng;
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// Raspberry Pi 5 uses BCM2712 with a different peripheral base
+#[cfg(not(test))]
 pub const PERIPHERAL_BASE: usize = 0x1_0000_0000;
+
+/// QEMU (Pi 4) uses BCM2711 with a different peripheral base
+#[cfg(test)]
+pub const PERIPHERAL_BASE: usize = 0xFE00_0000;
 
 /// Legacy peripheral base (for backward compatibility checks)
 pub const LEGACY_PERIPHERAL_BASE: usize = 0xFE00_0000;

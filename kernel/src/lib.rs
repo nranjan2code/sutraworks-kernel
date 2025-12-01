@@ -60,13 +60,14 @@ pub enum QemuExitCode {
 
 pub fn exit_qemu(exit_code: QemuExitCode) {
     use core::arch::asm;
+    let block = [0x20026, exit_code as u32];
     unsafe {
         // QEMU semihosting exit
         asm!(
-            "mov w0, #0x18",      // ADP_Stopped_ApplicationExit
-            "mov x1, {0:x}",
+            "mov x0, #0x18",      // ADP_Stopped_ApplicationExit
+            "mov x1, {0}",
             "hlt #0xf000",
-            in(reg) exit_code as u32
+            in(reg) &block as *const _ as u64
         );
     }
 }

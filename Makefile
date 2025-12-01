@@ -205,7 +205,7 @@ test-unit:
 	@echo "║  Running Unit Tests                                          ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
 	cd $(KERNEL_DIR) && \
-	RUSTFLAGS="$(RUSTFLAGS)" cargo test --target $(TARGET) --test kernel_tests
+	RUSTFLAGS="-C target-feature=-fp-armv8 -C link-arg=-T../$(LINKER)" cargo test --target $(TARGET) --test kernel_tests
 	@echo ""
 	@echo "✓ All unit tests passed!"
 
