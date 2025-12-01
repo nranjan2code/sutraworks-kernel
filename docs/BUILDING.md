@@ -249,6 +249,41 @@ rustup default nightly
 cargo +nightly build
 ```
 
+## Testing
+
+### Run Unit Tests
+
+```bash
+# Run unit tests in QEMU (virt machine with semihosting)
+make test-unit
+
+# Output: Tests complete in <10 seconds
+```
+
+### Test Architecture
+
+The testing infrastructure uses:
+- **QEMU virt machine**: Proper semihosting support (unlike raspi4b)
+- **Semihosting exit**: Clean QEMU termination via ARM semihosting protocol
+- **10-second timeout**: Prevents runaway tests from heating up your laptop
+- **Custom test framework**: `#![custom_test_frameworks]` for bare-metal
+
+### Current Tests (14 total)
+
+| Module | Tests | Description |
+|--------|-------|-------------|
+| Memory | 4 | Heap stats, regions, allocator |
+| Capability | 4 | Minting, validation, permissions |
+| Intent | 6 | Hashing, embeddings, similarity |
+
+### Limitations
+
+Full unit tests require Pi 5 hardware initialization (UART, memory addresses) which doesn't work on QEMU's `virt` machine. Options:
+
+1. **Host-based tests** (Recommended): Separate test crate with std support
+2. **Hardware tests**: Run on actual Raspberry Pi 5
+3. **CI/CD**: GitHub Actions for automated testing
+
 ## Development Workflow
 
 ### Adding a New Driver

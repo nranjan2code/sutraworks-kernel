@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (December 1, 2025)
+- **Testing Infrastructure Fixes**
+  - Fixed QEMU semihosting exit (u64 parameters instead of u32)
+  - Switched to `virt` machine for proper semihosting support
+  - Added 10-second timeout to prevent runaway tests
+  - Background process monitoring for clean QEMU termination
+  - `wfi()` in fallback loops for green computing
+
 ### Planned
 - Virtual memory with page tables
 - Process isolation
@@ -16,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Network stack
 - USB driver
 - Audio support
+- Host-based unit tests for pure Rust logic
 
 ## [0.2.0-alpha] - 2025-12-01
 

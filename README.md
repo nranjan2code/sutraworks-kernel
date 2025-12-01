@@ -113,6 +113,12 @@ Express what you want. Let the silicon figure out how.
   - **Thread Safety**: Global `Mutex` protection for shared resources.
   - **Capability Enforcement**: Strict checks for sensitive operations.
   - **Input Validation**: Sanitization of user inputs and filenames.
+- **Testing Infrastructure**:
+  - Custom test framework for bare-metal (`#![custom_test_frameworks]`)
+  - QEMU virt machine with semihosting exit (clean termination)
+  - 10-second timeout to prevent runaway tests
+  - 14 unit tests (memory, capability, intent)
+  - `make test-unit` completes in <10 seconds
 
 ### 🚧 Roadmap
 

@@ -49,6 +49,10 @@ pub fn test_runner(tests: &[&dyn Testable]) {
         test.run();
     }
     exit_qemu(QemuExitCode::Success);
+    // If QEMU fails to exit, loop with wfi to save power
+    loop {
+        crate::arch::wfi();
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,7 +64,8 @@ pub enum QemuExitCode {
 
 pub fn exit_qemu(exit_code: QemuExitCode) {
     use core::arch::asm;
-    let block = [0x20026, exit_code as u32];
+    // On AArch64, semihosting parameters are 64-bit words
+    let block = [0x20026, exit_code as u64];
     unsafe {
         // QEMU semihosting exit
         asm!(
@@ -80,15 +85,19 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 pub fn init_for_tests() {
     // Initialize UART for test output
     drivers::uart::early_init();
+    serial_println!("[TEST] UART initialized");
     
     // Initialize timer
     drivers::timer::init();
+    serial_println!("[TEST] Timer initialized");
     
     // Initialize memory (with fixed seed for reproducibility)
     unsafe { kernel::memory::init(0x1234567890ABCDEF); }
+    serial_println!("[TEST] Memory initialized");
     
     // Initialize capability system
     kernel::capability::init();
+    serial_println!("[TEST] Capabilities initialized");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

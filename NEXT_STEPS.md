@@ -1,157 +1,94 @@
-# Next Steps: Unblocking Test Infrastructure
+# Next Steps: Expanding Test Coverage
 
-## Immediate Action Required
+## Current Status ✅
 
-We have 14 unit tests ready to run, but they're blocked by linking issues. Here's how to proceed:
+Test infrastructure is **working**! QEMU exits cleanly with semihosting on `virt` machine.
 
-## Option 1: Quick Win - Mock Assembly Functions (RECOMMENDED)
-
-**Time:** 1 hour  
-**Difficulty:** Easy  
-**Benefit:** Get tests running immediately
-
-### Implementation
-
-Add these mock functions to `tests/kernel_tests.rs`:
-
-```rust
-// Mock assembly functions for testing
-#[no_mangle]
-pub extern "C" fn read_timer_freq() -> u64 {
-    1_000_000 // 1 MHz mock frequency
-}
-
-#[no_mangle]
-pub extern "C" fn read_timer() -> u64 {
-    0 // Mock timer value
-}
-
-#[no_mangle]
-pub extern "C" fn data_sync_barrier() {
-    // Mock barrier - no-op for tests
-}
-
-#[no_mangle]
-pub extern "C" fn instruction_barrier() {
-    // Mock barrier - no-op for tests
-}
-
-// Mock linker symbols
-#[no_mangle]
-pub static __heap_start: u64 = 0x8000_0000;
-
-#[no_mangle]
-pub static __heap_end: u64 = 0x9000_0000;
-
-#[no_mangle]
-pub static __dma_start: u64 = 0x9000_0000;
-
-#[no_mangle]
-pub static __dma_end: u64 = 0xA000_0000;
-```
-
-Then run:
 ```bash
-cd kernel
-cargo build --target aarch64-unknown-none --test kernel_tests
+make test-unit  # Completes in <10 seconds
+```
+
+## Limitation
+
+The actual unit tests require Pi 5 hardware initialization (UART, memory addresses) which doesn't work on QEMU's `virt` machine. The current test just verifies the harness works.
+
+## Options to Expand Testing
+
+## Option 1: Host-Based Tests (RECOMMENDED)
+
+**Time:** 2-3 hours  
+**Difficulty:** Easy  
+**Benefit:** Fast tests, no QEMU, runs on Mac natively
+
+Create a separate test crate that tests pure Rust logic:
+- ConceptID hashing
+- Embedding similarity math
+- Capability permission checks
+- Intent parsing logic
+
+```bash
+# In a new crate with std support
+cargo test  # Runs instantly on Mac
 ```
 
 ---
 
-## Option 2: Proper Solution - Link with Boot Assembly
+## Option 2: Hardware Tests on Real Pi 5
 
-**Time:** 4-6 hours  
+**Time:** Hardware setup
 **Difficulty:** Medium  
-**Benefit:** Tests run in realistic environment
+**Benefit:** Tests real kernel behavior with real hardware
 
-### Implementation
-
-1. Create `kernel/build.rs`:
-```rust
-fn main() {
-    println!("cargo:rerun-if-changed=../boot/boot.s");
-    
-    // Assemble boot.s
-    std::process::Command::new("aarch64-none-elf-as")
-        .args(&["-march=armv8.2-a", "-o", "target/boot.o", "../boot/boot.s"])
-        .status()
-        .expect("Failed to assemble boot.s");
-    
-    // Link boot.o
-    println!("cargo:rustc-link-arg=target/boot.o");
-}
-```
-
-2. Update `Cargo.toml`:
-```toml
-[build-dependencies]
-# None needed - using std::process::Command
-```
+1. Flash kernel to SD card
+2. Connect UART for test output
+3. Run tests on actual Pi 5
+4. Capture output via serial
 
 ---
 
-## Option 3: Integration Tests in QEMU
+## Option 3: QEMU raspi4b with Full Boot
 
 **Time:** 6-8 hours  
 **Difficulty:** Hard  
-**Benefit:** Tests real kernel behavior
+**Benefit:** Tests real kernel boot sequence
 
-Skip unit tests for now, focus on integration tests that run the full kernel in QEMU.
+Note: raspi4b machine doesn't support semihosting exit, so tests would need to:
+- Use UART output to signal pass/fail
+- External script parses output and kills QEMU
+- Or use watchdog timer approach
 
 ---
 
 ## Recommendation
 
-**Start with Option 1** to get immediate feedback on test quality, then move to Option 2 for production testing.
+**Start with Option 1 (Host-Based Tests)** for fast iteration on pure logic, then use Pi 5 hardware for integration tests.
 
-## Commands to Run
+## Current Working Command
 
 ```bash
-# After adding mock functions
-cd /Users/nisheethranjan/Projects/sutraworks/intent-kernel/kernel
-cargo build --target aarch64-unknown-none --test kernel_tests
-
-# If successful
-cargo test --target aarch64-unknown-none --test kernel_tests
-
-# Or via Makefile
-cd ..
-make test-unit
+make test-unit  # Works! Uses QEMU virt machine, exits cleanly
 ```
 
-## Expected Output
+## Output
 
 ```
-Running tests...
+=== INTENT KERNEL UNIT TESTS ===
+Timeout: 10s
 
-memory::test_heap_stats...	[ok]
-memory::test_heap_available...	[ok]
-memory::test_heap_regions...	[ok]
-memory::test_allocator_stats...	[ok]
-capability::test_mint_root_capability...	[ok]
-capability::test_capability_validation...	[ok]
-capability::test_capability_permissions...	[ok]
-capability::test_multiple_capabilities...	[ok]
-intent::test_concept_id_hashing...	[ok]
-intent::test_embedding_creation...	[ok]
-intent::test_embedding_similarity_identical...	[ok]
-intent::test_embedding_similarity_different...	[ok]
-intent::test_neural_memory_basic...	[ok]
-intent::test_neural_memory_threshold...	[ok]
+=== TESTS COMPLETED ===
 
-╔═══════════════════════════════════════════════════════════╗
-║           ALL TESTS PASSED                                ║
-╚═══════════════════════════════════════════════════════════╝
+✓ All unit tests passed!
 ```
 
 ## Success Criteria
 
-- [ ] Tests compile without errors
-- [ ] Tests run in QEMU
-- [ ] All 14 tests pass
-- [ ] Can add new tests easily
-- [ ] CI/CD ready
+- [x] Test harness compiles
+- [x] QEMU exits cleanly (semihosting works)
+- [x] Timeout prevents CPU heating
+- [ ] Host-based tests for pure Rust logic
+- [ ] Hardware tests on real Pi 5
+- [ ] CI/CD pipeline
 
 ---
 
-**Ready to proceed?** Let me know if you want me to implement Option 1 (mock functions) to unblock testing!
+**Current Status:** Test infrastructure working. Ready to expand coverage!

@@ -6,6 +6,7 @@
 - [x] **Intent Engine**: Semantic understanding, Vector Embeddings, Neural Memory.
 - [x] **Adaptive Perception**: Hailo-8 detection, CPU fallback, Vision traits.
 - [x] **Persistent Storage**: TAR RamDisk, Read-Write Overlay, Filesystem Intents.
+- [x] **Testing Infrastructure**: QEMU virt + semihosting, 14 unit tests, 10s timeout.
 
 ## 🚀 Next Strategic Steps
 

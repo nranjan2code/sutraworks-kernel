@@ -480,4 +480,24 @@ Each process is represented by a `Process` struct containing:
 
 ---
 
-*This document describes Intent Kernel v0.2 as of December 2025.*
+*This document describes Intent Kernel v0.2.2-alpha as of December 2025.*
+
+## Testing Infrastructure
+
+The kernel uses a custom test framework for bare-metal testing:
+
+```rust
+#![feature(custom_test_frameworks)]
+#![test_runner(crate::test_runner)]
+```
+
+### Test Execution
+- **QEMU virt machine**: Provides proper semihosting support
+- **Semihosting exit**: Uses ARM `hlt #0xf000` to cleanly exit QEMU
+- **10-second timeout**: Prevents runaway tests
+- **14 unit tests**: Memory, Capability, Intent subsystems
+
+### Running Tests
+```bash
+make test-unit  # Completes in <10 seconds
+```

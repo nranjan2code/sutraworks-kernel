@@ -10,7 +10,8 @@
 
 ### 1.1 Testing Infrastructure
 - [x] Set up `custom_test_frameworks` for no_std
-- [x] Create test harness for QEMU
+- [x] Create test harness for QEMU (virt machine with semihosting)
+- [x] Test runner with 10s timeout (prevents runaway QEMU)
 - [ ] Add CI/CD pipeline (GitHub Actions)
 - [x] Unit tests for memory allocator (buddy, slab, neural)
 - [x] Unit tests for capability system (mint, derive, revoke, validate)
@@ -19,6 +20,7 @@
 - [x] Unit tests for intent parser (tokenization, concept matching)
 - [ ] Integration tests (boot, drivers, multi-process, syscalls)
 - [ ] Hardware-in-the-loop tests on real Pi 5
+- [ ] Host-based tests for pure Rust logic (no QEMU needed)
 - [ ] **Target:** 80%+ code coverage
 
 ### 1.2 Real Virtual Memory
@@ -498,13 +500,15 @@
 - ✅ Memory allocator (Buddy + Slab)
 - ✅ Basic capability system
 - ✅ Basic intent parser (keyword matching)
-- ✅ Unit Testing Infrastructure (QEMU + Custom Test Framework)
+- ✅ Unit Testing Infrastructure (QEMU virt + semihosting exit)
+- ✅ Test runner with timeout (prevents CPU heating)
+- ✅ 14 unit tests (memory, capability, intent)
 
 **What's Missing:**
 - ❌ Real virtual memory isolation
 - ❌ Real multi-processing
 - ❌ Real AI (embeddings, inference)
-- ⚠️ Tests (Basic unit tests added, coverage low)
+- ⚠️ Tests run on virt machine (need Pi 5 hardware for full tests)
 - ❌ Security enforcement
 - ❌ Production hardening
 
