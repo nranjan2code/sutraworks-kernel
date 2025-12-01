@@ -2,7 +2,6 @@
 //!
 //! Handles requests from User Mode (EL0).
 
-use crate::kernel::process::Process;
 use crate::kernel::scheduler;
 
 /// System Call Numbers

@@ -28,16 +28,22 @@ pub use rng::Rng;
 #[cfg(not(test))]
 pub const PERIPHERAL_BASE: usize = 0x1_0000_0000;
 
-/// QEMU (Pi 4) uses BCM2711 with a different peripheral base
+/// QEMU 'virt' machine uses 0x0900_0000 for UART
 #[cfg(test)]
-pub const PERIPHERAL_BASE: usize = 0xFE00_0000;
+pub const PERIPHERAL_BASE: usize = 0x0900_0000;
 
 /// Legacy peripheral base (for backward compatibility checks)
 pub const LEGACY_PERIPHERAL_BASE: usize = 0xFE00_0000;
 
 // Peripheral offsets from base
 pub const GPIO_OFFSET: usize = 0x0020_0000;
-pub const UART0_OFFSET: usize = 0x0020_1000;      // PL011 UART
+
+#[cfg(not(test))]
+pub const UART0_OFFSET: usize = 0x0020_1000;      // PL011 UART on Pi 5
+
+#[cfg(test)]
+pub const UART0_OFFSET: usize = 0x0000_0000;      // PL011 UART on virt machine
+
 pub const AUX_OFFSET: usize = 0x0021_5000;        // Mini UART, SPI1, SPI2
 pub const TIMER_OFFSET: usize = 0x0000_3000;      // System timer
 pub const IRQ_OFFSET: usize = 0x0000_B200;        // Interrupt controller

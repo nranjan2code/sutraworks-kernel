@@ -1,106 +1,109 @@
-//! Process Scheduler
+//! Agent Scheduler
 //!
-//! Basic Round-Robin scheduler.
+//! Schedules Agents. Simplified for stroke-native kernel.
 
 use alloc::collections::vec_deque::VecDeque;
 use alloc::boxed::Box;
-use crate::kernel::process::{Process, ProcessState, Context};
+use crate::kernel::process::{Agent, AgentState, Context};
 use crate::arch::SpinLock;
 
-pub struct Scheduler {
-    processes: VecDeque<Box<Process>>,
-    current_pid: Option<u64>,
+pub struct IntentScheduler {
+    agents: VecDeque<Box<Agent>>,
+    current_agent_id: Option<u64>,
 }
 
-impl Scheduler {
+impl IntentScheduler {
     pub const fn new() -> Self {
-        Scheduler {
-            processes: VecDeque::new(),
-            current_pid: None,
+        IntentScheduler {
+            agents: VecDeque::new(),
+            current_agent_id: None,
         }
     }
 
-    /// Spawn a new kernel thread
-    pub fn spawn(&mut self, entry: fn()) {
-        let process = Process::new_kernel(entry);
-        self.processes.push_back(Box::new(process));
+    /// Spawn a new kernel agent (simple, no embedding)
+    pub fn spawn_simple(&mut self, entry: fn()) {
+        let agent = Agent::new_kernel_simple(entry);
+        self.agents.push_back(Box::new(agent));
     }
 
-    /// Spawn a new user process
-    pub fn spawn_user(&mut self, entry: fn(), arg: u64) {
-        let process = Process::new_user(entry, arg);
-        self.processes.push_back(Box::new(process));
+    /// Spawn a new user agent (simple, no embedding)
+    pub fn spawn_user_simple(&mut self, entry: fn(), arg: u64) {
+        let agent = Agent::new_user_simple(entry, arg);
+        self.agents.push_back(Box::new(agent));
     }
 
-    /// Schedule the next process
+    /// Schedule the next agent
     /// 
     /// Returns a tuple of (prev_context_ptr, next_context_ptr) if a switch is needed.
     /// The caller must then call `switch_to`.
     pub fn schedule(&mut self) -> Option<(*mut Context, *const Context)> {
-        if self.processes.is_empty() {
+        if self.agents.is_empty() {
             return None;
         }
 
-        // If we have a running process, move it to the back (Round Robin)
-        if let Some(mut prev) = self.processes.pop_front() {
-            if prev.state == ProcessState::Running {
-                prev.state = ProcessState::Ready;
-                self.processes.push_back(prev);
-            } else if prev.state == ProcessState::Terminated {
+        // If we have a running agent, move it to the back
+        if let Some(mut prev) = self.agents.pop_front() {
+            if prev.state == AgentState::Running {
+                prev.state = AgentState::Ready;
+                self.agents.push_back(prev);
+            } else if prev.state == AgentState::Terminated {
                 // Drop it (it's already popped)
             } else {
                 // Blocked or Ready, put it back
-                self.processes.push_back(prev);
+                self.agents.push_back(prev);
             }
         }
 
-        // Pick next Ready process
-        // We need to rotate the queue until we find a Ready one
-        let len = self.processes.len();
-        for _ in 0..len {
-            if let Some(mut next) = self.processes.pop_front() {
-                if next.state == ProcessState::Ready {
-                    next.state = ProcessState::Running;
-                    self.current_pid = Some(next.id.0);
-                    
-                    // We need to return pointers to the contexts.
-                    // Since we are using Box<Process>, the address of the Process struct (and its Context)
-                    // is stable on the heap, even if we move the Box around in the VecDeque.
-                    
-                    // However, we need to put `next` back into the queue (at the front/running position)
-                    // BEFORE we take the pointer, to ensure ownership is correct.
-                    self.processes.push_front(next);
-                    
-                    // Get pointers
-                    // SAFETY: We are single-threaded on this core for now (interrupts disabled during schedule)
-                    let next_proc = self.processes.front().unwrap();
-                    let next_ctx = &next_proc.context as *const Context;
-                    
-                    // For the PREVIOUS context:
-                    // If we just rotated, the previous process is now at the BACK of the queue.
-                    // Unless it was the ONLY process, in which case it's at the FRONT.
-                    
-                    let prev_ctx = if self.processes.len() > 1 {
-                        let prev_proc = self.processes.back_mut().unwrap();
-                        &mut prev_proc.context as *mut Context
-                    } else {
-                        // Only one process (ourselves), so prev == next
-                        let prev_proc = self.processes.front_mut().unwrap();
-                        &mut prev_proc.context as *mut Context
-                    };
+        // Simple round-robin scheduling
+        // Find first Ready agent
+        let mut best_index = None;
 
-                    return Some((prev_ctx, next_ctx)); 
-                } else {
-                    self.processes.push_back(next);
-                }
+        for (i, agent) in self.agents.iter().enumerate() {
+            if agent.state == AgentState::Ready {
+                best_index = Some(i);
+                break;
             }
+        }
+
+        if let Some(index) = best_index {
+            // Remove the best agent from its current position
+            let mut next = self.agents.remove(index).unwrap();
+            
+            next.state = AgentState::Running;
+            self.current_agent_id = Some(next.id.0);
+            
+            // Put it at the FRONT (Running position)
+            self.agents.push_front(next);
+            
+            // Get pointers
+            let next_agent = self.agents.front().unwrap();
+            let next_ctx = &next_agent.context as *const Context;
+            
+            // For the PREVIOUS context:
+            // If we just rotated/moved, the previous agent is now at the BACK (or wherever we put it).
+            // Unless it was the ONLY agent.
+            
+            // Note: We need to be careful about where 'prev' went.
+            // In the beginning of this function, we popped 'prev' and pushed it to back.
+            // So 'prev' is at self.agents.back().
+            
+            let prev_ctx = if self.agents.len() > 1 {
+                let prev_agent = self.agents.back_mut().unwrap();
+                &mut prev_agent.context as *mut Context
+            } else {
+                // Only one agent (ourselves), so prev == next
+                let prev_agent = self.agents.front_mut().unwrap();
+                &mut prev_agent.context as *mut Context
+            };
+
+            return Some((prev_ctx, next_ctx));
         }
         
         None
     }
 }
 
-pub static SCHEDULER: SpinLock<Scheduler> = SpinLock::new(Scheduler::new());
+pub static SCHEDULER: SpinLock<IntentScheduler> = SpinLock::new(IntentScheduler::new());
 
 /// Called on every timer interrupt (e.g., 10ms)
 pub fn tick() {
@@ -138,18 +141,17 @@ pub fn yield_task() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::boxed::Box;
 
     fn dummy_task() {}
 
     #[test]
     fn test_scheduler_round_robin() {
-        let mut scheduler = Scheduler::new();
+        let mut scheduler = IntentScheduler::new();
         
         // Add 3 tasks
-        scheduler.spawn(dummy_task); // Task 1
-        scheduler.spawn(dummy_task); // Task 2
-        scheduler.spawn(dummy_task); // Task 3
+        scheduler.spawn_simple(dummy_task); // Task 1
+        scheduler.spawn_simple(dummy_task); // Task 2
+        scheduler.spawn_simple(dummy_task); // Task 3
         
         // Initial state: [T1, T2, T3]
         
@@ -170,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_scheduler_empty() {
-        let mut scheduler = Scheduler::new();
+        let mut scheduler = IntentScheduler::new();
         assert!(scheduler.schedule().is_none());
     }
 }

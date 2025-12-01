@@ -10,60 +10,6 @@ use core::panic::PanicInfo;
 use intent_kernel::*;
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MOCK ASSEMBLY FUNCTIONS (for linking)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-#[no_mangle]
-pub extern "C" fn read_timer_freq() -> u64 {
-    let val: u64;
-    unsafe {
-        core::arch::asm!("mrs {}, cntfrq_el0", out(reg) val, options(nostack));
-    }
-    val
-}
-
-#[no_mangle]
-pub extern "C" fn read_timer() -> u64 {
-    let val: u64;
-    unsafe {
-        core::arch::asm!("mrs {}, cntpct_el0", out(reg) val, options(nostack));
-    }
-    val
-}
-
-#[no_mangle]
-pub extern "C" fn data_sync_barrier() {
-    // Mock barrier - no-op for tests
-}
-
-#[no_mangle]
-pub extern "C" fn instruction_barrier() {
-    // Mock barrier - no-op for tests
-}
-
-#[no_mangle]
-pub extern "C" fn wait_for_interrupt() {
-    unsafe {
-        core::arch::asm!("wfi");
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn enable_interrupts() {
-    // Mock
-}
-
-#[no_mangle]
-pub extern "C" fn disable_interrupts() -> u64 {
-    0 // Mock
-}
-
-#[no_mangle]
-pub extern "C" fn restore_interrupts(_state: u64) {
-    // Mock
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // MACROS FOR TEST OUTPUT
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -125,45 +71,41 @@ fn run_all_tests() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// RAW UART OUTPUT - bypass driver completely
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[inline(always)]
+fn raw_uart(c: u8) {
+    unsafe {
+        core::ptr::write_volatile(0x0900_0000 as *mut u32, c as u32);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // TEST ENTRY POINT
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[no_mangle]
-#[unsafe(naked)]
-#[link_section = ".text.boot"]
-pub extern "C" fn _start() -> ! {
-    core::arch::naked_asm!(
-        "ldr x30, =__stack_top",
-        "mov sp, x30",
-        "bl test_main_entry",
-        "b .",
-    );
-}
+pub extern "C" fn kernel_main() -> ! {
+    // Raw debug print to confirm entry - bypass all Rust abstractions
+    raw_uart(b'R');
+    raw_uart(b'I');
 
-#[no_mangle]
-pub extern "C" fn test_main_entry() -> ! {
-    // Minimal test - just exit immediately to verify the test infrastructure works
-    // Real tests need raspi4b machine which doesn't support semihosting exit
+    // Initialize kernel subsystems
+    intent_kernel::init_for_tests();
     
+    raw_uart(b'D');
+
+    // Run tests
+    run_all_tests();
+
     // Exit QEMU with success
-    unsafe {
-        core::arch::asm!(
-            "mov x0, #0x18",           // SYS_EXIT
-            "ldr x1, =exit_block",
-            "hlt #0xf000",
-            options(noreturn)
-        );
+    intent_kernel::exit_qemu(intent_kernel::QemuExitCode::Success);
+    
+    loop {
+        intent_kernel::arch::wfi();
     }
 }
-
-// Semihosting exit block
-core::arch::global_asm!(
-    ".section .data",
-    ".balign 8",
-    "exit_block:",
-    ".quad 0x20026",  // ADP_Stopped_ApplicationExit
-    ".quad 0",        // Exit code 0
-);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PANIC HANDLER (for tests)

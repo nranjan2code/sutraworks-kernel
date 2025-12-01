@@ -202,12 +202,20 @@ impl Uart {
     
     /// Early initialization with default settings (called before full init)
     pub fn early_init(&mut self) {
+        #[cfg(not(test))]
         self.init(&UartConfig::default());
+
+        #[cfg(test)]
+        {
+            // On QEMU virt, UART is already initialized.
+            // Just mark as initialized.
+            self.initialized = true;
+        }
     }
     
     /// Send a single byte
     pub fn send(&self, byte: u8) {
-        self.wait_tx_ready();
+        // self.wait_tx_ready();
         self.write(DR, byte as u32);
     }
     
@@ -375,6 +383,60 @@ pub async fn read_byte_async() -> u8 {
     // The UartReadFuture needs to access the UART safely.
     // For now, we'll create a temporary future that accesses the global UART.
     UartReadFuture { uart: &UART0 }.await
+}
+
+/// Async read a line of input into buffer, return length
+pub async fn read_line_async(buffer: &mut [u8]) -> usize {
+    let mut idx = 0;
+    
+    loop {
+        let byte = read_byte_async().await;
+        
+        match byte {
+            // Enter
+            b'\r' | b'\n' => {
+                send(b'\r');
+                send(b'\n');
+                break;
+            }
+            // Backspace
+            0x7F | 0x08 => {
+                if idx > 0 {
+                    idx -= 1;
+                    send(0x08);
+                    send(b' ');
+                    send(0x08);
+                }
+            }
+            // Ctrl+C
+            0x03 => {
+                send(b'^');
+                send(b'C');
+                send(b'\r');
+                send(b'\n');
+                idx = 0;
+                break;
+            }
+            // Printable characters
+            0x20..=0x7E => {
+                if idx < buffer.len() - 1 {
+                    buffer[idx] = byte;
+                    idx += 1;
+                    send(byte);
+                }
+            }
+            // Escape sequences (ignore for now)
+            0x1B => {
+                // Could handle arrow keys, etc.
+            }
+            _ => {}
+        }
+    }
+    
+    if idx < buffer.len() {
+        buffer[idx] = 0;
+    }
+    idx
 }
 
 /// Read a line of input into buffer, return length

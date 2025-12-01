@@ -107,6 +107,11 @@ pub extern "C" fn kernel_main() -> ! {
     // Initialize Semantic Engine
     kprintln!("[INIT] Semantic Intent Engine...");
     intent::init();
+    
+    // Initialize Stenographic Input Engine
+    kprintln!("[INIT] Stenographic Input Engine...");
+    steno::init();
+    kprintln!("       23 keys. 150 years of compression. Now in silicon.");
 
     // Initialize Perception Layer (Adaptive Hardware Support)
     kprintln!("[INIT] Perception Cortex...");
@@ -134,13 +139,13 @@ pub extern "C" fn kernel_main() -> ! {
 
     // Initialize Scheduler
     kprintln!("[INIT] Scheduler...");
-    
-    // Spawn Task A (Kernel Thread)
-    kernel::scheduler::SCHEDULER.lock().spawn(task_a);
-    kprintln!("       Spawned Task A (Kernel)");
+
+    // Spawn Async Executor Agent (The "Main" Thread)
+    kernel::scheduler::SCHEDULER.lock().spawn_simple(async_executor_agent);
+    kprintln!("       Spawned Async Executor Agent");
 
     // Spawn User Task (EL0 Process)
-    kernel::scheduler::SCHEDULER.lock().spawn_user(user_task, 0);
+    kernel::scheduler::SCHEDULER.lock().spawn_user_simple(user_task, 0);
     kprintln!("       Spawned User Task (EL0)");
 
     // Enable Timer Interrupt (10ms)
@@ -165,10 +170,42 @@ pub extern "C" fn kernel_main() -> ! {
     }
 }
 
-fn task_a() {
+fn async_executor_agent() {
+    kprintln!("[Executor] Starting Steno-Native Async Core...");
+    let mut executor = kernel::async_core::Executor::new();
+    executor.spawn(steno_loop());
+    executor.run();
+}
+
+/// Main steno input loop - processes strokes as they arrive
+async fn steno_loop() {
+    kprintln!();
+    kprintln!("╔═══════════════════════════════════════════════════════════╗");
+    kprintln!("║           STENO INPUT READY                               ║");
+    kprintln!("║                                                           ║");
+    kprintln!("║  Input strokes directly. No characters. Pure semantic.    ║");
+    kprintln!("║  Example: STPH (for 'sn'), KAT (for 'cat')                ║");
+    kprintln!("╚═══════════════════════════════════════════════════════════╝");
+    kprintln!();
+    
+    let mut input_buffer = [0u8; 64];
+    
     loop {
-        crate::kprintln!("[Kernel] Working...");
-        for _ in 0..50_000_000 { core::hint::spin_loop(); }
+        kprint!("steno> ");
+        let len = drivers::uart::read_line_async(&mut input_buffer).await;
+        if len == 0 { continue; }
+        
+        let input = core::str::from_utf8(&input_buffer[..len]).unwrap_or("");
+        let input = input.trim();
+        
+        if input.is_empty() { continue; }
+        
+        // Process as steno notation
+        if let Some(intent) = steno::process_steno(input) {
+            intent::execute(&intent);
+        } else {
+            kprintln!("[STENO] No match for: {}", input);
+        }
     }
 }
 

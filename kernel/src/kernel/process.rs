@@ -1,26 +1,28 @@
-//! Process Management
+//! Agent Management
 //!
-//! Defines the Process Control Block (PCB) and associated structures.
+//! Defines the Agent Control Block (ACB) and associated structures.
+//! Simplified for stroke-native kernel.
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 use crate::kernel::memory::paging::VMM;
+use crate::kernel::capability::Capability;
 
-/// Unique Process Identifier
+/// Unique Agent Identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ProcessId(pub u64);
+pub struct AgentId(pub u64);
 
-impl ProcessId {
+impl AgentId {
     pub fn new() -> Self {
         static NEXT_ID: AtomicU64 = AtomicU64::new(1);
-        ProcessId(NEXT_ID.fetch_add(1, Ordering::Relaxed))
+        AgentId(NEXT_ID.fetch_add(1, Ordering::Relaxed))
     }
 }
 
-/// Process State
+/// Agent State
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ProcessState {
+pub enum AgentState {
     Ready,
     Running,
     Blocked,
@@ -48,70 +50,78 @@ pub struct Context {
     pub ttbr0: u64, // Page Table Base (User/Process space)
 }
 
-/// Process Control Block
-pub struct Process {
-    pub id: ProcessId,
-    pub state: ProcessState,
+/// Agent Control Block
+/// 
+/// An Agent is a lightweight execution unit.
+pub struct Agent {
+    pub id: AgentId,
+    pub state: AgentState,
     pub context: Context,
+    pub capabilities: Vec<Capability>,
     pub vmm: Option<VMM>,
     pub kernel_stack: Vec<u8>,
     pub user_stack: Vec<u8>,
 }
 
-impl Process {
-    pub fn new_kernel(entry: fn()) -> Self {
-        let mut process = Process {
-            id: ProcessId::new(),
-            state: ProcessState::Ready,
+impl Agent {
+    /// Create a new kernel agent (simple)
+    pub fn new_kernel_simple(entry: fn()) -> Self {
+        let mut agent = Agent {
+            id: AgentId::new(),
+            state: AgentState::Ready,
             context: Context::default(),
+            capabilities: Vec::new(),
             vmm: None,
             kernel_stack: alloc::vec![0u8; 16 * 1024], // 16KB stack
             user_stack: alloc::vec![], // No user stack
         };
 
-        let stack_top = process.kernel_stack.as_ptr() as u64 + process.kernel_stack.len() as u64;
+        let stack_top = agent.kernel_stack.as_ptr() as u64 + agent.kernel_stack.len() as u64;
         
         // Align stack to 16 bytes
         let stack_top = stack_top & !0xF;
 
-        process.context.sp = stack_top;
-        process.context.lr = entry as u64;
-        process.context.ttbr0 = 0; // Kernel threads share TTBR1, TTBR0 is unused/zeroed
+        agent.context.sp = stack_top;
+        agent.context.lr = entry as u64;
+        agent.context.ttbr0 = 0; // Kernel threads share TTBR1, TTBR0 is unused/zeroed
 
-        process
+        agent
     }
 
-    pub fn new_user(entry: fn(), arg: u64) -> Self {
-        let mut process = Process {
-            id: ProcessId::new(),
-            state: ProcessState::Ready,
+    /// Create a new user agent (simple)
+    pub fn new_user_simple(entry: fn(), arg: u64) -> Self {
+        let mut agent = Agent {
+            id: AgentId::new(),
+            state: AgentState::Ready,
             context: Context::default(),
+            capabilities: Vec::new(),
             vmm: None, // TODO: Create separate VMM
             kernel_stack: alloc::vec![0u8; 16 * 1024], // 16KB kernel stack
             user_stack: alloc::vec![0u8; 16 * 1024],   // 16KB user stack
         };
 
         // Kernel Stack Setup (for when we are in kernel mode handling this process)
-        let kstack_top = process.kernel_stack.as_ptr() as u64 + process.kernel_stack.len() as u64;
+        let kstack_top = agent.kernel_stack.as_ptr() as u64 + agent.kernel_stack.len() as u64;
         let kstack_top = kstack_top & !0xF;
-        process.context.sp = kstack_top;
+        agent.context.sp = kstack_top;
 
         // User Stack Setup (passed to jump_to_userspace)
-        let ustack_top = process.user_stack.as_ptr() as u64 + process.user_stack.len() as u64;
+        let ustack_top = agent.user_stack.as_ptr() as u64 + agent.user_stack.len() as u64;
         let ustack_top = ustack_top & !0xF;
 
         // Set up trampoline
         // switch_to restores x19..x29. We use them to pass args to jump_to_userspace.
-        process.context.lr = user_trampoline as u64;
-        process.context.x19 = entry as u64;      // Entry point
-        process.context.x20 = ustack_top;        // User Stack
-        process.context.x21 = arg;               // Argument
+        agent.context.lr = user_trampoline as u64;
+        agent.context.x19 = entry as u64;      // Entry point
+        agent.context.x20 = ustack_top;        // User Stack
+        agent.context.x21 = arg;               // Argument
 
-        process.context.ttbr0 = 0; // TODO: Set to user page table
+        agent.context.ttbr0 = 0; // TODO: Set to user page table
 
-        process
+        agent
     }
 }
+
 
 /// Trampoline to jump to userspace
 /// 

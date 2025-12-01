@@ -297,18 +297,33 @@ pub unsafe fn init() {
     if let Some(vmm) = vmm.as_mut() {
         crate::kprintln!("[MEM] Initializing VMM...");
         
-        // 1. Identity map Kernel Code/Data (Normal Memory)
-        // From 0x0 to 0x2_0000_0000 (8GB)
-        // This covers the entire physical RAM of the Pi 5
-        vmm.identity_map(0, 0x2_0000_0000, EntryFlags::ATTR_NORMAL | EntryFlags::AP_RW_EL1 | EntryFlags::SH_INNER)
-            .expect("Failed to map kernel");
-            
-        // 2. Map Peripherals (Device Memory)
-        // BCM2712 Peripherals start at 0x10_0000_0000 (outside 32-bit range)
-        // But we are in 64-bit mode, so it's fine.
-        // Map 0x10_0000_0000 to 0x10_0100_0000 (16MB)
-        vmm.identity_map(0x10_0000_0000, 0x10_0100_0000, EntryFlags::ATTR_DEVICE | EntryFlags::AP_RW_EL1 | EntryFlags::PXN | EntryFlags::UXN)
-            .expect("Failed to map peripherals");
+        #[cfg(not(test))]
+        {
+            // 1. Identity map Kernel Code/Data (Normal Memory)
+            // From 0x0 to 0x2_0000_0000 (8GB)
+            // This covers the entire physical RAM of the Pi 5
+            vmm.identity_map(0, 0x2_0000_0000, EntryFlags::ATTR_NORMAL | EntryFlags::AP_RW_EL1 | EntryFlags::SH_INNER)
+                .expect("Failed to map kernel");
+                
+            // 2. Map Peripherals (Device Memory)
+            // BCM2712 Peripherals start at 0x10_0000_0000 (outside 32-bit range)
+            // But we are in 64-bit mode, so it's fine.
+            // Map 0x10_0000_0000 to 0x10_0100_0000 (16MB)
+            vmm.identity_map(0x10_0000_0000, 0x10_0100_0000, EntryFlags::ATTR_DEVICE | EntryFlags::AP_RW_EL1 | EntryFlags::PXN | EntryFlags::UXN)
+                .expect("Failed to map peripherals");
+        }
+
+        #[cfg(test)]
+        {
+            // Map QEMU virt peripherals (UART at 0x09000000)
+            // Map 0x08000000 to 0x10000000 (128MB) covering GIC and UART
+            vmm.identity_map(0x0800_0000, 0x1000_0000, EntryFlags::ATTR_DEVICE | EntryFlags::AP_RW_EL1 | EntryFlags::PXN | EntryFlags::UXN)
+                .expect("Failed to map virt peripherals");
+                
+            // Map RAM (Normal Memory) - 0x4000_0000 to 0x8000_0000 (1GB)
+            vmm.identity_map(0x4000_0000, 0x8000_0000, EntryFlags::ATTR_NORMAL | EntryFlags::AP_RW_EL1 | EntryFlags::SH_INNER)
+                .expect("Failed to map RAM");
+        }
             
         // 3. Configure MAIR
         // Attr0 = Device-nGnRnE (0x00)

@@ -21,6 +21,7 @@ pub mod arch;
 pub mod drivers;
 pub mod kernel;
 pub mod intent;
+pub mod steno;      // Stenographic input - strokes are the semantic primitive
 pub mod perception;
 pub mod fs;
 
@@ -81,23 +82,35 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 // LIBRARY INITIALIZATION (for tests)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/// Raw UART output - bypass all locks and abstractions
+#[inline(always)]
+pub fn raw_uart(c: u8) {
+    unsafe {
+        #[cfg(test)]
+        core::ptr::write_volatile(0x0900_0000 as *mut u32, c as u32);
+        #[cfg(not(test))]
+        core::ptr::write_volatile(0x1_0020_1000 as *mut u32, c as u32);
+    }
+}
+
 /// Initialize the kernel subsystems (for testing)
 pub fn init_for_tests() {
-    // Initialize UART for test output
-    drivers::uart::early_init();
-    serial_println!("[TEST] UART initialized");
+    raw_uart(b'0');
+    // Initialize UART for test output - skip for now, use raw
+    // drivers::uart::early_init();
+    raw_uart(b'1');
     
     // Initialize timer
     drivers::timer::init();
-    serial_println!("[TEST] Timer initialized");
+    raw_uart(b'2');
     
     // Initialize memory (with fixed seed for reproducibility)
     unsafe { kernel::memory::init(0x1234567890ABCDEF); }
-    serial_println!("[TEST] Memory initialized");
+    raw_uart(b'3');
     
     // Initialize capability system
     kernel::capability::init();
-    serial_println!("[TEST] Capabilities initialized");
+    raw_uart(b'4');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

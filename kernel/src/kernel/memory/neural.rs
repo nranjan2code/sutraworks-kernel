@@ -1,22 +1,22 @@
 //! Neural Memory Allocator
 //!
-//! Implements Semantic Memory where blocks are allocated based on vector similarity.
+//! Simplified semantic memory for stroke-native kernel.
+//! Blocks are tagged with ConceptIDs for semantic retrieval.
 
 use core::ptr::NonNull;
 use alloc::alloc::{alloc, Layout};
-use crate::intent::{Embedding, ConceptID};
+use crate::intent::ConceptID;
 use crate::arch::SpinLock;
 
 /// Global Neural Allocator instance
 pub static NEURAL_ALLOCATOR: SpinLock<NeuralAllocator> = SpinLock::new(NeuralAllocator::new());
 
 /// A Semantic Block of memory
-///
-/// Contains the data and its semantic embedding.
 #[repr(C)]
 pub struct SemanticBlock {
-    pub embedding: Embedding,
+    pub concept_id: ConceptID,
     pub access_count: u64,
+    pub size: usize,
     // Data follows immediately after this struct
 }
 
@@ -25,12 +25,11 @@ pub struct SemanticBlock {
 pub struct IntentPtr {
     pub id: ConceptID,
     pub ptr: NonNull<u8>,
+    pub size: usize,
 }
 
 /// Neural Allocator
 pub struct NeuralAllocator {
-    // In a real system, this would be a sophisticated vector index (HNSW, etc.)
-    // For now, we use a simple list of blocks.
     blocks: [Option<NonNull<SemanticBlock>>; 128],
     count: usize,
 }
@@ -47,13 +46,12 @@ impl NeuralAllocator {
         }
     }
 
-    /// Allocate memory semantically
-    pub unsafe fn alloc(&mut self, size: usize, embedding: Embedding) -> Option<IntentPtr> {
+    /// Allocate memory with a concept ID tag
+    pub unsafe fn alloc(&mut self, size: usize, concept_id: ConceptID) -> Option<IntentPtr> {
         // 1. Allocate raw memory for header + data
         let total_size = core::mem::size_of::<SemanticBlock>() + size;
         let layout = Layout::from_size_align(total_size, 16).ok()?;
         
-        // Use the global allocator (Buddy/Slab) to get raw bytes
         let ptr = alloc(layout);
         if ptr.is_null() {
             return None;
@@ -61,52 +59,46 @@ impl NeuralAllocator {
 
         // 2. Initialize SemanticBlock header
         let block = ptr as *mut SemanticBlock;
-        (*block).embedding = embedding;
+        (*block).concept_id = concept_id;
         (*block).access_count = 0;
+        (*block).size = size;
         
-        // 3. Register in our "Neural Index"
+        // 3. Register in our index
         if self.count < 128 {
             self.blocks[self.count] = NonNull::new(block);
             self.count += 1;
         } else {
-            // Eviction policy: Remove least accessed (simplified)
-            // For demo, just overwrite last one
-             self.blocks[127] = NonNull::new(block);
+            // Eviction: overwrite last one
+            self.blocks[127] = NonNull::new(block);
         }
 
         Some(IntentPtr {
-            id: embedding.id,
+            id: concept_id,
             ptr: NonNull::new_unchecked(ptr.add(core::mem::size_of::<SemanticBlock>())),
+            size,
         })
     }
 
-    /// Retrieve memory by semantic query
-    pub unsafe fn retrieve(&self, query: &Embedding) -> Option<IntentPtr> {
-        let mut best_match = None;
-        let mut best_score = 0;
-
+    /// Retrieve memory by concept ID
+    pub unsafe fn retrieve(&self, concept_id: ConceptID) -> Option<IntentPtr> {
         for i in 0..self.count {
             if let Some(block_ptr) = self.blocks[i] {
                 let block = block_ptr.as_ref();
-                let score = query.similarity(&block.embedding);
-                
-                if score > best_score {
-                    best_score = score;
-                    best_match = Some(block_ptr);
+                if block.concept_id == concept_id {
+                    let data_ptr = (block_ptr.as_ptr() as *mut u8).add(core::mem::size_of::<SemanticBlock>());
+                    return Some(IntentPtr {
+                        id: block.concept_id,
+                        ptr: NonNull::new_unchecked(data_ptr),
+                        size: block.size,
+                    });
                 }
             }
         }
-
-        if best_score > 70 { // Threshold
-             best_match.map(|block_ptr| {
-                 let data_ptr = (block_ptr.as_ptr() as *mut u8).add(core::mem::size_of::<SemanticBlock>());
-                 IntentPtr {
-                     id: block_ptr.as_ref().embedding.id,
-                     ptr: NonNull::new_unchecked(data_ptr),
-                 }
-             })
-        } else {
-            None
-        }
+        None
+    }
+    
+    /// Get count of allocated blocks
+    pub fn count(&self) -> usize {
+        self.count
     }
 }
