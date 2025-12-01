@@ -1,0 +1,36 @@
+# Raspberry Pi 5 Boot Configuration
+# For Intent Kernel - Bare Metal OS
+
+# Use 64-bit ARM mode
+arm_64bit=1
+
+# Kernel image name (kernel8.img for 64-bit)
+kernel=kernel8.img
+
+# Disable GPU firmware loading (we handle everything)
+# gpu_mem=16
+
+# Enable UART for serial console
+enable_uart=1
+
+# Disable Bluetooth (frees up UART)
+dtoverlay=disable-bt
+
+# Use mini UART for console
+# core_freq=250
+
+# Disable rainbow splash screen
+disable_splash=1
+
+# No command line (bare metal)
+# cmdline=
+
+# Boot directly to our kernel
+# kernel_address=0x80000
+
+# Optional: Overclock for better performance
+# arm_freq=2400
+# over_voltage=6
+
+# Debug: Enable JTAG
+# enable_jtag_gpio=1

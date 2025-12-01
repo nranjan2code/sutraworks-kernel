@@ -1,0 +1,45 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# INTENT KERNEL - Raspberry Pi 5 Boot Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Boot in 64-bit mode
+arm_64bit=1
+
+# Use our kernel image
+kernel=kernel8.img
+
+# Enable UART for serial console
+enable_uart=1
+uart_2ndstage=1
+
+# Disable Bluetooth to free up UART
+dtoverlay=disable-bt
+
+# Set GPU memory (minimum, we don't use VideoCore much yet)
+gpu_mem=64
+
+# Boot directly to kernel (no bootloader delays)
+boot_delay=0
+
+# Disable rainbow splash
+disable_splash=1
+
+# ARM frequency (max performance)
+arm_freq=2400
+
+# Over voltage for stability (optional)
+# over_voltage=2
+
+# Force HDMI output
+hdmi_force_hotplug=1
+hdmi_group=1
+hdmi_mode=16
+
+# Disable warnings
+avoid_warnings=1
+
+# Enable device tree
+device_tree=
+
+# Kernel command line (not used by bare metal, but good practice)
+cmdline=cmdline.txt

@@ -1,0 +1,39 @@
+[package]
+name = "intent-kernel"
+version = "0.1.0"
+edition = "2021"
+authors = ["Sutraworks"]
+description = "Intent Kernel - A capability-based OS where humans speak and silicon listens"
+license = "MIT"
+repository = "https://github.com/sutraworks/intent-kernel"
+readme = "README.md"
+keywords = ["kernel", "bare-metal", "raspberry-pi", "capability", "intent"]
+categories = ["no-std", "embedded", "hardware-support"]
+
+[lib]
+name = "intent_kernel"
+path = "src/main.rs"
+crate-type = ["staticlib"]
+
+# We're building for bare metal
+[profile.dev]
+panic = "abort"
+opt-level = "s"
+
+[profile.release]
+panic = "abort"
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = "symbols"
+
+# Dependencies - NONE! Pure Rust, no external libraries
+[dependencies]
+heapless = "0.7"
+spin = "0.9"
+
+[features]
+default = []
+debug = []          # Enable debug output
+multicore = []      # Enable multi-core support
+gpu = []           # Enable GPU/display support

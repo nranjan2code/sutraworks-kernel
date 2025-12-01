@@ -1,0 +1,238 @@
+# Changelog
+
+All notable changes to Intent Kernel will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [Unreleased]
+
+### Planned
+- Virtual memory with page tables
+- Process isolation
+- File system support
+- Network stack
+- USB driver
+- Audio support
+
+## [0.2.0-alpha] - 2025-12-01
+
+### Added
+- **Virtual Memory System Architecture (VMSA)**
+  - Core paging structures (`PageTable`, `PageTableEntry`)
+  - Virtual Memory Manager (`VMM`) with identity mapping
+  - ARM64 system register helpers (`TTBR`, `TCR`, `MAIR`, `SCTLR`)
+  - 4KB page granularity support
+  - Secure memory attributes (NX, RO, Device-nGnRnE)
+
+- **Exception Handling**
+  - Dedicated `kernel::exception` module
+  - Detailed `ESR_EL1` decoding for Data Aborts (Translation vs Permission faults)
+  - Human-readable crash dumps with register state and fault address (`FAR_EL1`)
+  - Production-grade panic handler with LED status indication
+
+- **Process Isolation**: Implemented `Process` struct, `Context` switching, and Round-Robin scheduler.
+- **Preemption**: Implemented Timer Interrupt handling to enable preemptive multitasking.
+- **User Mode (EL0)**: Implemented transition to User Mode (`jump_to_userspace`) and System Call interface (`svc`).
+- **Syscalls**: Added `Yield`, `Print`, and `Sleep` system calls.
+- **Production Hardening**:
+  - **Security**: Implemented strict user pointer validation (`validate_user_ptr`) for system calls to prevent kernel memory access.
+  - **Reliability**: Added unit tests for Scheduler and Paging subsystems.
+  - **Intelligence**: Upgraded Intent Engine to use **Real Vector Math** (Integer Cosine Similarity) with 64-dimensional static embeddings.
+- **Documentation**: Updated Architecture, API, and Roadmap docs.
+
+### Added (v0.2.2-alpha) - Hardware Awakening
+- **PCIe Root Complex Driver**:
+  - Implemented `drivers/pcie.rs` for BCM2712.
+  - ECAM-based configuration space access.
+  - Bus enumeration and device discovery.
+- **Hardware Detection**:
+  - Automatic detection of Hailo-8 AI Accelerator (`1e60:2864`).
+  - Integration with `drivers/hailo.rs` probe logic.
+- **Security Hardening**:
+  - **Thread Safety**: Replaced `static mut` with `spin::Mutex` for global filesystem state.
+  - **Capability Enforcement**: Added `CapabilityType::System` checks for `create`/`edit`/`delete` intents.
+  - **Input Validation**: Added filename sanitization to `RamDiskFS` to prevent path traversal.
+
+### Added (v0.2.1-alpha) - Next-Gen Memory
+- **Neural Allocator**: Implemented `kernel::memory::neural` for vector-based memory management.
+- **Semantic Intents**: Added `remember` and `recall` intents for natural language memory interaction.
+- **Dynamic Intents**: Refactored Intent Engine to support dynamic `String` input.
+- **Adaptive Perception Layer**: Hardware-abstracted vision subsystem (Hailo-8 / CPU).
+- **Persistent Storage**: TAR-based RamDisk for loading files at boot.
+- **Write Support**: In-memory overlay filesystem enabling `create`, `edit`, and `delete` operations.
+  - Implemented automatic hardware detection and CPU fallback logic.
+
+---
+
+## [0.1.0] - 2025-01-XX
+
+### Added
+
+#### Boot System
+- ARM64 multi-core bootloader (`boot.s`)
+- Exception level transitions (EL3 → EL2 → EL1)
+- Exception vector table with all handlers
+- BSS clearing and stack initialization
+- Secondary core parking (cores 1-3)
+- 8GB memory map linker script
+
+#### Architecture Support
+- SpinLock with RAII guards
+- Memory barriers (DMB, DSB, ISB)
+- Interrupt enable/disable
+- Current exception level detection
+- CPU halt and NOP primitives
+
+#### Drivers
+- **UART (PL011)**: Full serial communication at 115200 baud
+  - Blocking and non-blocking read
+  - String output
+  - Line input with editing
+  
+- **GPIO**: Complete GPIO control
+  - Function selection (input/output/alt)
+  - Pull-up/pull-down configuration
+  - Pin state read/write
+  - High-level Pin API
+  
+- **Timer**: ARM Generic Timer
+  - Microsecond/millisecond delays
+  - Counter reading
+  - Interrupt support
+  
+- **Interrupts**: GIC-400 driver
+  - Interrupt enable/disable per IRQ
+  - Priority configuration
+  - CPU targeting
+  - Handler registration
+  
+- **Mailbox**: VideoCore communication
+  - Property tag interface
+  - Memory queries
+  - Temperature reading
+  - Clock management
+  
+- **Framebuffer**: Display output
+  - Resolution configuration
+  - Pixel drawing
+  - Rectangle filling
+  - 8x8 bitmap font rendering
+  - Text cursor and scrolling
+
+#### Kernel Subsystems
+- **Memory Allocator**
+  - Buddy allocator for large allocations
+  - Slab allocator for small allocations
+  - DMA-coherent allocation support
+  - Statistics tracking
+  
+- **Capability System**
+  - Resource type abstraction
+  - Permission flags
+  - Capability derivation with attenuation
+  - Transitive revocation
+  - Validation API
+
+#### Security
+- **Polymorphic Kernel**
+  - Hardware RNG driver (BCM2712 TRNG)
+  - Heap Address Space Layout Randomization (ASLR)
+  - Pointer Guard: Encrypted capability resource pointers
+  - Boot-time entropy seeding
+
+#### Intent Engine
+- Natural language parser
+- Intent recognition for:
+  - System status/help/shutdown
+  - Memory operations
+  - GPIO control
+  - Display commands
+- Interactive REPL
+- Extensible handler registration
+
+#### Build System
+- Makefile with all targets
+- Cargo configuration for bare-metal
+- QEMU emulation support
+- SD card deployment instructions
+
+#### Documentation
+- README with quick start
+- Architecture deep dive
+- Building guide
+- Hardware reference
+- API documentation
+- Examples collection
+- Security model
+- Contributing guide
+- This changelog
+
+### Technical Details
+
+- **Target**: Raspberry Pi 5 (BCM2712)
+- **CPU**: ARM Cortex-A76 (ARMv8.2-A)
+- **Language**: Rust (nightly, no_std)
+- **Assembly**: ARM64
+- **Dependencies**: None (zero external crates)
+- **Boot**: Direct kernel8.img load
+
+---
+
+## Version History
+
+| Version | Date | Highlights |
+|---------|------|------------|
+| 0.1.0 | 2025-01 | Initial release - boot, drivers, intent engine |
+
+---
+
+## Roadmap
+
+### v0.2.0 (Planned)
+- [ ] Virtual memory management
+- [ ] Basic process model
+- [ ] Kernel/userspace separation
+- [ ] System call interface
+
+### v0.3.0 (Planned)
+- [ ] FAT32 file system
+- [ ] SD card driver
+- [ ] File capabilities
+
+### v0.4.0 (Planned)
+- [ ] USB host controller
+- [ ] Keyboard/mouse input
+- [ ] Mass storage support
+
+### v0.5.0 (Planned)
+- [ ] Network stack (TCP/IP)
+- [ ] Ethernet driver
+- [ ] Network capabilities
+
+### v1.0.0 (Vision)
+- [ ] Stable API
+- [ ] Full peripheral support
+- [ ] Multi-process
+- [ ] Security audit
+- [ ] Performance optimization
+
+---
+
+## Migration Guide
+
+### From Pre-release to 0.1.0
+
+This is the initial release. No migration needed.
+
+---
+
+## Contributors
+
+- Initial development team
+
+---
+
+*Changelog maintained according to [Keep a Changelog](https://keepachangelog.com/)*

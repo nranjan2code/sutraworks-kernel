@@ -1,0 +1,302 @@
+warning: file `/Users/nisheethranjan/Projects/sutraworks/intent-kernel/kernel/src/main.rs` found to be present in multiple build targets:
+  * `lib` target `intent_kernel`
+  * `bin` target `intent-kernel`
+    Checking intent-kernel v0.1.0 (/Users/nisheethranjan/Projects/sutraworks/intent-kernel/kernel)
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `alloc`
+  --> src/kernel/async_core.rs:11:5
+   |
+11 | use alloc::boxed::Box;
+   |     ^^^^^ use of unresolved module or unlinked crate `alloc`
+   |
+   = help: add `extern crate alloc` to use the `alloc` crate
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `alloc`
+  --> src/kernel/async_core.rs:12:5
+   |
+12 | use alloc::vec::Vec;
+   |     ^^^^^ use of unresolved module or unlinked crate `alloc`
+   |
+   = help: add `extern crate alloc` to use the `alloc` crate
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `alloc`
+  --> src/kernel/async_core.rs:13:5
+   |
+13 | use alloc::collections::VecDeque;
+   |     ^^^^^ use of unresolved module or unlinked crate `alloc`
+   |
+   = help: add `extern crate alloc` to use the `alloc` crate
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `alloc`
+  --> src/kernel/async_core.rs:14:5
+   |
+14 | use alloc::sync::Arc;
+   |     ^^^^^ use of unresolved module or unlinked crate `alloc`
+   |
+   = help: add `extern crate alloc` to use the `alloc` crate
+
+error[E0554]: `#![feature]` may not be used on the stable release channel
+  --> src/main.rs:10:1
+   |
+10 | #![feature(panic_info_message)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0554]: `#![feature]` may not be used on the stable release channel
+  --> src/main.rs:11:1
+   |
+11 | #![feature(naked_functions)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the attribute
+   |
+   = help: the feature `naked_functions` has been stable since `1.88.0` and no longer requires an attribute to enable
+
+error[E0554]: `#![feature]` may not be used on the stable release channel
+  --> src/main.rs:12:1
+   |
+12 | #![feature(asm_const)]
+   | ^^^^^^^^^^^^^^^^^^^^^^ help: remove the attribute
+   |
+   = help: the feature `asm_const` has been stable since `1.82.0` and no longer requires an attribute to enable
+
+warning: unused import: `PERIPHERAL_BASE`
+ --> src/drivers/uart.rs:6:13
+  |
+6 | use super::{PERIPHERAL_BASE, UART0_BASE};
+  |             ^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `self`
+ --> src/drivers/framebuffer.rs:6:31
+  |
+6 | use crate::drivers::mailbox::{self, PropertyBuffer, PropertyRequest};
+  |                               ^^^^
+
+warning: unused imports: `PERIPHERAL_BASE` and `RNG_OFFSET`
+ --> src/drivers/rng.rs:6:13
+  |
+6 | use super::{PERIPHERAL_BASE, RNG_OFFSET};
+  |             ^^^^^^^^^^^^^^^  ^^^^^^^^^^
+
+warning: unused import: `AtomicU32`
+ --> src/kernel/capability.rs:9:37
+  |
+9 | use core::sync::atomic::{AtomicU64, AtomicU32, Ordering};
+  |                                     ^^^^^^^^^
+
+warning: unnecessary parentheses around assigned value
+  --> src/intent/mod.rs:79:21
+   |
+79 |         let denom = (mag_a * mag_b); // This might overflow if not careful, but i8*i8 sum 16 times is small.
+   |                     ^             ^
+   |
+   = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
+help: remove these parentheses
+   |
+79 -         let denom = (mag_a * mag_b); // This might overflow if not careful, but i8*i8 sum 16 times is small.
+79 +         let denom = mag_a * mag_b; // This might overflow if not careful, but i8*i8 sum 16 times is small.
+   |
+
+warning: the feature `naked_functions` has been stable since 1.88.0 and no longer requires an attribute to enable
+  --> src/main.rs:11:12
+   |
+11 | #![feature(naked_functions)]
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(stable_features)]` on by default
+
+warning: the feature `asm_const` has been stable since 1.82.0 and no longer requires an attribute to enable
+  --> src/main.rs:12:12
+   |
+12 | #![feature(asm_const)]
+   |            ^^^^^^^^^
+
+warning: the feature `panic_info_message` has been stable since 1.81.0 and no longer requires an attribute to enable
+  --> src/main.rs:10:12
+   |
+10 | #![feature(panic_info_message)]
+   |            ^^^^^^^^^^^^^^^^^^
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+   --> src/kernel/async_core.rs:28:13
+    |
+ 28 |     future: SpinLock<BoxFuture<'static, ()>>,
+    |             ^^^^^^^^------------------------ help: remove the unnecessary generics
+    |             |
+    |             expected 0 generic arguments
+    |
+note: struct defined here, with 0 generic parameters
+   --> src/arch/mod.rs:155:12
+    |
+155 | pub struct SpinLock {
+    |            ^^^^^^^^
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+   --> src/drivers/uart.rs:305:20
+    |
+305 | static UART_WAKER: SpinLock<Option<core::task::Waker>> = SpinLock::new(None);
+    |                    ^^^^^^^^--------------------------- help: remove the unnecessary generics
+    |                    |
+    |                    expected 0 generic arguments
+    |
+note: struct defined here, with 0 generic parameters
+   --> src/arch/mod.rs:155:12
+    |
+155 | pub struct SpinLock {
+    |            ^^^^^^^^
+
+error[E0277]: `NonNull<FreeNode>` cannot be shared between threads safely
+   --> src/kernel/memory.rs:536:16
+    |
+536 | static GLOBAL: &KernelAllocator = unsafe { &ALLOCATOR };
+    |                ^^^^^^^^^^^^^^^^ `NonNull<FreeNode>` cannot be shared between threads safely
+    |
+    = help: within `&'static KernelAllocator`, the trait `Sync` is not implemented for `NonNull<FreeNode>`
+note: required because it appears within the type `Option<NonNull<FreeNode>>`
+   --> /rustc/f8297e351a40c1439a467bbbb6879088047f50b3/library/core/src/option.rs:594:10
+    = note: required because it appears within the type `[Option<NonNull<FreeNode>>; 21]`
+note: required because it appears within the type `BuddyAllocator`
+   --> src/kernel/memory.rs:81:12
+    |
+ 81 | pub struct BuddyAllocator {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `KernelAllocator`
+   --> src/kernel/memory.rs:381:12
+    |
+381 | pub struct KernelAllocator {
+    |            ^^^^^^^^^^^^^^^
+    = note: required because it appears within the type `&'static KernelAllocator`
+    = note: shared static variables must have a type that implements `Sync`
+
+error[E0277]: `NonNull<SlabHeader>` cannot be shared between threads safely
+   --> src/kernel/memory.rs:536:16
+    |
+536 | static GLOBAL: &KernelAllocator = unsafe { &ALLOCATOR };
+    |                ^^^^^^^^^^^^^^^^ `NonNull<SlabHeader>` cannot be shared between threads safely
+    |
+    = help: within `&'static KernelAllocator`, the trait `Sync` is not implemented for `NonNull<SlabHeader>`
+note: required because it appears within the type `Option<NonNull<SlabHeader>>`
+   --> /rustc/f8297e351a40c1439a467bbbb6879088047f50b3/library/core/src/option.rs:594:10
+    = note: required because it appears within the type `[Option<NonNull<SlabHeader>>; 8]`
+note: required because it appears within the type `SlabCache`
+   --> src/kernel/memory.rs:287:12
+    |
+287 | pub struct SlabCache {
+    |            ^^^^^^^^^
+note: required because it appears within the type `KernelAllocator`
+   --> src/kernel/memory.rs:381:12
+    |
+381 | pub struct KernelAllocator {
+    |            ^^^^^^^^^^^^^^^
+    = note: required because it appears within the type `&'static KernelAllocator`
+    = note: shared static variables must have a type that implements `Sync`
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+   --> src/drivers/uart.rs:305:58
+    |
+305 | static UART_WAKER: SpinLock<Option<core::task::Waker>> = SpinLock::new(None);
+    |                                                          ^^^^^^^^^^^^^ ---- unexpected argument of type `Option<_>`
+    |
+note: associated function defined here
+   --> src/arch/mod.rs:160:18
+    |
+160 |     pub const fn new() -> Self {
+    |                  ^^^
+help: remove the extra argument
+    |
+305 - static UART_WAKER: SpinLock<Option<core::task::Waker>> = SpinLock::new(None);
+305 + static UART_WAKER: SpinLock<Option<core::task::Waker>> = SpinLock::new();
+    |
+
+error[E0599]: no method named `sqrt` found for type `f32` in the current scope
+   --> src/drivers/framebuffer.rs:414:65
+    |
+414 |             let half_width = ((radius * radius - y * y) as f32).sqrt() as i32;
+    |                                                                 ^^^^ method not found in `f32`
+
+error[E0277]: the trait bound `&KernelAllocator: GlobalAlloc` is not satisfied
+   --> src/kernel/memory.rs:536:16
+    |
+535 | #[global_allocator]
+    | ------------------- in this attribute macro expansion
+536 | static GLOBAL: &KernelAllocator = unsafe { &ALLOCATOR };
+    |                ^^^^^^^^^^^^^^^^ the trait `GlobalAlloc` is not implemented for `&KernelAllocator`
+    |
+    = help: the trait `GlobalAlloc` is implemented for `KernelAllocator`
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+   --> src/kernel/async_core.rs:47:21
+    |
+ 47 |             future: SpinLock::new(Box::pin(future)),
+    |                     ^^^^^^^^^^^^^ ---------------- unexpected argument
+    |
+note: associated function defined here
+   --> src/arch/mod.rs:160:18
+    |
+160 |     pub const fn new() -> Self {
+    |                  ^^^
+help: remove the extra argument
+    |
+ 47 -             future: SpinLock::new(Box::pin(future)),
+ 47 +             future: SpinLock::new(),
+    |
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+   --> src/kernel/mod.rs:26:5
+    |
+ 26 |     memory::init();
+    |     ^^^^^^^^^^^^-- argument #1 of type `u64` is missing
+    |
+note: function defined here
+   --> src/kernel/memory.rs:447:15
+    |
+447 | pub unsafe fn init(seed: u64) {
+    |               ^^^^ ---------
+help: provide the argument
+    |
+ 26 |     memory::init(/* u64 */);
+    |                  +++++++++
+
+error[E0277]: the trait bound `Intent: core::marker::Copy` is not satisfied
+   --> src/intent/mod.rs:186:23
+    |
+186 |             history: [None; CONTEXT_DEPTH],
+    |                       ^^^^ unsatisfied trait bound
+    |
+help: the trait `core::marker::Copy` is not implemented for `Intent`
+   --> src/intent/mod.rs:154:1
+    |
+154 | pub struct Intent {
+    | ^^^^^^^^^^^^^^^^^
+    = note: required for `Option<Intent>` to implement `core::marker::Copy`
+    = note: the `Copy` trait is required because this value will be copied for each element of the array
+help: create an inline `const` block
+    |
+186 |             history: [const { None }; CONTEXT_DEPTH],
+    |                       +++++++      +
+
+error[E0308]: mismatched types
+   --> src/main.rs:364:12
+    |
+364 |     if let Some(message) = info.message() {
+    |            ^^^^^^^^^^^^^   -------------- this expression has type `PanicMessage<'_>`
+    |            |
+    |            expected `PanicMessage<'_>`, found `Option<_>`
+    |
+    = note: expected struct `PanicMessage<'_>`
+                 found enum `Option<_>`
+
+warning: value assigned to `idx` is never read
+   --> src/main.rs:136:17
+    |
+136 |         let mut idx = 0;
+    |                 ^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+Some errors have detailed explanations: E0061, E0107, E0277, E0308, E0433, E0554, E0599.
+For more information about an error, try `rustc --explain E0061`.
+warning: `intent-kernel` (bin "intent-kernel") generated 9 warnings (1 duplicate)
+error: could not compile `intent-kernel` (bin "intent-kernel") due to 21 previous errors; 9 warnings emitted
+warning: build failed, waiting for other jobs to finish...
+warning: `intent-kernel` (lib) generated 9 warnings (8 duplicates)
+error: could not compile `intent-kernel` (lib) due to 21 previous errors; 9 warnings emitted
