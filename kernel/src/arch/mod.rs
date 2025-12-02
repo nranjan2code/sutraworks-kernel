@@ -170,6 +170,10 @@ impl<T> SpinLock<T> {
     
     pub fn lock(&self) -> SpinLockGuard<'_, T> {
         use core::sync::atomic::Ordering;
+        
+        // Disable interrupts to prevent deadlock if an ISR tries to take the same lock
+        let saved_int_state = irq_disable();
+        
         while self.lock.compare_exchange_weak(
             false, true, 
             Ordering::Acquire, 
@@ -179,7 +183,10 @@ impl<T> SpinLock<T> {
                 core::hint::spin_loop();
             }
         }
-        SpinLockGuard { lock: self }
+        SpinLockGuard { 
+            lock: self,
+            saved_int_state,
+        }
     }
     
     pub fn unlock(&self) {
@@ -189,13 +196,21 @@ impl<T> SpinLock<T> {
     
     pub fn try_lock(&self) -> Option<SpinLockGuard<'_, T>> {
         use core::sync::atomic::Ordering;
+        
+        let saved_int_state = irq_disable();
+        
         if self.lock.compare_exchange(
             false, true,
             Ordering::Acquire,
             Ordering::Relaxed
         ).is_ok() {
-            Some(SpinLockGuard { lock: self })
+            Some(SpinLockGuard { 
+                lock: self,
+                saved_int_state,
+            })
         } else {
+            // Restore interrupts if we failed to get the lock
+            irq_restore(saved_int_state);
             None
         }
     }
@@ -204,6 +219,7 @@ impl<T> SpinLock<T> {
 /// RAII guard for SpinLock
 pub struct SpinLockGuard<'a, T> {
     lock: &'a SpinLock<T>,
+    saved_int_state: u64,
 }
 
 impl<'a, T> core::ops::Deref for SpinLockGuard<'a, T> {
@@ -222,6 +238,7 @@ impl<'a, T> core::ops::DerefMut for SpinLockGuard<'a, T> {
 impl<'a, T> Drop for SpinLockGuard<'a, T> {
     fn drop(&mut self) {
         self.lock.unlock();
+        irq_restore(self.saved_int_state);
     }
 }
 

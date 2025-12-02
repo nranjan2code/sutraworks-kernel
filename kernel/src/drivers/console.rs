@@ -11,7 +11,8 @@ const FONT_HEIGHT: u32 = 8;
 const PADDING: u32 = 4;
 
 /// Global console instance
-static mut CONSOLE: Option<Console> = None;
+use crate::arch::SpinLock;
+static CONSOLE: SpinLock<Option<Console>> = SpinLock::new(None);
 
 /// Text console
 pub struct Console {
@@ -38,25 +39,25 @@ impl Console {
 
     /// Write a string to the console
     pub fn write_str(&mut self, s: &str) {
-        if let Some(fb) = framebuffer::get() {
+        framebuffer::with(|fb| {
             for c in s.chars() {
                 self.write_char(fb, c);
             }
-        }
+        });
     }
 
     /// Write a single character
     fn write_char(&mut self, fb: &mut Framebuffer, c: char) {
         match c {
             '\n' => {
-                self.newline();
+                self.newline(fb);
             }
             '\r' => {
                 self.cursor_x = PADDING;
             }
             _ => {
                 if self.cursor_x + FONT_WIDTH > self.width - PADDING {
-                    self.newline();
+                    self.newline(fb);
                 }
                 
                 fb.draw_char(self.cursor_x, self.cursor_y, c, self.fg_color, Some(self.bg_color));
@@ -66,7 +67,7 @@ impl Console {
     }
 
     /// Move to new line
-    fn newline(&mut self) {
+    fn newline(&mut self, fb: &mut Framebuffer) {
         self.cursor_x = PADDING;
         self.cursor_y += FONT_HEIGHT + 2; // Add some line spacing
         
@@ -78,9 +79,7 @@ impl Console {
             
             // Clear the screen or just the next line?
             // Let's clear the whole screen for simplicity in this "bare metal" stage
-            if let Some(fb) = framebuffer::get() {
-                fb.clear(self.bg_color);
-            }
+            fb.clear(self.bg_color);
         }
     }
     
@@ -93,13 +92,13 @@ impl Console {
 
 /// Initialize the global console
 pub fn init() {
-    if let Some(fb) = framebuffer::get() {
+    framebuffer::with(|fb| {
         let console = Console::new(fb.width(), fb.height());
-        unsafe { CONSOLE = Some(console); }
+        *CONSOLE.lock() = Some(console);
         
         // Clear screen
-        framebuffer::clear(Color::BLACK);
-    }
+        fb.clear(Color::BLACK);
+    });
 }
 
 impl fmt::Write for Console {
@@ -111,33 +110,27 @@ impl fmt::Write for Console {
 
 /// Print to the console
 pub fn print(args: fmt::Arguments) {
-    unsafe {
-        if let Some(console) = CONSOLE.as_mut() {
-            let _ = fmt::Write::write_fmt(console, args);
-        }
+    if let Some(console) = CONSOLE.lock().as_mut() {
+        let _ = fmt::Write::write_fmt(console, args);
     }
 }
 
 /// Print line to the console
 pub fn println(args: fmt::Arguments) {
-    unsafe {
-        if let Some(console) = CONSOLE.as_mut() {
-            let _ = fmt::Write::write_fmt(console, args);
-            console.write_str("\n");
-        }
+    if let Some(console) = CONSOLE.lock().as_mut() {
+        let _ = fmt::Write::write_fmt(console, args);
+        console.write_str("\n");
     }
 }
 
 /// Clear the console
 pub fn clear() {
-    unsafe {
-        if let Some(console) = CONSOLE.as_mut() {
-            console.cursor_x = PADDING;
-            console.cursor_y = PADDING;
-            if let Some(fb) = framebuffer::get() {
-                fb.clear(console.bg_color);
-            }
-        }
+    if let Some(console) = CONSOLE.lock().as_mut() {
+        console.cursor_x = PADDING;
+        console.cursor_y = PADDING;
+        framebuffer::with(|fb| {
+            fb.clear(console.bg_color);
+        });
     }
 }
 

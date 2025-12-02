@@ -9,7 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added (December 2, 2025)
+### Added (December 2, 2025) - Security & Realism
+- **Security Hardening (Critical)**
+  - **Interrupt-Safe SpinLock**: Fixed a potential deadlock by disabling interrupts during lock acquisition.
+  - **Safe Interrupt Controller**: Replaced `static mut` with `SpinLock` for `IRQ_HANDLERS`.
+  - **Filesystem Safety**: Added integer overflow checks to TAR parser.
+  
+- **De-Stubbing & Realism**
+  - **Honest Drivers**: Removed simulation logic from PCIe and Hailo drivers. They now correctly report "Device Not Found" instead of faking it.
+  - **CPU Vision Fallback**: Implemented `ColorBlobDetector` - a real computer vision algorithm for the CPU fallback path.
+  - **Compilation**: Verified clean compilation (`make check`) after removing stubs.
+
+### Added (December 2, 2025) - Dual Input
+- **Dual Input Mode**
 - **Dual Input Mode**
   - Added `process_english()` for English text input
   - Reverse dictionary lookup (`lookup_by_name`)

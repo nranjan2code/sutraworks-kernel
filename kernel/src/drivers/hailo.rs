@@ -18,7 +18,10 @@ impl HailoDriver {
 
     /// Probe for the Hailo-8 device on the PCIe bus.
     pub fn probe(&mut self) -> bool {
-        self.present = true;
+        // Real implementation would check PCIe enumeration results.
+        // For now, since we removed the fake PCIe device, this will correctly fail
+        // until we implement the full PCIe stack and find the real device.
+        self.present = false;
         self.present
     }
 
@@ -27,32 +30,22 @@ impl HailoDriver {
     /// # Arguments
     /// * `cmd_id` - The command ID to execute.
     /// * `payload` - Data to send with the command.
-    pub fn send_command(&self, cmd_id: u32, _payload: &[u8]) -> Result<(), &'static str> {
+    pub fn send_command(&self, _cmd_id: u32, _payload: &[u8]) -> Result<(), &'static str> {
         if !self.present {
             return Err("Hailo-8 device not present");
         }
         
-        // Stub: Just log that we sent a command
-        // kprintln!("Hailo CMD: {:#x}", cmd_id);
-        
-        match cmd_id {
-            0x01 => Ok(()), // RESET
-            0x02 => Ok(()), // LOAD_HEF
-            _ => Err("Unknown Command"),
-        }
+        // TODO: Implement actual MMIO/DMA command submission
+        Err("Command submission not implemented")
     }
 
     /// Read a buffer from the device (e.g., inference results).
-    pub fn read_buffer(&self, buffer: &mut [u8]) -> Result<usize, &'static str> {
+    pub fn read_buffer(&self, _buffer: &mut [u8]) -> Result<usize, &'static str> {
         if !self.present {
             return Err("Hailo-8 device not present");
         }
 
-        // Stub: Fill with dummy data
-        for (i, byte) in buffer.iter_mut().enumerate() {
-            *byte = (i % 255) as u8;
-        }
-
-        Ok(buffer.len())
+        // TODO: Implement actual DMA read
+        Err("Buffer read not implemented")
     }
 }

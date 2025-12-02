@@ -587,35 +587,40 @@ impl Framebuffer {
 // GLOBAL FRAMEBUFFER INSTANCE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-static mut FRAMEBUFFER: Option<Framebuffer> = None;
+use crate::arch::SpinLock;
+
+static FRAMEBUFFER: SpinLock<Option<Framebuffer>> = SpinLock::new(None);
+
+// SAFETY: Framebuffer owns the memory it points to (MMIO), and we ensure exclusive access via SpinLock.
+unsafe impl Send for Framebuffer {}
 
 /// Initialize the global framebuffer
-pub fn init(width: u32, height: u32, depth: u32) -> Result<(), &'static str> {
+pub fn init(width: u32, height: u32, _depth: u32) -> Result<(), &'static str> {
     let config = FramebufferConfig::custom(width, height);
     
     if let Some(fb) = Framebuffer::new(config) {
-        unsafe { FRAMEBUFFER = Some(fb); }
+        *FRAMEBUFFER.lock() = Some(fb);
         Ok(())
     } else {
         Err("Failed to allocate framebuffer")
     }
 }
 
-/// Get a reference to the global framebuffer
-pub fn get() -> Option<&'static mut Framebuffer> {
-    unsafe { FRAMEBUFFER.as_mut() }
+/// Execute a closure with the framebuffer
+pub fn with<F, R>(f: F) -> Option<R>
+where
+    F: FnOnce(&mut Framebuffer) -> R,
+{
+    FRAMEBUFFER.lock().as_mut().map(f)
 }
 
 /// Clear the screen with a color
 pub fn clear(color: Color) {
-    if let Some(fb) = get() {
-        fb.clear(color);
-    }
+    with(|fb| fb.clear(color));
 }
 
 /// Draw text on the screen
 pub fn draw_text(x: u32, y: u32, text: &str, fg: Color) {
-    if let Some(fb) = get() {
-        fb.draw_string(x, y, text, fg, None);
-    }
+    with(|fb| fb.draw_string(x, y, text, fg, None));
 }
+

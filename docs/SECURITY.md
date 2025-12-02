@@ -368,6 +368,10 @@ Intent Kernel implements advanced runtime randomization to mitigate memory corru
 - **Operation**: `stored_ptr = raw_ptr ^ POINTER_KEY`.
 - **Impact**: Prevents attackers from forging capabilities by simply writing addresses to memory or reading valid pointers from dumps.
 
+#### 4. Concurrency Safety
+- **Interrupt-Safe SpinLocks**: All kernel spinlocks automatically disable interrupts upon acquisition and restore them upon release. This prevents deadlocks where an interrupt handler attempts to acquire a lock held by the interrupted thread.
+- **Safe Global State**: Critical global structures (like the Interrupt Controller) are protected by `SpinLock` rather than `unsafe static mut`, ensuring thread safety even in a multicore environment.
+
 ---
 
 ## Attack Prevention

@@ -122,6 +122,15 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 - [ ] Stroke frequency tracking
 - [ ] Dynamic dictionary updates
 
+### v1.0.0 (Vision)
+- [ ] Stable API
+- [ ] Full peripheral support
+- [ ] Multi-process
+- [x] Security audit (Base hardening complete)
+- [ ] Performance optimization
+- [ ] Real PCIe Driver (Blocked: BCM2712 ECAM specs)
+- [ ] Real Hailo Driver (Blocked: Register map specs)
+
 ### System Services
 - [ ] File system (ramfs)
 - [ ] Process spawning via stroke

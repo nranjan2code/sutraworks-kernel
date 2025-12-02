@@ -82,7 +82,16 @@ impl FileSystem for TarFileSystem {
             }
 
             // Move to next header: 512 header + size rounded up to 512
-            offset += 512 + (size + 511) / 512 * 512;
+            // Move to next header: 512 header + size rounded up to 512
+            // Use checked arithmetic to prevent overflow attacks
+            let padded_size = (size.checked_add(511).unwrap_or(0)) / 512 * 512;
+            let next_offset = offset.checked_add(512).and_then(|o| o.checked_add(padded_size)).unwrap_or(self.size + 1);
+            
+            if next_offset > self.size {
+                break; // Corrupt archive or end of buffer
+            }
+
+            offset = next_offset;
         }
 
         Ok(files)
@@ -115,7 +124,15 @@ impl FileSystem for TarFileSystem {
                 return Ok(size);
             }
 
-            offset += 512 + (size + 511) / 512 * 512;
+            // Move to next header: 512 header + size rounded up to 512
+            let padded_size = (size.checked_add(511).unwrap_or(0)) / 512 * 512;
+            let next_offset = offset.checked_add(512).and_then(|o| o.checked_add(padded_size)).unwrap_or(self.size + 1);
+            
+            if next_offset > self.size {
+                break;
+            }
+
+            offset = next_offset;
         }
 
         Err("File not found")
@@ -142,7 +159,15 @@ impl FileSystem for TarFileSystem {
                 return Ok(size);
             }
 
-            offset += 512 + (size + 511) / 512 * 512;
+            // Move to next header: 512 header + size rounded up to 512
+            let padded_size = (size.checked_add(511).unwrap_or(0)) / 512 * 512;
+            let next_offset = offset.checked_add(512).and_then(|o| o.checked_add(padded_size)).unwrap_or(self.size + 1);
+            
+            if next_offset > self.size {
+                break;
+            }
+
+            offset = next_offset;
         }
 
         Err("File not found")

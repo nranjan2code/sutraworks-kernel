@@ -415,7 +415,7 @@ The Perception Layer bridges the gap between raw sensor data and semantic intent
 ### Perception Manager
 Automatically detects available hardware acceleration:
 - **Hailo-8**: Uses the NPU for high-speed object detection (26 TOPS).
-- **CPU Fallback**: Uses optimized software routines if no NPU is present.
+- **CPU Fallback**: Uses `ColorBlobDetector` (optimized software routine) to detect objects by color when no NPU is present.
 
 ### Heads-Up Display (HUD)
 A visual interface that renders directly to the framebuffer (no window manager).

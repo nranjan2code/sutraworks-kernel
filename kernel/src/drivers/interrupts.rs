@@ -61,8 +61,9 @@ static GIC_INITIALIZED: AtomicBool = AtomicBool::new(false);
 /// Interrupt handler function type
 pub type IrqHandler = fn(irq: u32);
 
-// Handler table (static dispatch - no alloc needed)
-static mut IRQ_HANDLERS: [Option<IrqHandler>; MAX_IRQ as usize] = [None; MAX_IRQ as usize];
+// Handler table (protected by SpinLock)
+static IRQ_HANDLERS: crate::arch::SpinLock<[Option<IrqHandler>; MAX_IRQ as usize]> = 
+    crate::arch::SpinLock::new([None; MAX_IRQ as usize]);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GIC CONTROLLER
@@ -231,31 +232,33 @@ impl Gic {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// Register an interrupt handler
-/// 
-/// # Safety
-/// This modifies global state and should only be called before enabling interrupts
-/// or with interrupts disabled
-pub unsafe fn register_handler(irq: u32, handler: IrqHandler) {
+pub fn register_handler(irq: u32, handler: IrqHandler) {
     if irq < MAX_IRQ {
-        IRQ_HANDLERS[irq as usize] = Some(handler);
+        IRQ_HANDLERS.lock()[irq as usize] = Some(handler);
     }
 }
 
 /// Unregister an interrupt handler
-/// 
-/// # Safety
-/// This modifies global state
-pub unsafe fn unregister_handler(irq: u32) {
+pub fn unregister_handler(irq: u32) {
     if irq < MAX_IRQ {
-        IRQ_HANDLERS[irq as usize] = None;
+        IRQ_HANDLERS.lock()[irq as usize] = None;
     }
 }
 
 /// Dispatch an interrupt to its handler
 pub fn dispatch(irq: u32) {
     if irq < MAX_IRQ {
-        if let Some(handler) = unsafe { IRQ_HANDLERS[irq as usize] } {
-            handler(irq);
+        // We need to be careful here. The lock is reentrant-safe ONLY because
+        // we disabled interrupts in SpinLock::lock().
+        // However, dispatch() is called FROM an interrupt handler.
+        // If we try to take the lock, and it's held by non-interrupt code, we spin.
+        // But since SpinLock disables interrupts, non-interrupt code CANNOT be holding
+        // the lock when an interrupt fires on the same core!
+        // So this is safe from deadlock on a single core.
+        // For multicore, we spin until the other core releases it.
+        let handler = IRQ_HANDLERS.lock()[irq as usize];
+        if let Some(h) = handler {
+            h(irq);
         }
     }
 }

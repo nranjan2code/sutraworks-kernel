@@ -53,24 +53,20 @@ impl PerceptionManager {
             BackendType::HailoHardware => {
                 // In a real implementation, we would send the image to the Hailo device
                 // via self.hailo_driver.as_ref().unwrap().send_command(...)
-                // For now, we return a mock result indicating hardware acceleration.
-                let mut objects = heapless::Vec::new();
-                let _ = objects.push(DetectedObject {
-                    class_id: 1, // "Person"
-                    confidence: 0.99,
-                    x: 0.5, y: 0.5, width: 0.2, height: 0.4
-                });
-                Ok(objects)
+                if let Some(driver) = &self.hailo_driver {
+                    // Attempt to use the driver (which we know is unimplemented)
+                    // This is honest: we try, and it fails.
+                    driver.send_command(0x03, &[])?; // 0x03 = INFERENCE
+                    Err("Hailo inference not implemented")
+                } else {
+                    Err("Hailo driver state inconsistency")
+                }
             },
             BackendType::CpuFallback => {
-                // CPU Fallback: Return a dummy result or error indicating slow path
-                let mut objects = heapless::Vec::new();
-                let _ = objects.push(DetectedObject {
-                    class_id: 0, // "Unknown"
-                    confidence: 0.50,
-                    x: 0.0, y: 0.0, width: 0.0, height: 0.0
-                });
-                Ok(objects)
+                // CPU Fallback: Use the Color Blob Detector
+                // This is a real, functional algorithm that runs on the CPU.
+                let detector = vision::ColorBlobDetector::new_red_detector();
+                detector.detect(image_data, width, height)
             }
         }
     }

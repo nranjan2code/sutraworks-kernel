@@ -61,31 +61,37 @@ impl PcieController {
     fn read_id(&self, bus: u8, dev: u8, func: u8) -> Option<(u16, u16)> {
         // ECAM address calculation:
         // Address = Base + (Bus << 20) + (Dev << 15) + (Func << 12)
-        // This requires 64-bit addressing which might be tricky in our current setup
-        // if MMU isn't mapping high memory.
+        let offset = ((bus as usize) << 20) | ((dev as usize) << 15) | ((func as usize) << 12);
+        let addr = self.base_addr + offset;
         
-        // For this "Hardware Awakening" phase, we will simulate the detection
-        // if we can't safely access the memory yet.
+        // SAFETY: We are accessing memory-mapped I/O. 
+        // We assume base_addr is correct (it's a constant for now).
+        // If the region is not mapped, this will cause a Data Abort.
+        // In a real kernel, we'd ensure this is mapped in page tables first.
+        let val = unsafe { crate::arch::read32(addr) };
         
-        // SIMULATION FOR DEMO:
-        // Pretend we found the Hailo-8 at 00:01.0
-        if bus == 0 && dev == 1 && func == 0 {
-            return Some((0x1e60, 0x2864));
+        // 0xFFFFFFFF means no device present
+        if val == 0xFFFFFFFF {
+            return None;
         }
         
-        None
+        let vendor = (val & 0xFFFF) as u16;
+        let device = ((val >> 16) & 0xFFFF) as u16;
+        
+        Some((vendor, device))
     }
 }
 
 /// Global PCIe Controller
-pub static mut CONTROLLER: PcieController = PcieController::new();
+use crate::arch::SpinLock;
+pub static CONTROLLER: SpinLock<PcieController> = SpinLock::new(PcieController::new());
 
 pub fn init() {
-    unsafe {
-        if let Err(e) = CONTROLLER.init() {
-            kprintln!("[PCIe] Init failed: {}", e);
-            return;
-        }
-        CONTROLLER.enumerate();
+    let controller = CONTROLLER.lock();
+    if let Err(e) = controller.init() {
+        kprintln!("[PCIe] Init failed: {}", e);
+        return;
     }
+    controller.enumerate();
 }
+

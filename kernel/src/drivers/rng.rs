@@ -71,15 +71,17 @@ impl Rng {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 use super::RNG_BASE;
+use crate::arch::SpinLock;
 
-static mut RNG_DEV: Rng = Rng::new(RNG_BASE);
+static RNG_DEV: SpinLock<Rng> = SpinLock::new(Rng::new(RNG_BASE));
 
 /// Initialize RNG
 pub fn init() {
-    unsafe { RNG_DEV.init(); }
+    RNG_DEV.lock().init();
 }
 
 /// Get a random u64
 pub fn next_u64() -> u64 {
-    unsafe { RNG_DEV.next_u64() }
+    RNG_DEV.lock().next_u64()
 }
+

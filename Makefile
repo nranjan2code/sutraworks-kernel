@@ -197,7 +197,7 @@ test-host:
 	@echo "╔═══════════════════════════════════════════════════════════════╗"
 	@echo "║  Running Host-Based Tests (Native)                           ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
-	cd tests/host && cargo test
+	cd tests/host && cargo test -- --test-threads=1
 	@echo ""
 	@echo "✓ All host tests passed!"
 

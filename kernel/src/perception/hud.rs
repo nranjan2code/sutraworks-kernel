@@ -74,11 +74,7 @@ pub struct Hud {
 
 impl Hud {
     pub fn new() -> Self {
-        let (width, height) = if let Some(fb) = framebuffer::get() {
-            (fb.width(), fb.height())
-        } else {
-            (0, 0)
-        };
+        let (width, height) = framebuffer::with(|fb| (fb.width(), fb.height())).unwrap_or((0, 0));
 
         Self {
             width,
@@ -90,18 +86,15 @@ impl Hud {
 
     /// Draw the entire HUD
     pub fn draw(&mut self) {
-        let fb = match framebuffer::get() {
-            Some(fb) => fb,
-            None => return,
-        };
+        framebuffer::with(|fb| {
+            // Clear screen (or just the HUD areas to be faster)
+            fb.clear(BG_COLOR);
 
-        // Clear screen (or just the HUD areas to be faster)
-        fb.clear(BG_COLOR);
-
-        self.draw_header(fb);
-        self.draw_steno_tape(fb);
-        self.draw_intent_log(fb);
-        self.draw_status_bar(fb);
+            self.draw_header(fb);
+            self.draw_steno_tape(fb);
+            self.draw_intent_log(fb);
+            self.draw_status_bar(fb);
+        });
     }
 
     fn draw_header(&self, fb: &mut Framebuffer) {
@@ -167,11 +160,6 @@ impl Hud {
 
     /// Update the display with a new stroke and optional intent
     pub fn update(&mut self, stroke: Stroke, intent: Option<&Intent>) {
-        let fb = match framebuffer::get() {
-            Some(fb) => fb,
-            None => return,
-        };
-
         // 1. Add stroke to tape log
         let rtfcre = stroke.to_rtfcre();
         self.tape_log.push(rtfcre.as_str());
@@ -185,9 +173,11 @@ impl Hud {
 
         // Redraw everything (simple but effective for now)
         // Optimization: Only redraw the text areas
-        self.draw_steno_tape(fb);
-        self.draw_intent_log(fb);
-        self.draw_status_bar(fb);
+        framebuffer::with(|fb| {
+            self.draw_steno_tape(fb);
+            self.draw_intent_log(fb);
+            self.draw_status_bar(fb);
+        });
     }
 }
 
@@ -213,7 +203,7 @@ fn u64_to_str(mut num: u64, buf: &mut [u8]) -> Result<&str, ()> {
         buf[j] = temp[i - 1 - j];
     }
     
-    unsafe { core::str::from_utf8(&buf[..i]).map_err(|_| ()) }
+    core::str::from_utf8(&buf[..i]).map_err(|_| ())
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

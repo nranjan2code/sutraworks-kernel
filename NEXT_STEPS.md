@@ -77,4 +77,5 @@ test result: ok. 122 passed; 0 failed
 
 ---
 
-**Status:** Phase 3 Complete! Ready for Phase 4 (Hardware Integration).
+**Status:** Phase 4 Complete / Phase 5 Hardening.
+**Blocker:** Missing BCM2712 PCIe and Hailo-8L register documentation.

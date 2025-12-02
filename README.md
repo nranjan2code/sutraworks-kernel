@@ -202,6 +202,12 @@ steno::process_steno("PH-FPL");  // HELP stroke
 steno::process_english("help");   // Finds PH-FPL, executes HELP intent
 ```
 
+### ✅ Secure Base
+Interrupt-safe concurrency primitives and removal of unsafe global state.
+- **Deadlock-Free SpinLocks**: Automatically disable interrupts.
+- **Safe Interrupts**: Thread-safe handler registration.
+- **Overflow Protection**: Hardened filesystem parsers.
+
 ### ✅ Framebuffer Console
 Text output on HDMI display:
 
