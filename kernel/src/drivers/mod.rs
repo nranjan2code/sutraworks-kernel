@@ -6,6 +6,7 @@ pub mod timer;
 pub mod interrupts;
 pub mod mailbox;
 pub mod framebuffer;
+pub mod console;
 pub mod hailo;
 pub mod ramdisk;
 pub mod pcie;
@@ -18,6 +19,7 @@ pub use timer::{Deadline, Stopwatch, Periodic};
 pub use interrupts::Gic;
 pub use mailbox::PropertyBuffer;
 pub use framebuffer::{Framebuffer, Color};
+pub use console::Console;
 pub use rng::Rng;
 
 // ═══════════════════════════════════════════════════════════════════════════════

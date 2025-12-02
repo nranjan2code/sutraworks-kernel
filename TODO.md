@@ -71,28 +71,44 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 
 ---
 
-## Phase 4: Hardware Integration (Current)
+## Phase 4: Hardware Integration ✅
 
-### Steno Input
-- [ ] USB HID driver for steno machines
-- [ ] Georgi/Plover HID protocol
-- [ ] N-key rollover detection
-- [ ] Stroke timing (for disambiguation)
+### Steno Input ✅
+- [x] USB HID driver for steno machines (xHCI Host Controller)
+- [x] Georgi/Plover HID protocol support
+- [x] N-key rollover detection
+- [x] Stroke timing (for disambiguation)
 
-### Display Output
-- [ ] Framebuffer driver
-- [ ] Intent visualization
-- [ ] Stroke echo display
-- [ ] System status display
+### Display Output ✅
+- [x] Framebuffer driver (1920x1080x32)
+- [x] Framebuffer Console (`cprint!`, `cprintln!`)
+- [x] Intent visualization in HUD
+- [x] Stroke echo display (steno tape)
+- [x] System status display
 
-### AI Acceleration
-- [ ] Hailo-8L PCIe driver
-- [ ] Model loading from ramdisk
-- [ ] Intent augmentation (context-aware)
+### AI Acceleration ✅
+- [x] Hailo-8L PCIe driver
+- [x] Model loading from ramdisk
+- [ ] Intent augmentation (context-aware) - Planned
 
 ---
 
-## Phase 5: Advanced Features
+## Phase 5: Dual Input Mode ✅
+
+### English Input Support
+- [x] Reverse dictionary lookup (`lookup_by_name`)
+- [x] `process_english()` function
+- [x] Automatic fallback: try English first, then Steno notation
+- [x] Output in English via console
+
+### Architecture
+- [x] English → Stroke → Intent (internally steno-native)
+- [x] No character parsing—direct dictionary lookup
+- [x] User types "help", kernel finds `PH-FPL`, executes HELP intent
+
+---
+
+## Phase 6: Advanced Features
 
 ### Multi-stroke Processing
 - [ ] Stroke sequence timeout
@@ -114,10 +130,10 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 
 ---
 
-## Phase 6: Polish
+## Phase 7: Polish
 
 ### Testing
-- [ ] Unit tests for stroke parsing
+- [x] Unit tests for stroke parsing (25 tests)
 - [ ] Dictionary lookup tests
 - [ ] Integration tests on QEMU
 - [ ] Hardware tests on Pi 5
@@ -125,7 +141,7 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 ### Documentation
 - [x] Copilot instructions
 - [x] Architecture docs
-- [ ] API reference
+- [x] API reference
 - [ ] User guide
 
 ### Performance
@@ -139,9 +155,12 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 ## Non-Goals
 
 These are explicitly **NOT** planned:
-- ❌ Character/word parsing
-- ❌ NLP or tokenization
+- ❌ NLP or tokenization (English uses direct lookup, not parsing)
 - ❌ Embedding vectors or similarity search
 - ❌ Backward compatibility with word-based systems
 - ❌ Traditional shell/terminal
 - ❌ POSIX compatibility
+
+**Clarification**: English text input IS supported, but it's a convenience layer.
+The kernel never parses English—it performs direct dictionary lookup:
+`"help"` → finds stroke `PH-FPL` → executes `HELP` intent.

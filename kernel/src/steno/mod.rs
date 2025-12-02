@@ -69,6 +69,19 @@ pub fn process_steno(steno: &str) -> Option<Intent> {
     process_raw(bits)
 }
 
+/// Process English text command (reverse lookup)
+/// Simulates typing the stroke corresponding to the English word.
+pub fn process_english(text: &str) -> Option<Intent> {
+    let mut engine = STENO_ENGINE.lock();
+    // Look up the stroke for the English word
+    if let Some(stroke) = engine.dictionary().lookup_by_name(text) {
+        // Process the stroke as if it was typed
+        engine.process(stroke)
+    } else {
+        None
+    }
+}
+
 /// Get engine statistics
 pub fn stats() -> EngineStats {
     let engine = STENO_ENGINE.lock();

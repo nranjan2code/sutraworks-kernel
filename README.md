@@ -80,12 +80,20 @@ A stenographer doesn't type "show system status" — they press **one chord** th
 Keyboard → Characters → Shell → Parser → Tokens → Command Lookup → Execute
 ```
 
-### Intent Kernel
+### Intent Kernel (Steno Mode)
 ```
 Steno Machine → Stroke → Intent → Execute
 ```
 
+### Intent Kernel (English Mode)
+```
+Keyboard → English Word → Reverse Lookup → Stroke → Intent → Execute
+```
+
 **Faster. Cleaner. More powerful.**
+
+Users who don't know steno can type English commands. The kernel internally
+converts them to strokes, maintaining the steno-native architecture.
 
 ---
 
@@ -183,6 +191,24 @@ Real-time visualization of the stenographic stream and intent execution log.
 - **Intent Stream**: Visual log of recognized semantic actions.
 - **Status Bar**: Real-time WPM and stroke statistics.
 
+### ✅ Dual Input Mode
+Use steno strokes OR English text:
+
+```rust
+// Steno notation
+steno::process_steno("PH-FPL");  // HELP stroke
+
+// English text (reverse lookup)
+steno::process_english("help");   // Finds PH-FPL, executes HELP intent
+```
+
+### ✅ Framebuffer Console
+Text output on HDMI display:
+
+```rust
+cprintln!("Intent executed: {}", intent.name);
+```
+
 ---
 
 ## Project Structure
@@ -204,10 +230,14 @@ intent-kernel/
 │   │   ├── vision.rs       # Computer Vision (Hailo/CPU)
 │   │   └── hud.rs          # Heads-Up Display
 │   ├── drivers/            # Hardware
-│   │   ├── uart.rs         # Serial output
+│   │   ├── uart.rs         # Serial I/O
 │   │   ├── timer.rs        # ARM timer
 │   │   ├── gpio.rs         # Pin control
-│   │   └── framebuffer.rs  # VideoCore display
+│   │   ├── framebuffer.rs  # VideoCore display
+│   │   ├── console.rs      # Text console on framebuffer
+│   │   └── usb/            # USB Host Controller
+│   │       ├── xhci.rs     # xHCI driver
+│   │       └── hid.rs      # HID protocol (steno machines)
 │   └── kernel/             # Core OS
 │       ├── capability.rs   # Security
 │       ├── scheduler.rs    # Process management
@@ -227,8 +257,9 @@ intent-kernel/
 | **2. Steno Engine** | ✅ | Stroke parsing, Dictionary, Engine, RTFCRE |
 | **3. Intent System** | ✅ | Handlers, Queue, History, 122 tests |
 | **4. Perception** | ✅ | Hailo-8 detection, Heads-Up Display (HUD) |
-| **5. Hardware** | 🔄 | USB HID driver (In Progress) |
-| **6. Connectivity** | ⏳ | Networking, Multi-core |
+| **5. Input/Output** | ✅ | USB HID, Framebuffer Console, English Input |
+| **6. Sensors** | 🔄 | Camera Driver (In Progress) |
+| **7. Connectivity** | ⏳ | Networking, Multi-core |
 
 ### Test Coverage
 

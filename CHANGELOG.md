@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (December 2, 2025)
+- **Dual Input Mode**
+  - Added `process_english()` for English text input
+  - Reverse dictionary lookup (`lookup_by_name`)
+  - Users can type English commands OR steno strokes
+  - English is converted to strokes internally (kernel stays steno-native)
+
+- **Framebuffer Console**
+  - New `drivers::console` module
+  - Text output on HDMI display
+  - `cprint!` and `cprintln!` macros
+  - Automatic line wrapping and scrolling
+  - Initialized after framebuffer init
+
+- **USB HID Driver**
+  - Full xHCI Host Controller support
+  - Steno machine input (Georgi, Uni, Plover HID protocol)
+  - N-key rollover detection
+  - Stroke timing for disambiguation
+
+- **Documentation Updates**
+  - Updated ARCHITECTURE.md with dual input diagram
+  - Updated ROADMAP.md (Phase 5 complete, Phase 6-8 planned)
+  - Updated README.md with English mode documentation
+  - Updated API.md with Console and English Bridge APIs
+  - Updated HARDWARE.md with USB xHCI documentation
+  - Updated TODO.md with completed phases
+
 ### Added (December 1, 2025)
 - **Testing Infrastructure Fixes**
   - Fixed QEMU semihosting exit (u64 parameters instead of u32)
@@ -194,6 +222,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.5.0 | 2025-12 | USB HID, Framebuffer Console, Dual Input Mode |
+| 0.4.0 | 2025-12 | Perception Layer, HUD, PCIe, RamDisk |
+| 0.3.0 | 2025-12 | Steno Engine, Dictionary, Intent Handlers |
+| 0.2.0 | 2025-12 | Virtual Memory, Process Isolation, Syscalls |
 | 0.1.0 | 2025-01 | Initial release - boot, drivers, intent engine |
 
 ---
@@ -206,20 +238,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [ ] Kernel/userspace separation
 - [ ] System call interface
 
-### v0.3.0 (Planned)
-- [ ] FAT32 file system
-- [ ] SD card driver
-- [ ] File capabilities
+### v0.3.0 (Completed)
+- [x] Steno Engine (23-bit strokes, RTFCRE notation)
+- [x] Dictionary System (Stroke→Intent mapping)
+- [x] Intent Handlers (128-handler registry)
+- [x] Intent Queue (32-entry priority queue)
+- [x] Stroke History (64-entry undo/redo)
 
-### v0.4.0 (Planned)
-- [ ] USB host controller
-- [ ] Keyboard/mouse input
-- [ ] Mass storage support
+### v0.4.0 (Completed)
+- [x] Perception Layer (Hailo-8/CPU adaptive)
+- [x] Heads-Up Display (HUD)
+- [x] PCIe Driver (BCM2712)
+- [x] TAR RamDisk + Overlay FS
 
-### v0.5.0 (Planned)
-- [ ] Network stack (TCP/IP)
-- [ ] Ethernet driver
-- [ ] Network capabilities
+### v0.5.0 (Completed)
+- [x] USB HID driver (xHCI)
+- [x] Steno machine support (Georgi, Uni)
+- [x] Framebuffer Console
+- [x] Dual Input Mode (English + Steno)
+
+### v0.6.0 (Planned)
+- [ ] Camera Driver (MIPI CSI-2)
+- [ ] Networking (Ethernet via RP1)
 
 ### v1.0.0 (Vision)
 - [ ] Stable API

@@ -6,10 +6,14 @@ You are working on **Intent Kernel**, a bare-metal stenographic operating system
 1.  **Strokes, Not Characters**: This is a **stenographic kernel**. The native input unit is a steno stroke (23-bit binary pattern), not characters or words.
     *   ❌ No character parsing. No word tokenization. No NLP.
     *   ✅ Strokes → Intents (DIRECT mapping via dictionary).
-2.  **Pure Rust**: Zero external dependencies. No `libc`. Minimal crates.
+2.  **Dual Input Mode**: Users can input steno strokes OR English text.
+    *   English is converted to strokes via reverse dictionary lookup.
+    *   The kernel remains steno-native internally.
+    *   Example: `"help"` → finds stroke `PH-FPL` → executes `HELP` intent.
+3.  **Pure Rust**: Zero external dependencies. No `libc`. Minimal crates.
     *   Everything must be implemented from scratch or using `core`.
-3.  **Green Computing**: The kernel must sleep (`wfi`) when idle. Avoid busy loops.
-4.  **No Backward Compatibility**: We are building the future, not preserving the past.
+4.  **Green Computing**: The kernel must sleep (`wfi`) when idle. Avoid busy loops.
+5.  **No Backward Compatibility**: We are building the future, not preserving the past.
 
 ## Stenographic Architecture
 
@@ -19,9 +23,14 @@ Key Order: #, S-, T-, K-, P-, W-, H-, R-, A-, O-, *, -E, -U, -F, -R, -P, -B, -L,
 Bit:       0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22
 ```
 
-**Flow**:
+**Primary Flow (Steno)**:
 ```
 Steno Machine → Stroke (23-bit) → Dictionary Lookup → Intent → Executor
+```
+
+**Secondary Flow (English)**:
+```
+Keyboard → English Word → Reverse Lookup → Stroke → Intent → Executor
 ```
 
 No tokenization. No parsing. No embeddings. Pure stroke→intent mapping.
@@ -38,13 +47,17 @@ No tokenization. No parsing. No embeddings. Pure stroke→intent mapping.
 ## Key Modules
 -   **steno/**: Stenographic input engine
     -   `stroke.rs`: `Stroke` struct (23-bit), RTFCRE conversion
-    -   `dictionary.rs`: Stroke→Intent mapping, `concepts` module
+    -   `dictionary.rs`: Stroke→Intent mapping, reverse lookup, `concepts` module
     -   `engine.rs`: `StenoEngine` processes strokes
 -   **intent/**: Intent execution
     -   `ConceptID`: 64-bit semantic identifier
     -   `Intent`: Result of stroke processing
     -   `IntentExecutor`: Executes intents with capability checks
--   **drivers/**: Hardware drivers (UART, Timer, GPIO, etc.)
+-   **drivers/**: Hardware drivers
+    -   `uart.rs`: Serial I/O
+    -   `framebuffer.rs`: Display output
+    -   `console.rs`: Text console on framebuffer (`cprint!`, `cprintln!`)
+    -   `usb/`: USB HID for steno machines
 -   **kernel/**: Core subsystems (memory, scheduler, capabilities)
 
 ## Common Patterns
@@ -58,6 +71,11 @@ if let Some(intent) = steno::process_steno("STPH") {
 
 // From raw bits (hardware)
 if let Some(intent) = steno::process_raw(0x7F) {
+    intent::execute(&intent);
+}
+
+// From English text (reverse lookup)
+if let Some(intent) = steno::process_english("help") {
     intent::execute(&intent);
 }
 ```

@@ -29,23 +29,29 @@
 - [x] **Hailo-8 Driver**: HEF model loading and inference.
 - [x] **Persistent Storage**: TAR RamDisk, Read-Write Overlay.
 
+### Phase 5: Input/Output ✅
+- [x] **USB HID Driver**: Full xHCI stack for steno machines (Georgi, Uni, Plover HID).
+- [x] **Framebuffer Console**: Text output on HDMI display via `cprint!`/`cprintln!`.
+- [x] **Dual Input Mode**: Steno strokes OR English text (reverse dictionary lookup).
+- [x] **English→Steno Bridge**: `process_english("help")` → finds stroke `PH-FPL` → executes.
+
 ## 🚀 Next Strategic Steps
 
-### Phase 5: Hardware Integration (Current Focus)
-Connect to real physical hardware.
+### Phase 6: Sensors & Connectivity (Current Focus)
+Expand hardware integration.
 
-- [ ] **USB HID Driver**: Connect real steno machines (Georgi, Plover HID).
 - [ ] **Camera Driver**: MIPI CSI-2 / ISP for real image capture.
 
-### Phase 6: Connectivity & Expansion
+### Phase 7: Connectivity & Expansion
 - [ ] **Networking**: Ethernet driver (via RP1/PCIe) for remote intent processing.
 - [ ] **SD Card Write**: FAT32 driver to persist RamDisk state.
 - [ ] **Multi-Core SMP**: Run Perception and Intent Engine on separate cores.
 
-### Phase 7: Cognitive Evolution
+### Phase 8: Cognitive Evolution
 - [ ] **LLM Integration**: Small quantized LLM on CPU/NPU hybrid.
 - [ ] **Voice Interface**: Audio I/O for spoken intents.
 - [ ] **Dictionary Learning**: Track stroke frequency, suggest optimizations.
+- [ ] **Predictive Strokes**: Suggest next stroke based on context.
 
 ## Test Coverage
 

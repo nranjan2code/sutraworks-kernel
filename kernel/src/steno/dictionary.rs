@@ -149,6 +149,18 @@ impl StenoDictionary {
     pub fn lookup_raw(&self, bits: u32) -> Option<&DictEntry> {
         self.lookup(Stroke::from_raw(bits))
     }
+
+    /// Look up a stroke by its English name (case-insensitive)
+    pub fn lookup_by_name(&self, name: &str) -> Option<Stroke> {
+        for i in 0..self.count {
+            if let Some(ref entry) = self.entries[i] {
+                if entry.name.eq_ignore_ascii_case(name) {
+                    return Some(entry.stroke);
+                }
+            }
+        }
+        None
+    }
     
     /// Convert a stroke to an intent
     pub fn stroke_to_intent(&self, stroke: Stroke) -> Option<Intent> {

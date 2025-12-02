@@ -9,9 +9,19 @@ Intent Kernel is a bare-metal stenographic operating system where **steno stroke
 │  Steno Machine  │────▶│  Stroke (23-bit)│────▶│   Dictionary    │────▶│    Executor     │
 │   (USB HID)     │     │                 │     │  (Stroke→Intent)│     │                 │
 └─────────────────┘     └─────────────────┘     └─────────────────┘     └─────────────────┘
+         │                                               │
+         │                                               │
+┌────────▼────────┐                             ┌────────▼────────┐
+│  UART/Keyboard  │────▶ English Text ─────────▶│ Reverse Lookup  │
+│  (Fallback)     │      "help" → PH-FPL        │                 │
+└─────────────────┘                             └─────────────────┘
 ```
 
 No characters. No words. No parsing. Pure stroke→intent mapping.
+
+**Dual Input Mode**: Users can input strokes directly (steno notation) or type English commands.
+English input is internally converted to steno strokes via reverse dictionary lookup.
+The kernel remains steno-native—English is just a convenience layer.
 
 ---
 
@@ -453,15 +463,51 @@ pub fn gpio_set(pin: u32, value: bool);
 pub fn gpio_get(pin: u32) -> bool;
 ```
 
-### USB HID (Planned)
+### USB HID ✅
 
-Steno machine input via USB:
+Steno machine input via USB Host Controller:
 
 ```rust
-pub trait StenoHID {
-    fn poll(&mut self) -> Option<Stroke>;
+pub struct UsbHid {
+    controller: XhciController,
+    device: HidDevice,
+}
+
+impl UsbHid {
+    pub fn poll(&mut self) -> Option<Stroke>;
+    pub fn supports_nkro(&self) -> bool;
+}
+
+impl StrokeProducer for UsbHid {
+    fn next_stroke(&mut self) -> Option<Stroke> {
+        self.poll()
+    }
 }
 ```
+
+Supported devices:
+- Georgi (GBoards)
+- Uni (Plover HID Protocol)
+- Any HID-compliant steno machine
+
+### Framebuffer Console ✅
+
+Text output on HDMI display:
+
+```rust
+pub struct Console {
+    framebuffer: &'static mut Framebuffer,
+    cursor_x: u32,
+    cursor_y: u32,
+}
+
+impl Console {
+    pub fn print(&mut self, s: &str);
+    pub fn clear(&mut self);
+}
+```
+
+Macros: `cprint!()`, `cprintln!()`
 
 ---
 
@@ -482,9 +528,12 @@ pub trait StenoHID {
 
 These are explicitly NOT part of the architecture:
 
-- ❌ Character/word parsing
-- ❌ NLP or tokenization
+- ❌ NLP or tokenization (English input uses direct dictionary lookup)
 - ❌ Embedding vectors or similarity search
 - ❌ Traditional shell/terminal
 - ❌ POSIX compatibility
 - ❌ Backward compatibility with word-based systems
+
+**Note**: English text input is supported as a convenience layer, but internally
+all commands are converted to steno strokes. The kernel never parses English—it
+only looks up the stroke corresponding to an English word via reverse dictionary.

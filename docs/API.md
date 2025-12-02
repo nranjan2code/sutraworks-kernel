@@ -1480,7 +1480,126 @@ pub const GIC_BASE: usize = PERIPHERAL_BASE + 0x40000;
 
 ---
 
-*API Reference v0.3.0 - Intent Kernel (Phase 3 Complete)*
+## Console
+
+Framebuffer-based text console.
+
+#### Module: `drivers::console`
+
+---
+
+#### `Console`
+
+##### `Console::new(width: u32, height: u32) -> Self`
+
+Create a new console with given dimensions.
+
+##### `Console::init()`
+
+Initialize the global console (call after framebuffer init).
+
+##### `Console::write_str(&mut self, s: &str)`
+
+Write a string to the console at the current cursor position.
+
+##### `Console::set_colors(&mut self, fg: Color, bg: Color)`
+
+Set foreground and background colors.
+
+---
+
+#### Global Functions
+
+##### `console::init()`
+
+Initialize the global console.
+
+##### `console::print(args: fmt::Arguments)`
+
+Print formatted text to console.
+
+##### `console::println(args: fmt::Arguments)`
+
+Print formatted text with newline.
+
+##### `console::clear()`
+
+Clear the console screen.
+
+---
+
+#### Macros
+
+##### `cprint!(fmt, args...)`
+
+Print to the framebuffer console.
+
+```rust
+cprint!("Value: {}", 42);
+```
+
+##### `cprintln!(fmt, args...)`
+
+Print to the framebuffer console with newline.
+
+```rust
+cprintln!("Intent: {}", intent.name);
+```
+
+---
+
+## Steno English Bridge
+
+Process English text as steno strokes (reverse dictionary lookup).
+
+#### Module: `steno`
+
+---
+
+#### Functions
+
+##### `steno::process_english(text: &str) -> Option<Intent>`
+
+Process an English word/command by looking up its corresponding steno stroke
+and processing that stroke through the engine.
+
+```rust
+// User types "help"
+if let Some(intent) = steno::process_english("help") {
+    // Found stroke PH-FPL for "HELP"
+    // intent.concept_id == concepts::HELP
+    intent::execute(&intent);
+}
+```
+
+**How it works**:
+1. Look up English word in dictionary (reverse lookup by name)
+2. If found, get the corresponding stroke
+3. Process that stroke through the steno engine
+4. Return the resulting intent
+
+This allows non-steno users to interact with the kernel while maintaining
+the steno-native architecture internally.
+
+---
+
+#### Dictionary Functions
+
+##### `StenoDictionary::lookup_by_name(&self, name: &str) -> Option<Stroke>`
+
+Reverse lookup: find the stroke that produces a given English name.
+
+```rust
+if let Some(stroke) = dictionary.lookup_by_name("HELP") {
+    // stroke represents PH-FPL
+}
+```
+
+Case-insensitive matching.
+
+---
+
+*API Reference v0.4.0 - Intent Kernel (Phase 5 Complete)*
 
 ---
 

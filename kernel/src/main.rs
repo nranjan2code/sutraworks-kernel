@@ -78,6 +78,9 @@ pub extern "C" fn kernel_main() -> ! {
     kprintln!("[INIT] Framebuffer...");
     if drivers::framebuffer::init(1920, 1080, 32).is_ok() {
         kprintln!("       Display: 1920x1080x32");
+        // Initialize console on framebuffer
+        drivers::console::init();
+        cprintln!("Intent Kernel v0.2 - Framebuffer Console Active");
     } else {
         kprintln!("       Display: Not available (serial only mode)");
     }
@@ -192,6 +195,9 @@ async fn steno_loop() {
     kprintln!("╚═══════════════════════════════════════════════════════════╝");
     kprintln!();
     
+    cprintln!("STENO INPUT READY");
+    cprintln!("Type steno strokes (e.g. 'KAT') or English commands (e.g. 'help')");
+    
     let mut input_buffer = [0u8; 64];
     
     loop {
@@ -202,21 +208,59 @@ async fn steno_loop() {
         let input = core::str::from_utf8(&input_buffer[..len]).unwrap_or("");
         let input = input.trim();
         
-        if i// Update HUD
+        if input.is_empty() { continue; }
+        
+        cprintln!("> {}", input);
+        
+        // 1. Try as Steno Notation first
+        // We check if it looks like steno (uppercase, valid keys) or just try it.
+        // process_steno will return None if it's not valid steno bits (which is always valid u32, but maybe 0)
+        // Actually parse_steno_to_bits returns 0 if invalid? No, it parses what it can.
+        // Let's try English lookup first if it looks like a word, or Steno if it looks like steno.
+        // But "KAT" is both steno notation and a word (maybe).
+        // The user said "normal user type in normal english".
+        // If I type "help", steno parser might ignore it or parse 'H', 'E', 'L', 'P' if they are keys.
+        // 'H' is a key. 'E' is a key. 'L' is a key. 'P' is a key.
+        // So "HELP" is a valid steno string "H-PB".
+        // Wait, "HELP" in steno notation:
+        // H -> H-
+        // E -> -E
+        // L -> -L
+        // P -> P- or -P?
+        // The parser is likely RTFCRE or similar.
+        
+        // Let's try English lookup FIRST for user friendliness.
+        if let Some(intent) = steno::process_english(input) {
+             kprintln!("[ENGLISH] Mapped '{}' -> Intent '{}'", input, intent.name);
+             cprintln!("[INTENT] {}", intent.name);
+             intent::execute(&intent);
+             
+             // Update HUD
+             if let Some(stroke) = steno::Stroke::from_steno(input) {
+                 perception::hud::update(stroke, Some(&intent));
+             }
+             continue;
+        }
+        
+        // 2. Try as Steno Notation
+        if let Some(intent) = steno::process_steno(input) {
+            kprintln!("[STENO] Processed: {} -> {}", input, intent.name);
+            cprintln!("[INTENT] {}", intent.name);
+            intent::execute(&intent);
+            
+            // Update HUD
             if let Some(stroke) = steno::Stroke::from_steno(input) {
                 perception::hud::update(stroke, Some(&intent));
             }
-            intent::execute(&intent);
-        } else {
-            // Update HUD for unrecognized stroke
-            if let Some(stroke) = steno::Stroke::from_steno(input) {
-                perception::hud::update(stroke, None);
-            }
-        // Process as steno notation
-        if let Some(intent) = steno::process_steno(input) {
-            intent::execute(&intent);
-        } else {
-            kprintln!("[STENO] No match for: {}", input);
+            continue;
+        }
+
+        kprintln!("[STENO] No match for: {}", input);
+        cprintln!("Unknown command or stroke: {}", input);
+        
+        // Update HUD for unrecognized stroke
+        if let Some(stroke) = steno::Stroke::from_steno(input) {
+            perception::hud::update(stroke, None);
         }
     }
 }

@@ -301,4 +301,75 @@ Ticks per second = 54,000,000
 
 ---
 
+## USB Host Controller (xHCI)
+
+The Raspberry Pi 5 uses an xHCI-compliant USB 3.0 controller via the RP1 southbridge.
+
+### USB Controller Addresses
+
+| Region | Address | Description |
+|--------|---------|-------------|
+| xHCI Base | `0x1_00200000` | xHCI Controller (via RP1 PCIe) |
+| Capability | +0x00 | Capability registers |
+| Operational | +0x80 | Operational registers |
+| Runtime | +0x600 | Runtime registers |
+| Doorbell | +0x800 | Doorbell registers |
+
+### xHCI Registers
+
+| Offset | Name | Description |
+|--------|------|-------------|
+| 0x00 | CAPLENGTH | Capability Register Length |
+| 0x04 | HCSPARAMS1 | Structural Parameters 1 |
+| 0x08 | HCSPARAMS2 | Structural Parameters 2 |
+| 0x10 | HCCPARAMS1 | Capability Parameters 1 |
+| 0x14 | DBOFF | Doorbell Offset |
+| 0x18 | RTSOFF | Runtime Register Space Offset |
+
+### Operational Registers
+
+| Offset | Name | Description |
+|--------|------|-------------|
+| 0x00 | USBCMD | USB Command |
+| 0x04 | USBSTS | USB Status |
+| 0x08 | PAGESIZE | Page Size |
+| 0x14 | DNCTRL | Device Notification Control |
+| 0x18 | CRCR | Command Ring Control |
+| 0x30 | DCBAAP | Device Context Base Address Array Pointer |
+| 0x38 | CONFIG | Configure |
+
+### Port Registers (per port)
+
+| Offset | Name | Description |
+|--------|------|-------------|
+| 0x00 | PORTSC | Port Status and Control |
+| 0x04 | PORTPMSC | Port Power Management |
+| 0x08 | PORTLI | Port Link Info |
+
+### HID Protocol for Steno Machines
+
+Steno machines using Plover HID protocol send 6-byte reports:
+
+```
+Byte 0: Report ID (0x50 for steno)
+Byte 1-4: 32-bit stroke data (little-endian)
+Byte 5: Flags
+```
+
+Stroke data layout (Plover HID):
+```
+Bit 0-22: Stroke keys (23-bit pattern)
+Bit 23-31: Reserved
+```
+
+### Supported Devices
+
+| Device | VID | PID | Protocol |
+|--------|-----|-----|----------|
+| Georgi | 0x1209 | 0x2303 | Plover HID |
+| Uni | 0x1209 | 0x2301 | Plover HID |
+| SOFT/HRUF | 0x4D3 | 0xD1 | NKRO |
+
+---
+
 *Last updated: December 2025*

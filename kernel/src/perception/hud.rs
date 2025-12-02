@@ -1,4 +1,3 @@
-```rust
 //! Heads-Up Display (HUD) for Intent Kernel
 //!
 //! Visualizes the stenographic stream in real-time.
@@ -40,8 +39,9 @@ struct TextLog<const N: usize> {
 
 impl<const N: usize> TextLog<N> {
     fn new() -> Self {
+        const EMPTY_STRING: heapless::String<32> = heapless::String::new();
         Self {
-            lines: Default::default(),
+            lines: [EMPTY_STRING; N],
             head: 0,
             count: 0,
         }
@@ -239,4 +239,3 @@ pub fn update(stroke: Stroke, intent: Option<&Intent>) {
         h.update(stroke, intent);
     }
 }
-```

@@ -64,6 +64,7 @@ impl QueuedIntent {
             concept_id: ConceptID(0),
             confidence: 0.0,
             data: IntentData::None,
+            name: "",
         },
         priority: Priority::Low,
         sequence: 0,
