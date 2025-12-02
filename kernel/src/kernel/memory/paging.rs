@@ -98,8 +98,10 @@ impl EntryFlags {
     // --- Memory Attributes (Index into MAIR) ---
     /// Index 0 in MAIR (Device-nGnRnE)
     pub const ATTR_DEVICE: Self = Self(0 << 2);
-    /// Index 1 in MAIR (Normal Memory)
+    /// Index 1 in MAIR (Normal Memory Write-Back)
     pub const ATTR_NORMAL: Self = Self(1 << 2);
+    /// Index 2 in MAIR (Normal Memory Non-Cacheable)
+    pub const ATTR_NC: Self = Self(2 << 2);
 
     // --- Access Permissions (AP) ---
     // AP[1] = RO/RW, AP[0] = EL1/EL0
@@ -305,6 +307,15 @@ pub unsafe fn init() {
             vmm.identity_map(0, 0x2_0000_0000, EntryFlags::ATTR_NORMAL | EntryFlags::AP_RW_EL1 | EntryFlags::SH_INNER)
                 .expect("Failed to map kernel");
                 
+            // 1b. Remap DMA Region as Non-Cacheable
+            // We need to ensure DMA buffers are not cached so hardware sees writes immediately.
+            let (dma_start, dma_end) = super::dma_region();
+            if dma_end > dma_start {
+                crate::kprintln!("[MEM] Remapping DMA region {:#x}-{:#x} as Non-Cacheable", dma_start, dma_end);
+                vmm.identity_map(dma_start as u64, dma_end as u64, EntryFlags::ATTR_NC | EntryFlags::AP_RW_EL1 | EntryFlags::SH_INNER)
+                    .expect("Failed to remap DMA");
+            }
+                
             // 2. Map Peripherals (Device Memory)
             // BCM2712 Peripherals start at 0x10_0000_0000 (outside 32-bit range)
             // But we are in 64-bit mode, so it's fine.
@@ -328,7 +339,8 @@ pub unsafe fn init() {
         // 3. Configure MAIR
         // Attr0 = Device-nGnRnE (0x00)
         // Attr1 = Normal Inner/Outer WB RW-Allocate (0xFF)
-        let mair = (0x00 << 0) | (0xFF << 8);
+        // Attr2 = Normal Inner/Outer Non-Cacheable (0x44)
+        let mair = (0x00 << 0) | (0xFF << 8) | (0x44 << 16);
         crate::arch::set_mair(mair);
         
         // 4. Configure TCR

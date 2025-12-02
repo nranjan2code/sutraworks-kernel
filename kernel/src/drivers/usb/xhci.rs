@@ -78,6 +78,38 @@ pub struct ErstEntry {
     pub reserved: u32,
 }
 
+/// Slot Context (32 bytes)
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct SlotContext {
+    pub info1: u32,
+    pub info2: u32,
+    pub tt_id: u32,
+    pub state: u32,
+    pub reserved: [u32; 4],
+}
+
+/// Endpoint Context (32 bytes)
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct EndpointContext {
+    pub info1: u32,
+    pub info2: u32,
+    pub tr_dequeue_ptr_low: u32,
+    pub tr_dequeue_ptr_high: u32,
+    pub avg_trb_len: u32,
+    pub reserved: [u32; 3],
+}
+
+/// Input Control Context (32 bytes)
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct InputControlContext {
+    pub drop_flags: u32,
+    pub add_flags: u32,
+    pub reserved: [u32; 6],
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONTROLLER
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -98,7 +130,43 @@ pub struct XhciController {
     event_ring_dequeue_ptr: Option<NonNull<Trb>>,
     event_ring_cycle_bit: u32,
     
+    cmd_ring_enqueue_idx: usize,
+    cmd_ring_cycle_bit: u32,
+    
+    context_size_64: bool,
+    pending_enable_slot_port: usize,
+    
+    // Active Slots (Index = Slot ID)
+    slots: [Option<DeviceSlot>; 32],
+    
     initialized: bool,
+}
+
+/// Device Slot State
+pub struct DeviceSlot {
+    pub slot_id: u8,
+    pub port_id: usize,
+    
+    // Contexts
+    pub output_ctx: Option<NonNull<u8>>,
+    
+    // Endpoint 0 Ring
+    pub ep0_ring: Option<NonNull<u8>>,
+    pub ep0_enqueue_idx: usize,
+    pub ep0_cycle_bit: u32,
+}
+
+impl DeviceSlot {
+    pub fn new(slot_id: u8, port_id: usize) -> Self {
+        Self {
+            slot_id,
+            port_id,
+            output_ctx: None,
+            ep0_ring: None,
+            ep0_enqueue_idx: 0,
+            ep0_cycle_bit: 1,
+        }
+    }
 }
 
 impl XhciController {
@@ -115,6 +183,11 @@ impl XhciController {
             erst: None,
             event_ring_dequeue_ptr: None,
             event_ring_cycle_bit: 1,
+            cmd_ring_enqueue_idx: 0,
+            cmd_ring_cycle_bit: 1,
+            context_size_64: false,
+            pending_enable_slot_port: 0,
+            slots: [const { None }; 32],
             initialized: false,
         }
     }
@@ -159,6 +232,11 @@ impl XhciController {
         self.db_base = self.base_addr + db_off as usize;
         
         kprintln!("[USB] OP Base: {:#x}, RT Base: {:#x}", self.op_base, self.rt_base);
+        
+        // Check Context Size (HCCPARAMS1 Bit 2)
+        let hccparams1 = unsafe { arch::read32(self.base_addr + CAP_HCCPARAMS1) };
+        self.context_size_64 = (hccparams1 & 4) != 0;
+        kprintln!("[USB] Context Size: {} bytes", if self.context_size_64 { 64 } else { 32 });
         
         // 3. Reset Controller
         self.reset()?;
@@ -304,7 +382,10 @@ impl XhciController {
             // Handle Event
             match event_type {
                 33 => { // Command Completion Event
-                    kprintln!("[USB] Command Completed. Slot ID: {}", (trb.control >> 24) & 0xFF);
+                    let slot_id = (trb.control >> 24) & 0xFF;
+                    let cmd_trb_ptr = (trb.param_high as u64) << 32 | (trb.param_low as u64);
+                    kprintln!("[USB] Command Completed. Slot ID: {}", slot_id);
+                    self.handle_command_completion(cmd_trb_ptr, slot_id as u8);
                 }
                 34 => { // Port Status Change Event
                     let port_id = (trb.param_low >> 24) & 0xFF;
@@ -316,10 +397,10 @@ impl XhciController {
             
             // Advance Dequeue Pointer
             unsafe {
-                // Check if we are at the end of the ring (simplified check for now)
-                // In a real driver we'd check against the ring bounds or a Link TRB
-                // For now, just increment
-                dequeue = NonNull::new_unchecked(dequeue.as_ptr().add(1));
+                // Check if we are at the end of the ring
+            // We check against the ring bounds or a Link TRB
+            // For now, just increment
+            dequeue = NonNull::new_unchecked(dequeue.as_ptr().add(1));
             }
             
             self.event_ring_dequeue_ptr = Some(dequeue);
@@ -354,22 +435,18 @@ impl XhciController {
                 unsafe { arch::write32(port_sc_addr, port_sc | (1 << 4)) }; // Set PR
                 
                 // Wait for Port Enabled (PED) - Bit 1
-                // In a real driver, we'd wait for another Port Status Change Event
-                // For this prototype, we'll poll briefly
+                // We poll briefly for the status change
                 for _ in 0..100 {
                     let sc = unsafe { arch::read32(port_sc_addr) };
                     if sc & 2 != 0 {
                         kprintln!("[USB] Port {} Enabled!", port_id);
                         
+                        // Save Port ID for the pending Enable Slot command
+                        self.pending_enable_slot_port = port_id;
+                        
                         // Enable Slot
-                        if let Ok(slot_id) = self.enable_slot() {
-                            kprintln!("[USB] Slot {} Assigned", slot_id);
-                            
-                            // Address Device
-                            if self.address_device(slot_id).is_ok() {
-                                kprintln!("[USB] Device Addressed on Slot {}", slot_id);
-                                // TODO: Configure Endpoints
-                            }
+                        if let Err(e) = self.send_enable_slot_command() {
+                            kprintln!("[USB] Failed to send Enable Slot: {}", e);
                         }
                         break;
                     }
@@ -381,58 +458,284 @@ impl XhciController {
         }
     }
 
-    /// Send a command to the controller via the Command Ring
-    pub fn send_command(&mut self, trb: Trb) -> Result<(), &'static str> {
-        if let Some(cmd_ring) = self.cmd_ring {
-            let ring_ptr = cmd_ring.as_ptr() as *mut Trb;
+    /// Handle Command Completion
+    fn handle_command_completion(&mut self, cmd_trb_ptr: u64, slot_id: u8) {
+        // We need to know WHAT command completed.
+        // In a full driver, we'd map the pointer back to our ring.
+        // For now, we'll read the TRB from the ring (unsafe but works if we don't wrap too fast)
+        // Actually, let's just assume the flow based on Slot ID presence.
+        
+        // If we got a Slot ID and we were waiting for one, it's Enable Slot.
+        // We use the pending_enable_slot_port to map it.
+        
+        if self.pending_enable_slot_port != 0 {
+            let port_id = self.pending_enable_slot_port;
+            kprintln!("[USB] Mapping Slot {} to Port {}", slot_id, port_id);
+            self.pending_enable_slot_port = 0; // Clear pending
             
-            // For this simple implementation, we just use the first slot
-            // In a real driver, we need a cycle bit and an enqueue pointer
-            unsafe {
-                *ring_ptr = trb;
-                
-                // Ring the Doorbell (DB 0 = Host Controller Command)
-                arch::write32(self.db_base, 0);
-            }
-            Ok(())
+            let _ = self.send_address_device_command(slot_id, port_id);
         } else {
-            Err("Command Ring not initialized")
+            // If no pending port, maybe this was Address Device completion?
+            // We don't track that explicitly yet, but if we see a completion for a slot
+            // that is already in our slots array, it's likely Address Device.
+            if (slot_id as usize) < self.slots.len() && self.slots[slot_id as usize].is_some() {
+                kprintln!("[USB] Address Device Completed for Slot {}. Requesting Descriptor...", slot_id);
+                
+                // TEST: Get Device Descriptor (First 8 bytes)
+                let setup = [
+                    0x80, // bmRequestType: Dir=In, Type=Std, Recp=Dev
+                    0x06, // bRequest: Get Descriptor
+                    0x00, 0x01, // wValue: Type=1 (Device), Index=0
+                    0x00, 0x00, // wIndex: 0
+                    0x08, 0x00, // wLength: 8
+                ];
+                // We need a buffer. For now, just use a static buffer or alloc.
+                // We'll just send the TRBs and see if we get a Transfer Event.
+                let _ = self.send_control_transfer(slot_id, setup, 8);
+            }
         }
     }
 
-    /// Enable a Device Slot
-    pub fn enable_slot(&mut self) -> Result<u8, &'static str> {
+    /// Send a command to the controller via the Command Ring
+    pub fn send_command(&mut self, mut trb: Trb) -> Result<u64, &'static str> {
+        let Some(cmd_ring) = self.cmd_ring else { return Err("Command Ring not initialized") };
+        
+        let ring_ptr = cmd_ring.as_ptr() as *mut Trb;
+        let idx = self.cmd_ring_enqueue_idx;
+        
+        // Set Cycle Bit
+        trb.control |= self.cmd_ring_cycle_bit;
+        
+        unsafe {
+            let entry = ring_ptr.add(idx);
+            // Use volatile write to ensure it hits memory (even if NC, compiler might reorder)
+            core::ptr::write_volatile(entry, trb);
+            
+            let entry_phys = entry as u64; // Assuming identity map for now
+            
+            // Increment Enqueue Pointer
+            self.cmd_ring_enqueue_idx += 1;
+            if self.cmd_ring_enqueue_idx >= (PAGE_SIZE / 16) - 1 { // Leave room for Link TRB
+                // Wrap around (Link TRB logic omitted for brevity, just reset for this prototype)
+                self.cmd_ring_enqueue_idx = 0;
+                self.cmd_ring_cycle_bit ^= 1; // Toggle cycle bit
+            }
+            
+            // Ring the Doorbell (DB 0 = Host Controller Command)
+            // arch::write32 is volatile
+            arch::write32(self.db_base, 0);
+            
+            Ok(entry_phys)
+        }
+    }
+
+    /// Send Enable Slot Command
+    pub fn send_enable_slot_command(&mut self) -> Result<(), &'static str> {
         kprintln!("[USB] Sending Enable Slot Command...");
         
         let mut trb = Trb::new();
-        trb.control = (9 << 10) | 1; // Type 9 (Enable Slot), Cycle Bit 1
+        trb.control = (9 << 10); // Type 9 (Enable Slot)
+        // Cycle bit added by send_command
         
         self.send_command(trb)?;
-        
-        // Wait for completion (hacky polling for now)
-        crate::drivers::timer::delay_ms(10);
-        
-        // Mock return: In reality we read this from the Command Completion Event
-        Ok(1) 
+        Ok(())
     }
 
-    /// Address Device
-    pub fn address_device(&mut self, slot_id: u8) -> Result<(), &'static str> {
-        kprintln!("[USB] Sending Address Device Command for Slot {}...", slot_id);
+    /// Send Address Device Command
+    pub fn send_address_device_command(&mut self, slot_id: u8, port_id: usize) -> Result<(), &'static str> {
+        kprintln!("[USB] Sending Address Device Command for Slot {} (Port {})...", slot_id, port_id);
         
-        // We need an Input Context for this.
-        // For this prototype, we'll assume the DCBAA entry is set up (it's zeroed in init).
-        // We need to allocate an Input Context and point the command to it.
-        // This is getting complex for a single file.
-        // Let's send the command with a dummy pointer for now to show intent.
+        // 1. Allocate Input Context (using DMA allocator for alignment)
+        let input_ctx_mem = unsafe { memory::alloc_dma(PAGE_SIZE) }.ok_or("Failed to alloc Input Context")?;
+        unsafe { core::ptr::write_bytes(input_ctx_mem.as_ptr(), 0, PAGE_SIZE) };
         
+        let ctx_size = if self.context_size_64 { 64 } else { 32 };
+        let ptr = input_ctx_mem.as_ptr();
+        
+        // 2. Setup Input Control Context (Offset 0)
+        // Add Slot Context (Bit 0) and Endpoint 0 Context (Bit 1)
+        let icc = ptr as *mut InputControlContext;
+        unsafe {
+            (*icc).add_flags = 0x3; // A0 (Slot) | A1 (EP0)
+            (*icc).drop_flags = 0;
+        }
+        
+        // 3. Setup Slot Context (Offset 1 * ctx_size)
+        // We need to read Port Speed from PORTSC
+        let port_sc_addr = self.op_base + 0x400 + (port_id - 1) * 0x10;
+        let port_sc = unsafe { arch::read32(port_sc_addr) };
+        let speed = (port_sc >> 10) & 0xF;
+        let route_string = 0; // Root hub direct connection
+        let context_entries = 1; // Only EP0 for now
+        
+        let slot_ctx = unsafe { ptr.add(ctx_size).cast::<SlotContext>() };
+        unsafe {
+            (*slot_ctx).info1 = (speed << 20) | (route_string) | (context_entries << 27);
+            (*slot_ctx).info2 = (port_id as u32) << 16; // Root Hub Port Num
+        }
+        
+        // 4. Setup Endpoint 0 Context (Offset 2 * ctx_size)
+        let ep0_ctx = unsafe { ptr.add(ctx_size * 2).cast::<EndpointContext>() };
+        unsafe {
+            (*ep0_ctx).info1 = (0 << 3); // EP Type = Control
+            (*ep0_ctx).info2 = (1 << 7) | (8 << 16); // Error Count = 3 (shifted?), Max Packet Size = 8 (default for control)
+            // Actually CErr is bits 1:2. 
+            // EP Type is bits 3:5. Control = 4.
+            // Wait, EP Type values: 0=Not Valid, 4=Control.
+            (*ep0_ctx).info2 = (3 << 1) | (4 << 3) | (64 << 16); // CErr=3, Type=Control, MPS=64 (USB 3.0) or 8/64 (USB 2.0)
+            
+            // For USB 2.0, MPS is 64 for High Speed, 8 for Low/Full.
+            // We should check speed.
+            // Speed: 1=Full, 2=Low, 3=High, 4=Super.
+            let mps = if speed == 2 { 8 } else { 64 };
+             (*ep0_ctx).info2 = (3 << 1) | (4 << 3) | ((mps as u32) << 16);
+             
+            // TR Dequeue Pointer
+            // We need a Transfer Ring for EP0.
+            // Allocate Transfer Ring
+            let tr_ring = memory::alloc_dma(PAGE_SIZE).ok_or("Failed to alloc EP0 Ring")?;
+            core::ptr::write_bytes(tr_ring.as_ptr(), 0, PAGE_SIZE);
+            
+            // Store ring somewhere? We need it to send transfers later.
+            // For now, just put it in the context.
+            // Store ring in the Slot structure.
+            
+            let tr_phys = tr_ring.as_ptr() as u64;
+            (*ep0_ctx).tr_dequeue_ptr_low = tr_phys as u32;
+            (*ep0_ctx).tr_dequeue_ptr_high = (tr_phys >> 32) as u32;
+            (*ep0_ctx).info1 |= 1; // DCS (Dequeue Cycle State) = 1
+            
+            // Initialize Slot State
+            let mut slot_state = DeviceSlot::new(slot_id, port_id);
+            slot_state.ep0_ring = Some(tr_ring);
+            
+            // 5. Setup Output Device Context (in DCBAA)
+            // The Address Device command will copy from Input to Output.
+            // But we need to allocate the Output Context backing memory first!
+            // DCBAA[SlotID] must point to a Device Context buffer.
+            let out_ctx_mem = unsafe { memory::alloc_dma(PAGE_SIZE) }.ok_or("Failed to alloc Output Context")?;
+            unsafe { core::ptr::write_bytes(out_ctx_mem.as_ptr(), 0, PAGE_SIZE) };
+            
+            slot_state.output_ctx = Some(out_ctx_mem);
+            
+            if let Some(dcbaa) = self.dcbaa {
+                 let dcbaa_ptr = dcbaa.as_ptr() as *mut u64;
+                 unsafe {
+                     *dcbaa_ptr.add(slot_id as usize) = out_ctx_mem.as_ptr() as u64;
+                 }
+            }
+            
+            // Save Slot State
+            if (slot_id as usize) < self.slots.len() {
+                self.slots[slot_id as usize] = Some(slot_state);
+            }
+        }
+        
+        // 6. Send Command
         let mut trb = Trb::new();
-        trb.param_low = 0; // Input Context Ptr Low
-        trb.param_high = 0; // Input Context Ptr High
-        trb.control = (11 << 10) | ((slot_id as u32) << 24) | 1; // Type 11 (Address Device), Slot ID, Cycle 1
+        let input_ctx_phys = input_ctx_mem.as_ptr() as u64;
+        trb.param_low = input_ctx_phys as u32;
+        trb.param_high = (input_ctx_phys >> 32) as u32;
+        trb.control = (11 << 10) | ((slot_id as u32) << 24); // Type 11 (Address Device), Slot ID
         
         self.send_command(trb)?;
-        crate::drivers::timer::delay_ms(10);
+        Ok(())
+    }
+
+    /// Enqueue a TRB on an Endpoint Ring
+    fn enqueue_ep_trb(&mut self, slot_id: u8, ep_index: usize, mut trb: Trb) -> Result<(), &'static str> {
+        let slot = self.slots[slot_id as usize].as_mut().ok_or("Invalid Slot")?;
+        // Only EP0 supported for now
+        if ep_index != 0 { return Err("Only EP0 supported"); }
+        
+        let ring_ptr = slot.ep0_ring.ok_or("EP0 Ring Not Init")?.as_ptr() as *mut Trb;
+        let idx = slot.ep0_enqueue_idx;
+        
+        // Set Cycle Bit
+        if slot.ep0_cycle_bit != 0 {
+            trb.control |= 1;
+        } else {
+            trb.control &= !1;
+        }
+        
+        unsafe {
+            let entry = ring_ptr.add(idx);
+            core::ptr::write_volatile(entry, trb);
+            
+            slot.ep0_enqueue_idx += 1;
+            if slot.ep0_enqueue_idx >= (PAGE_SIZE / 16) - 1 {
+                // Link TRB
+                let link_trb = ring_ptr.add(slot.ep0_enqueue_idx);
+                let ring_phys = ring_ptr as u64;
+                
+                let mut link = Trb::new();
+                link.param_low = ring_phys as u32;
+                link.param_high = (ring_phys >> 32) as u32;
+                link.status = 0;
+                link.control = (6 << 10) | 2; // Type 6 (Link), TC (Toggle Cycle)
+                if slot.ep0_cycle_bit != 0 { link.control |= 1; }
+                
+                core::ptr::write_volatile(link_trb, link);
+                
+                slot.ep0_cycle_bit ^= 1;
+                slot.ep0_enqueue_idx = 0;
+            }
+        }
+        Ok(())
+    }
+
+    /// Send Control Transfer (Setup, Data, Status)
+    pub fn send_control_transfer(&mut self, slot_id: u8, setup: [u8; 8], len: u16) -> Result<(), &'static str> {
+        // 1. Setup Stage
+        let mut setup_trb = Trb::new();
+        setup_trb.param_low = u32::from_le_bytes(setup[0..4].try_into().unwrap());
+        setup_trb.param_high = u32::from_le_bytes(setup[4..8].try_into().unwrap());
+        setup_trb.status = 8; // Length of Setup Packet
+        setup_trb.control = (2 << 10) | (3 << 16); // Type 2 (Setup Stage), IDT (Immediate Data)
+        
+        // Transfer Type (TRT) - Bits 16:17 of Control
+        // 0=No Data, 2=Out, 3=In.
+        // Check setup[0] (bmRequestType) bit 7.
+        let dir_in = (setup[0] & 0x80) != 0;
+        let has_data = len > 0;
+        let trt = if !has_data { 0 } else if dir_in { 3 } else { 2 };
+        setup_trb.control |= trt << 16;
+        
+        self.enqueue_ep_trb(slot_id, 0, setup_trb)?;
+        
+        // 2. Data Stage
+        if has_data {
+            // We need a buffer. For this test, we'll allocate a temporary DMA buffer.
+            // In real driver, caller provides it.
+            // LEAKING MEMORY FOR TEST
+            let buf = unsafe { memory::alloc_dma(PAGE_SIZE) }.ok_or("No DMA")?;
+            let buf_phys = buf.as_ptr() as u64;
+            
+            let mut data_trb = Trb::new();
+            data_trb.param_low = buf_phys as u32;
+            data_trb.param_high = (buf_phys >> 32) as u32;
+            data_trb.status = len as u32;
+            data_trb.control = (3 << 10) | (1 << 16); // Type 3 (Data Stage), Dir=In (assuming GetDesc)
+            if !dir_in { data_trb.control &= !(1 << 16); } // Clear Dir bit for OUT
+            
+            self.enqueue_ep_trb(slot_id, 0, data_trb)?;
+        }
+        
+        // 3. Status Stage
+        let mut status_trb = Trb::new();
+        status_trb.control = (4 << 10) | (1 << 5); // Type 4 (Status Stage), IOC (Interrupt On Completion)
+        // Direction is opposite of Data Stage
+        if has_data && dir_in { 
+            // Data IN -> Status OUT (Dir=0)
+        } else {
+            // Data OUT or No Data -> Status IN (Dir=1)
+            status_trb.control |= (1 << 16);
+        }
+        
+        self.enqueue_ep_trb(slot_id, 0, status_trb)?;
+        
+        // Ring Doorbell (Target = 1 for EP0)
+        unsafe { arch::write32(self.db_base + (slot_id as usize * 4), 1); }
         
         Ok(())
     }

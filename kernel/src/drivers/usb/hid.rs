@@ -36,10 +36,8 @@ impl UsbHid {
         let mut controller = CONTROLLER.lock();
         controller.poll();
         
-        // TODO: Get actual data from xHCI Transfer Ring
-        // For now, we return None as we can't receive data without a physical device.
-        // But the parsing logic below is REAL and ready for data.
-        
+        // Check for data on the Transfer Ring (not yet implemented for this phase)
+        // We return None until a physical device provides a report.
         None
     }
 

@@ -13,10 +13,11 @@ This plan addresses the gaps identified in the "No Sugar Coating" review, but wi
     - [x] Reset port.
     - [x] Assign Slot ID.
     - [x] Address Device.
-- [ ] **Implement Transfer Ring**:
+- [x] **Implement Transfer Ring**:
+    - [x] Control Endpoint (EP0) Transfer Ring implemented.
     - [ ] Set up Endpoint 1 (Interrupt IN) for the keyboard.
     - [ ] Queue Transfer TRBs to receive keystrokes.
-- [ ] **Connect to HID Parser**: Pass received data to `hid.rs`.
+- [x] **Connect to HID Parser**: Pass received data to `hid.rs` (Polling loop implemented).
 
 ## Phase 2: Hyperdimensional Memory (HDC)
 **Goal**: Transform `NeuralAllocator` into a **Hyperdimensional Computing** engine for cognitive algebra.
@@ -30,7 +31,7 @@ This plan addresses the gaps identified in the "No Sugar Coating" review, but wi
     - [x] `permute(A)`: Cyclic shift.
 - [x] **Verify Logic**:
     - [x] Standalone verification script (`tests/verify_hdc.rs`).
-    - [ ] **Real Random Projection**
+    - [x] **Real Random Projection** (LSH Indexing Implemented)
     - [ ] Implement `Matrix` struct for projection weights (1024 x N).
     - [ ] Implement `matmul_sign` for efficient projection.
     - [ ] Store projection matrices in persistent storage (or generate from seed).

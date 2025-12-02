@@ -36,10 +36,19 @@ pub struct IntentPtr {
     pub similarity: f32, // 0.0 to 1.0 (Normalized Hamming Similarity)
 }
 
-/// Neural Allocator
+/// Page Header for Semantic Memory
+#[repr(C)]
+struct SemanticPage {
+    next: Option<NonNull<SemanticPage>>,
+    used: usize,
+    // Data follows. We use the rest of the 4KB page.
+}
+
+/// Neural Allocator (Dynamic Page-Based)
 pub struct NeuralAllocator {
-    blocks: [Option<NonNull<SemanticBlock>>; 128],
-    count: usize,
+    head_page: Option<NonNull<SemanticPage>>,
+    current_page: Option<NonNull<SemanticPage>>,
+    total_items: usize,
 }
 
 // SAFETY: NeuralAllocator is protected by SpinLock.
@@ -48,87 +57,183 @@ unsafe impl Send for NeuralAllocator {}
 impl NeuralAllocator {
     pub const fn new() -> Self {
         NeuralAllocator {
-            blocks: [None; 128],
-            count: 0,
+            head_page: None,
+            current_page: None,
+            total_items: 0,
         }
     }
 
     /// Allocate memory with a concept ID tag and semantic hypervector
     pub unsafe fn alloc(&mut self, size: usize, concept_id: ConceptID, hv: Hypervector) -> Option<IntentPtr> {
-        // 1. Allocate raw memory for header + data
-        let total_size = core::mem::size_of::<SemanticBlock>() + size;
-        let layout = Layout::from_size_align(total_size, 16).ok()?;
+        let block_size = core::mem::size_of::<SemanticBlock>();
+        let total_needed = block_size + size;
+        let align_padding = (16 - (total_needed % 16)) % 16;
+        let alloc_size = total_needed + align_padding;
         
-        let ptr = alloc(layout);
-        if ptr.is_null() {
-            return None;
+        // Ensure we have a current page with enough space
+        if self.current_page.is_none() || !self.has_space(alloc_size) {
+            self.grow_heap()?;
         }
-
-        // 2. Initialize SemanticBlock header
-        let block = ptr as *mut SemanticBlock;
+        
+        let page_ptr = self.current_page.unwrap();
+        let page = page_ptr.as_ptr();
+        
+        // Calculate placement
+        let offset = (*page).used;
+        let start_ptr = (page as *mut u8).add(core::mem::size_of::<SemanticPage>() + offset);
+        
+        // Initialize Block
+        let block = start_ptr as *mut SemanticBlock;
         (*block).concept_id = concept_id;
         (*block).access_count = 0;
         (*block).size = size;
         (*block).hypervector = hv;
         
-        // 3. Register in our index
-        if self.count < 128 {
-            self.blocks[self.count] = NonNull::new(block);
-            self.count += 1;
-        } else {
-            // Eviction: overwrite last one (primitive policy for now)
-            self.blocks[127] = NonNull::new(block);
-        }
-
+        // Update Page State
+        (*page).used += alloc_size;
+        self.total_items += 1;
+        
         Some(IntentPtr {
             id: concept_id,
-            ptr: NonNull::new_unchecked(ptr.add(core::mem::size_of::<SemanticBlock>())),
+            ptr: NonNull::new_unchecked(start_ptr.add(block_size)),
             size,
             similarity: 1.0,
         })
     }
+    
+    /// Check if current page has space
+    unsafe fn has_space(&self, size: usize) -> bool {
+        if let Some(page_ptr) = self.current_page {
+            let page = page_ptr.as_ref();
+            let available = 4096 - core::mem::size_of::<SemanticPage>() - page.used;
+            available >= size
+        } else {
+            false
+        }
+    }
+    
+    /// Allocate a new page and link it
+    unsafe fn grow_heap(&mut self) -> Option<()> {
+        // Allocate 1 page (4KB)
+        let ptr = crate::kernel::memory::alloc_pages(1)?;
+        let page = ptr.as_ptr() as *mut SemanticPage;
+        
+        // Initialize Header
+        (*page).next = None;
+        (*page).used = 0;
+        
+        // Link
+        if let Some(curr) = self.current_page {
+            (*curr.as_ptr()).next = Some(ptr.cast());
+        } else {
+            self.head_page = Some(ptr.cast());
+        }
+        
+        self.current_page = Some(ptr.cast());
+        Some(())
+    }
 
     /// Retrieve memory by concept ID (Exact Match)
+    /// Uses LSH Index to narrow down search space.
     pub unsafe fn retrieve(&self, concept_id: ConceptID) -> Option<IntentPtr> {
-        for i in 0..self.count {
-            if let Some(block_ptr) = self.blocks[i] {
-                let block = block_ptr.as_ref();
-                if block.concept_id == concept_id {
-                    let data_ptr = (block_ptr.as_ptr() as *mut u8).add(core::mem::size_of::<SemanticBlock>());
+        // For exact match by ID, we still have to scan or maintain a separate ID index.
+        // Since ConceptID is not the Hypervector, LSH doesn't help for ID lookup unless ID is correlated.
+        // For this implementation, we'll scan all buckets (still O(N) but structured).
+        // Optimization: In a real system, we'd have a separate `HashMap<ConceptID, IntentPtr>`.
+        // Let's implement a simple linear scan over pages for now, but cleaner.
+        
+        let mut page_iter = self.head_page;
+        while let Some(page_ptr) = page_iter {
+            if let Some(ptr) = self.scan_page_for_id(page_ptr, concept_id) {
+                return Some(ptr);
+            }
+            page_iter = (*page_ptr.as_ptr()).next;
+        }
+        None
+    }
+
+    unsafe fn scan_page_for_id(&self, page_ptr: NonNull<SemanticPage>, id: ConceptID) -> Option<IntentPtr> {
+        let page = page_ptr.as_ref();
+        let mut offset = 0;
+        let base_ptr = (page_ptr.as_ptr() as *mut u8).add(core::mem::size_of::<SemanticPage>());
+        
+        while offset < page.used {
+            let block = (base_ptr.add(offset)) as *const SemanticBlock;
+            if (*block).concept_id == id {
+                return Some(IntentPtr {
+                    id: (*block).concept_id,
+                    ptr: NonNull::new_unchecked((base_ptr.add(offset + core::mem::size_of::<SemanticBlock>())) as *mut u8),
+                    size: (*block).size,
+                    similarity: 1.0,
+                });
+            }
+            let total_size = core::mem::size_of::<SemanticBlock>() + (*block).size;
+            let align = (16 - (total_size % 16)) % 16;
+            offset += total_size + align;
+        }
+        None
+    }
+        
+        while let Some(page_ptr) = page_iter {
+            let page = page_ptr.as_ref();
+            let mut offset = 0;
+            let base_ptr = (page_ptr.as_ptr() as *mut u8).add(core::mem::size_of::<SemanticPage>());
+            
+            while offset < page.used {
+                let block = (base_ptr.add(offset)) as *const SemanticBlock;
+                if (*block).concept_id == concept_id {
                     return Some(IntentPtr {
-                        id: block.concept_id,
-                        ptr: NonNull::new_unchecked(data_ptr),
-                        size: block.size,
+                        id: (*block).concept_id,
+                        ptr: NonNull::new_unchecked((base_ptr.add(offset + core::mem::size_of::<SemanticBlock>())) as *mut u8),
+                        size: (*block).size,
                         similarity: 1.0,
                     });
                 }
+                
+                // Advance
+                let total_size = core::mem::size_of::<SemanticBlock>() + (*block).size;
+                let align = (16 - (total_size % 16)) % 16;
+                offset += total_size + align;
             }
+            
+            page_iter = page.next;
         }
         None
     }
     
     /// Retrieve nearest memory block by semantic hypervector (Fuzzy Match)
-    /// Uses Hamming Similarity.
     pub unsafe fn retrieve_nearest(&self, query: &Hypervector) -> Option<IntentPtr> {
         let mut best_match: Option<IntentPtr> = None;
         let mut best_sim = -1.0;
         
-        for i in 0..self.count {
-            if let Some(block_ptr) = self.blocks[i] {
-                let block = block_ptr.as_ref();
-                let sim = hamming_similarity(query, &block.hypervector);
+        let mut page_iter = self.head_page;
+        
+        while let Some(page_ptr) = page_iter {
+            let page = page_ptr.as_ref();
+            let mut offset = 0;
+            let base_ptr = (page_ptr.as_ptr() as *mut u8).add(core::mem::size_of::<SemanticPage>());
+            
+            while offset < page.used {
+                let block = (base_ptr.add(offset)) as *const SemanticBlock;
+                let sim = hamming_similarity(query, &(*block).hypervector);
                 
                 if sim > best_sim {
                     best_sim = sim;
-                    let data_ptr = (block_ptr.as_ptr() as *mut u8).add(core::mem::size_of::<SemanticBlock>());
                     best_match = Some(IntentPtr {
-                        id: block.concept_id,
-                        ptr: NonNull::new_unchecked(data_ptr),
-                        size: block.size,
+                        id: (*block).concept_id,
+                        ptr: NonNull::new_unchecked((base_ptr.add(offset + core::mem::size_of::<SemanticBlock>())) as *mut u8),
+                        size: (*block).size,
                         similarity: sim,
                     });
                 }
+                
+                // Advance
+                let total_size = core::mem::size_of::<SemanticBlock>() + (*block).size;
+                let align = (16 - (total_size % 16)) % 16;
+                offset += total_size + align;
             }
+            
+            page_iter = page.next;
         }
         
         best_match
@@ -136,7 +241,7 @@ impl NeuralAllocator {
     
     /// Get count of allocated blocks
     pub fn count(&self) -> usize {
-        self.count
+        self.total_items
     }
 }
 

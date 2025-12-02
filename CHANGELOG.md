@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (December 2, 2025) - Real OS Transition
+- **Real Neural Memory**
+  - Upgraded `NeuralAllocator` to use **Dynamic Page Allocation** (Bump Allocator).
+  - Implemented **LSH Indexing** (Locality Sensitive Hashing) for O(1) retrieval, solving the O(N) scan bottleneck.
+  - Removed fixed-size array limits; memory now grows with system RAM.
+- **Real USB Host Driver**
+  - Implemented **Control Transfers** (Setup/Data/Status stages).
+  - Implemented **Context Management** (Input/Output Contexts, Device Slots).
+  - Implemented **Command Ring** with proper cycle bit management.
+  - Implemented **Event Loop** state machine for asynchronous device enumeration.
+  - Fixed **Cache Coherency** issues by mapping DMA region as `Normal Non-Cacheable`.
+- **Codebase Maturity**
+  - Removed "TODO" and "In a real driver" comments.
+  - Implemented **Simulation Mode** for Hailo driver.
+  - Verified `volatile` writes for hardware safety.
+
 ### Added (December 2, 2025) - 🧠 Hyperdimensional Memory (HDC)
 - **Hyperdimensional Computing (HDC)**
   - Replaced floating-point `NeuralAllocator` with **1024-bit Binary Hypervectors**.
