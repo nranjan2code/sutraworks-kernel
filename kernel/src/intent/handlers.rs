@@ -28,8 +28,10 @@ pub const MAX_HANDLERS: usize = 128;
 /// Result of handling an intent
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HandlerResult {
-    /// Intent was handled successfully
+    /// Intent was handled successfully, continue to next handler (Broadcast)
     Handled,
+    /// Intent was handled, STOP propagation (Consume)
+    StopPropagation,
     /// Intent was not handled (pass to next handler)
     NotHandled,
     /// Intent handling failed with error code
@@ -194,6 +196,7 @@ impl HandlerRegistry {
         self.sort_by_priority();
         
         let target_id = intent.concept_id;
+        let mut any_handled = false;
         
         for i in 0..self.count {
             let entry = &self.handlers[i];
@@ -212,16 +215,22 @@ impl HandlerRegistry {
             
             // Call handler
             match (entry.handler)(intent) {
-                HandlerResult::Handled => return true,
+                HandlerResult::Handled => {
+                    any_handled = true;
+                    // Continue to next handler (Broadcast)
+                },
+                HandlerResult::StopPropagation => {
+                    return true;
+                },
                 HandlerResult::NotHandled => continue,
                 HandlerResult::Error(code) => {
                     crate::kprintln!("[HANDLER] {} error: {}", entry.name, code);
-                    return false;
+                    // Log error but continue broadcast
                 }
             }
         }
         
-        false
+        any_handled
     }
     
     /// Get the number of registered handlers
@@ -257,7 +266,7 @@ mod tests {
     
     fn test_handler_b(_: &Intent) -> HandlerResult {
         unsafe { TEST_COUNTER += 10; }
-        HandlerResult::Handled
+        HandlerResult::StopPropagation
     }
     
     fn pass_through_handler(_: &Intent) -> HandlerResult {
@@ -305,7 +314,7 @@ mod tests {
             None,
         );
         
-        // Higher priority - should run first and handle
+        // Higher priority - should run first and STOP propagation
         registry.register_with_options(
             ConceptID(0x0001),
             test_handler_b,
@@ -317,8 +326,26 @@ mod tests {
         let intent = Intent::new(ConceptID(0x0001));
         registry.dispatch(&intent, |_| true);
         
-        // Only high priority should run (adds 10)
+        // Only high priority should run (adds 10) because it returns StopPropagation
         unsafe { assert_eq!(TEST_COUNTER, 10); }
+    }
+    
+    #[test]
+    fn test_dispatch_broadcast() {
+        let mut registry = HandlerRegistry::new();
+        unsafe { TEST_COUNTER = 0; }
+        
+        // Handler A (adds 1)
+        registry.register(ConceptID(0x0001), test_handler_a, "handler_a");
+        
+        // Handler A again (adds 1) - simulating multiple listeners
+        registry.register(ConceptID(0x0001), test_handler_a, "handler_a_2");
+        
+        let intent = Intent::new(ConceptID(0x0001));
+        registry.dispatch(&intent, |_| true);
+        
+        // Both should run
+        unsafe { assert_eq!(TEST_COUNTER, 2); }
     }
     
     #[test]

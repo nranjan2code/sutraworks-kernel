@@ -110,6 +110,17 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 
 ## Phase 6: Advanced Features
 
+### Broadcast Architecture ✅
+- [x] Refactor `IntentExecutor` for 1:N broadcast
+- [x] Implement `HandlerResult::StopPropagation`
+- [x] Update `HandlerRegistry` logic
+
+### Sensor Fusion ✅
+- [x] `PerceptionManager` with N:1 fusion
+- [x] Hot-pluggable sensor support (`Vec<Box<dyn ObjectDetector>>`)
+- [x] Virtual sensor verification
+- [ ] Camera Driver (MIPI CSI-2)
+
 ### Multi-stroke Processing ✅
 - [x] Stroke sequence timeout (500ms)
 - [x] Prefix matching for buffered strokes

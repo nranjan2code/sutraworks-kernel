@@ -119,13 +119,9 @@ pub extern "C" fn kernel_main() -> ! {
     // Initialize Perception Layer (Adaptive Hardware Support)
     kprintln!("[INIT] Perception Cortex...");
     let perception_mgr = perception::PerceptionManager::new();
-    match perception_mgr.backend_type() {
-        perception::BackendType::HailoHardware => {
-            kprintln!("       Backend: Hailo-8 AI Accelerator (26 TOPS)");
-        },
-        perception::BackendType::CpuFallback => {
-            kprintln!("       Backend: CPU Fallback (No Accelerator Found)");
-        }
+    kprintln!("       Active Sensors:");
+    for sensor in perception_mgr.sensors() {
+        kprintln!("       - {}", sensor.backend_name());
     }
 
     // Initialize HUD

@@ -25,12 +25,17 @@ Bit:       0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17
 
 **Primary Flow (Steno)**:
 ```
-Steno Machine → Stroke (23-bit) → Dictionary Lookup → Intent → Executor
+Steno Machine → Stroke (23-bit) → Dictionary Lookup → Intent → Broadcast (1:N)
 ```
 
 **Secondary Flow (English)**:
 ```
-Keyboard → English Word → Reverse Lookup → Stroke → Intent → Executor
+Keyboard → English Word → Reverse Lookup → Stroke → Intent → Broadcast (1:N)
+```
+
+**Sensor Fusion**:
+```
+Sensors (Camera, Lidar, etc.) ──▶ Perception Manager (Fusion) ──▶ World Model
 ```
 
 No tokenization. No parsing. No embeddings. Pure stroke→intent mapping.

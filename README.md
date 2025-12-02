@@ -100,6 +100,8 @@ Users can type **natural English commands** like "show me system status" or "can
 
 ## Architecture
 
+## Architecture
+
 ### The Stroke
 
 Every steno chord produces a 23-bit pattern representing which keys were pressed:
@@ -130,14 +132,24 @@ Strokes map to **concepts**, not text:
 | 3 | `TPHU/TPAOEU/-L` | NEW_FILE | Create new file |
 | 3 | `KP-U/EUPB/TPO` | CPU_INFO | Show CPU info |
 
-### The Intent
+### The Broadcast (1:N)
 
-```rust
-pub struct Intent {
-    pub concept_id: ConceptID,  // What to do
-    pub confidence: f32,         // How certain
-    pub data: IntentData,        // Parameters
-}
+Intents are **broadcast** to all interested listeners, not just dispatched to a single handler. This mimics the brain's motor control system.
+
+```
+Intent ("GRASP") ────┬────▶ Motor Cortex (Move Arm)
+                     ├────▶ Visual Cortex (Track Hand)
+                     └────▶ Proprioception (Expect Weight)
+```
+
+### Sensor Fusion (N:1)
+
+The **Perception Layer** fuses data from all active sensors into a single "World Model".
+
+```
+Camera (Hailo-8) ──┐
+Lidar (Virtual)  ──┼──▶ Perception Manager ──▶ World Model
+Touch Sensors    ──┘
 ```
 
 ### The Flow
@@ -148,7 +160,7 @@ let stroke = Stroke::from_raw(0x42);
 
 // The engine processes it
 if let Some(intent) = steno::process_stroke(stroke) {
-    // The executor acts on it
+    // The executor broadcasts it
     intent::execute(&intent);
 }
 ```

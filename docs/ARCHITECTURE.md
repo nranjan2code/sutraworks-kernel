@@ -154,310 +154,75 @@ pub struct ConceptID(pub u64);
 
 ## Intent Execution
 
-### Intent Structure
+### The Broadcast Model (1:N)
+
+The Intent Kernel uses a **Broadcast Architecture** inspired by biological motor control. An intent is not a command sent to a single function; it is a semantic signal broadcast to the entire system.
 
 ```rust
 pub struct Intent {
-    pub concept: ConceptID,
+    pub concept_id: ConceptID,
     pub data: IntentData,
     pub confidence: u8,
-    pub name: &'static str, // Human-readable name (e.g., "SAVE")
-}
-
-pub enum IntentData {
-    None,
-    Number(u64),
-    Text(&'static str),
-    Stroke(Stroke),
 }
 ```
 
+**Listeners:**
+- **Executor**: Performs the primary action (e.g., "Open File").
+- **UI Layer**: Updates the display (e.g., "Show 'Opening File'").
+- **Logger**: Records the intent for history.
+- **Predictive Engine**: Anticipates the next likely intent.
+
 ### Executor
 
-The `IntentExecutor` handles intents with capability checks and user-defined handlers:
+The `IntentExecutor` manages this broadcast:
 
 ```rust
 pub struct IntentExecutor {
-    display_cap: Option<Capability>,
-    memory_cap: Option<Capability>,
-    system_cap: Option<Capability>,
-    compute_cap: Option<Capability>,
-    handlers: HandlerRegistry,  // User-defined handlers
-    queue: IntentQueue,          // Deferred execution
+    handlers: HandlerRegistry,  // Supports multiple handlers per concept
+    queue: IntentQueue,
 }
 
 impl IntentExecutor {
     pub fn execute(&self, intent: &Intent) {
-        // Try user handlers first
-        if self.handlers.dispatch(intent, has_cap) {
-            return;
-        }
-        // Fall back to built-in handlers
-        // ...
-    }
-    
-    pub fn register_handler(&mut self, concept_id: ConceptID, handler: HandlerFn, name: &'static str);
-    pub fn queue_intent(&mut self, intent: Intent, timestamp: u64);
-}
-```
-
----
-
-## Steno Engine
-
-### State Machine
-
-```rust
-pub struct StenoEngine {
-    dictionary: StenoDictionary,
-    stroke_buffer: StrokeSequence,  // Buffers up to 8 strokes
-    buffer_start_time: u64,          // For 500ms timeout
-    history: StrokeHistory,
-    state: EngineState,
-    stats: EngineStats,
-    timestamp: u64,
-}
-
-pub enum EngineState {
-    Ready,
-    Pending,       // Building multi-stroke sequence
-    Error,
-}
-```
-
-### Stroke History
-
-64-entry ring buffer for undo/redo and context:
-
-```rust
-pub struct StrokeHistory {
-    entries: [HistoryEntry; 64],
-    head: usize,
-    count: usize,
-    undo_cursor: usize,
-}
-
-impl StrokeHistory {
-    pub fn push(&mut self, stroke: Stroke, intent: Option<&Intent>, timestamp: u64);
-    pub fn undo(&mut self) -> Option<&HistoryEntry>;
-    pub fn redo(&mut self) -> Option<&HistoryEntry>;
-}
-```
-
-### Processing Flow
-
-1. **Receive Stroke**: From USB HID or test input
-2. **Accumulate**: Add to pending sequence
-3. **Lookup**: Check dictionary for match
-4. **Resolve**: If match found, emit Intent; otherwise continue accumulating
-5. **Timeout**: If no match after timeout, emit partial or error
-
-### Traits
-
-```rust
-pub trait StrokeProducer {
-    fn next_stroke(&mut self) -> Option<Stroke>;
-}
-
-pub trait IntentConsumer {
-    fn consume(&mut self, intent: Intent);
-}
-```
-
----
-
-## User-Defined Handlers
-
-### Handler Registry
-
-128 handlers with priority-based dispatch:
-
-```rust
-pub struct HandlerRegistry {
-    handlers: [HandlerEntry; 128],
-    count: usize,
-}
-
-pub struct HandlerEntry {
-    concept_id: ConceptID,       // 0 = wildcard
-    required_cap: Option<CapabilityType>,
-    handler: HandlerFn,
-    priority: u8,                // Higher runs first
-    name: &'static str,
-}
-
-pub type HandlerFn = fn(&Intent) -> HandlerResult;
-```
-
-### Handler Results
-
-```rust
-pub enum HandlerResult {
-    Handled,     // Intent was processed
-    NotHandled,  // Pass to next handler
-    Error(u32),  // Handler failed
-}
-```
-
-### Registration Example
-
-```rust
-intent::register_handler(
-    concepts::STATUS,
-    my_status_handler,
-    "custom_status"
-);
-```
-
----
-
-## Intent Queue
-
-### Priority Queue
-
-32-entry queue for deferred intent execution:
-
-```rust
-pub struct IntentQueue {
-    entries: [QueuedIntent; 32],
-    count: usize,
-}
-
-pub enum Priority {
-    Low = 0,
-    Normal = 1,
-    High = 2,
-    Critical = 3,
-}
-```
-
-### Deadline Support
-
-Intents can have deadlines; expired intents are automatically pruned:
-
-```rust
-pub struct QueuedIntent {
-    intent: Intent,
-    priority: Priority,
-    sequence: u64,     // For FIFO within priority
-    queued_at: u64,
-    deadline: u64,     // 0 = no deadline
-}
-```
-
----
-
-## Capability Security
-
-### Model
-
-Every operation requires a capability token:
-
-```rust
-pub enum CapabilityType {
-    System,    // System operations (shutdown, etc.)
-    Memory,    // Memory allocation
-    Device,    // Hardware access
-    Network,   // Network operations
-}
-
-pub struct Capability {
-    cap_type: CapabilityType,
-    permissions: u32,
-}
-```
-
-### Checking
-
-```rust
-impl IntentExecutor {
-    fn handle_shutdown(&self) -> Result<(), &'static str> {
-        if !self.capabilities.has(CapabilityType::System) {
-            return Err("Permission denied: requires System capability");
-        }
-        // ... perform shutdown
-        Ok(())
+        // Broadcast to ALL registered handlers for this concept
+        // Handlers can choose to "Consume" (StopPropagation) or "Observe" (Continue)
+        self.handlers.dispatch(intent);
     }
 }
 ```
 
 ---
 
-## Memory Architecture
+## Perception Layer
 
-### Neural Memory
+The Perception Layer bridges the gap between raw sensor data and semantic intent using **Sensor Fusion**.
 
-Memory regions are associated with ConceptIDs:
+### Sensor Fusion (N:1)
 
-```rust
-pub struct NeuralRegion {
-    concept: ConceptID,
-    base: usize,
-    size: usize,
-}
-
-impl NeuralAllocator {
-    pub fn alloc(&mut self, concept: ConceptID, size: usize) -> Option<*mut u8>;
-    pub fn retrieve(&self, concept: ConceptID) -> Option<&NeuralRegion>;
-}
-```
-
-### Allocation
-
-Memory is allocated based on semantic concepts, not raw addresses:
+Instead of relying on a single sensor, the kernel aggregates data from all active sensors into a unified "World Model".
 
 ```rust
-// Allocate memory for the "status" concept
-let ptr = allocator.alloc(concepts::STATUS, 4096)?;
-```
-
----
-
-## Scheduler
-
-### Round-Robin
-
-Simple round-robin scheduling without priority:
-
-```rust
-pub struct Scheduler {
-    agents: Vec<Agent>,
-    current: usize,
+pub struct PerceptionManager {
+    sensors: Vec<Box<dyn ObjectDetector>>,
 }
 
-impl Scheduler {
-    pub fn spawn_simple(&mut self, name: &'static str, entry: fn());
-    pub fn tick(&mut self);
-}
-```
-
-### Async Support
-
-The kernel uses async/await for I/O:
-
-```rust
-pub async fn steno_loop() {
-    loop {
-        // Wait for stroke from hardware
-        let stroke = steno::wait_stroke().await;
-        
-        // Process through dictionary
-        if let Some(intent) = steno::process_stroke(stroke) {
-            intent::execute(&intent);
+impl PerceptionManager {
+    pub fn detect_objects(&self) -> Vec<DetectedObject> {
+        // Fuse data from Camera, Lidar, Radar, etc.
+        let mut world_model = Vec::new();
+        for sensor in &self.sensors {
+            let data = sensor.detect();
+            world_model.merge(data);
         }
+        world_model
     }
 }
 ```
 
----
-Perception Layer
-
-The Perception Layer bridges the gap between raw sensor data and semantic intent.
-
-### Perception Manager
-Automatically detects available hardware acceleration:
-- **Hailo-8**: Uses the NPU for high-speed object detection (26 TOPS).
-- **CPU Fallback**: Uses `ColorBlobDetector` (optimized software routine) to detect objects by color when no NPU is present.
+### Supported Sensors
+- **Hailo-8 NPU**: High-speed object detection (26 TOPS).
+- **CPU Fallback**: `ColorBlobDetector` for basic visual tasks.
+- **Virtual Sensors**: For testing and simulation.
 
 ### Heads-Up Display (HUD)
 A visual interface that renders directly to the framebuffer (no window manager).

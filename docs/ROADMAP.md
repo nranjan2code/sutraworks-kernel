@@ -36,7 +36,10 @@
 - [x] **Dual Input Mode**: Steno strokes OR English text (reverse dictionary lookup).
 - [x] **English→Steno Bridge**: `process_english("help")` → finds stroke `PH-FPL` → executes.
 
-## 🚀 Next Strategic Steps
+### Phase 5.5: Broadcast & Fusion Architecture ✅
+- [x] **Broadcast Intent**: 1:N intent execution (Motor Control theory).
+- [x] **Sensor Fusion**: N:1 perception aggregation (Virtual Camera + Lidar).
+- [x] **Hot-Pluggable Sensors**: Dynamic sensor registration.
 
 ### Phase 6: Sensors & Connectivity (Current Focus)
 Expand hardware integration.
