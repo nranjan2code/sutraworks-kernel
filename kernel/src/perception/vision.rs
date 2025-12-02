@@ -118,3 +118,71 @@ impl ObjectDetector for ColorBlobDetector {
         Ok(objects)
     }
 }
+/// Sobel Edge Detector
+pub struct EdgeDetector;
+
+impl ObjectDetector for EdgeDetector {
+    fn detect(&self, image_data: &[u8], width: u32, height: u32) -> Result<heapless::Vec<DetectedObject, 16>, &'static str> {
+        let mut objects = heapless::Vec::new();
+        
+        // Simple Sobel Operator (Grayscale)
+        // We assume image_data is RGB888 (3 bytes per pixel)
+        // We'll scan the center of the image to avoid boundary checks for this prototype
+        
+        let mut max_grad = 0;
+        let mut edge_pixels = 0;
+        let mut center_x = 0;
+        let mut center_y = 0;
+        
+        for y in 1..height-1 {
+            for x in 1..width-1 {
+                let idx = ((y * width + x) * 3) as usize;
+                
+                // Convert to grayscale: 0.299R + 0.587G + 0.114B
+                // Simplified: (R+G+B)/3
+                let gray = |x, y| {
+                    let i = ((y * width + x) * 3) as usize;
+                    (image_data[i] as i32 + image_data[i+1] as i32 + image_data[i+2] as i32) / 3
+                };
+                
+                // Sobel Kernels
+                // Gx: -1 0 1
+                //     -2 0 2
+                //     -1 0 1
+                let gx = -gray(x-1, y-1) + gray(x+1, y-1)
+                         -2*gray(x-1, y) + 2*gray(x+1, y)
+                         -gray(x-1, y+1) + gray(x+1, y+1);
+                         
+                // Gy: -1 -2 -1
+                //      0  0  0
+                //      1  2  1
+                let gy = -gray(x-1, y-1) - 2*gray(x, y-1) - gray(x+1, y-1)
+                         +gray(x-1, y+1) + 2*gray(x, y+1) + gray(x+1, y+1);
+                         
+                let magnitude = (gx.abs() + gy.abs()) as u32; // Approx magnitude
+                
+                if magnitude > 100 { // Threshold
+                    edge_pixels += 1;
+                    center_x += x;
+                    center_y += y;
+                    if magnitude > max_grad {
+                        max_grad = magnitude;
+                    }
+                }
+            }
+        }
+        
+        if edge_pixels > 100 {
+            let _ = objects.push(DetectedObject {
+                class_id: 2, // "Edge/Shape"
+                confidence: (max_grad as f32 / 255.0).min(1.0),
+                x: center_x / edge_pixels,
+                y: center_y / edge_pixels,
+                width: 0, // Unknown
+                height: 0, // Unknown
+            });
+        }
+        
+        Ok(objects)
+    }
+}

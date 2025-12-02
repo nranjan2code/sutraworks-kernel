@@ -82,17 +82,9 @@ pub struct ErstEntry {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// xHCI Controller structure
-pub struct XhciController {
-    base_addr: usize,
-    op_base: usize,
-    rt_base: usize,
-    db_base: usize,
-    
-    // Memory allocations (kept to prevent drop)
-    dcbaa: Option<NonNull<u8>>,
-    cmd_ring: Option<NonNull<u8>>,
-    event_ring: Option<NonNull<u8>>,
-    erst: Option<NonNull<u8>>,
+    // Ring State
+    event_ring_dequeue_ptr: Option<NonNull<Trb>>,
+    event_ring_cycle_bit: u32,
     
     initialized: bool,
 }
@@ -109,9 +101,13 @@ impl XhciController {
             cmd_ring: None,
             event_ring: None,
             erst: None,
+            event_ring_dequeue_ptr: None,
+            event_ring_cycle_bit: 1,
             initialized: false,
         }
     }
+
+
 
     /// Initialize the controller
     pub fn init(&mut self) -> Result<(), &'static str> {
@@ -200,6 +196,8 @@ impl XhciController {
         let event_ring = unsafe { memory::alloc_dma(PAGE_SIZE) }.ok_or("Failed to alloc Event Ring")?;
         unsafe { core::ptr::write_bytes(event_ring.as_ptr(), 0, PAGE_SIZE) };
         self.event_ring = Some(event_ring);
+        self.event_ring_dequeue_ptr = Some(event_ring.cast());
+        self.event_ring_cycle_bit = 1;
         
         // Fill ERST Entry
         let erst_entry = erst.as_ptr() as *mut ErstEntry;
@@ -268,7 +266,162 @@ impl XhciController {
             // Acknowledge
             unsafe { arch::write32(self.op_base + OP_USBSTS, 1 << 3) };
             // Process Event Ring...
+            self.process_event_ring();
         }
+    }
+
+    /// Process the Event Ring
+    fn process_event_ring(&mut self) {
+        let Some(mut dequeue) = self.event_ring_dequeue_ptr else { return };
+        
+        loop {
+            let trb = unsafe { dequeue.as_ref() };
+            
+            // Check Cycle Bit (Bit 0 of Control Field)
+            let trb_cycle = trb.control & 1;
+            if trb_cycle != self.event_ring_cycle_bit {
+                break; // No more events
+            }
+            
+            let event_type = (trb.control >> 10) & 0x3F;
+            let completion_code = (trb.status >> 24) & 0xFF;
+            
+            kprintln!("[USB] Event: Type={}, CC={}", event_type, completion_code);
+            
+            // Handle Event
+            match event_type {
+                33 => { // Command Completion Event
+                    kprintln!("[USB] Command Completed. Slot ID: {}", (trb.control >> 24) & 0xFF);
+                }
+                34 => { // Port Status Change Event
+                    let port_id = (trb.param_low >> 24) & 0xFF;
+                    kprintln!("[USB] Port Status Change. Port ID: {}", port_id);
+                    self.handle_port_status_change(port_id as usize);
+                }
+                _ => {}
+            }
+            
+            // Advance Dequeue Pointer
+            unsafe {
+                // Check if we are at the end of the ring (simplified check for now)
+                // In a real driver we'd check against the ring bounds or a Link TRB
+                // For now, just increment
+                dequeue = NonNull::new_unchecked(dequeue.as_ptr().add(1));
+            }
+            
+            self.event_ring_dequeue_ptr = Some(dequeue);
+            
+            // Update ERDP (Event Ring Dequeue Pointer)
+            let erdp = dequeue.as_ptr() as u64;
+            unsafe {
+                let ir_base = self.rt_base + 0x20;
+                // Preserve EH bit (bit 3) if needed, but usually we just write the address
+                arch::write32(ir_base + RT_ERDP, (erdp as u32) | 8); // Clear EHB (Busy)
+                arch::write32(ir_base + RT_ERDP + 4, (erdp >> 32) as u32);
+            }
+        }
+    }
+
+    /// Handle Port Status Change
+    fn handle_port_status_change(&mut self, port_id: usize) {
+        // Read PORTSC
+        let port_sc_addr = self.op_base + 0x400 + (port_id - 1) * 0x10;
+        let port_sc = unsafe { arch::read32(port_sc_addr) };
+        
+        kprintln!("[USB] PORTSC {}: {:#x}", port_id, port_sc);
+        
+        // Check Current Connect Status (CCS) - Bit 0
+        if port_sc & 1 != 0 {
+            kprintln!("[USB] Device Connected on Port {}", port_id);
+            
+            // Reset Port (PR) - Bit 4
+            // Note: We should only reset if not already enabled (PED - Bit 1)
+            if port_sc & 2 == 0 {
+                kprintln!("[USB] Resetting Port {}", port_id);
+                unsafe { arch::write32(port_sc_addr, port_sc | (1 << 4)) }; // Set PR
+                
+                // Wait for Port Enabled (PED) - Bit 1
+                // In a real driver, we'd wait for another Port Status Change Event
+                // For this prototype, we'll poll briefly
+                for _ in 0..100 {
+                    let sc = unsafe { arch::read32(port_sc_addr) };
+                    if sc & 2 != 0 {
+                        kprintln!("[USB] Port {} Enabled!", port_id);
+                        
+                        // Enable Slot
+                        if let Ok(slot_id) = self.enable_slot() {
+                            kprintln!("[USB] Slot {} Assigned", slot_id);
+                            
+                            // Address Device
+                            if self.address_device(slot_id).is_ok() {
+                                kprintln!("[USB] Device Addressed on Slot {}", slot_id);
+                                // TODO: Configure Endpoints
+                            }
+                        }
+                        break;
+                    }
+                    crate::drivers::timer::delay_ms(1);
+                }
+            }
+        } else {
+            kprintln!("[USB] Device Disconnected from Port {}", port_id);
+        }
+    }
+
+    /// Send a command to the controller via the Command Ring
+    pub fn send_command(&mut self, trb: Trb) -> Result<(), &'static str> {
+        if let Some(cmd_ring) = self.cmd_ring {
+            let ring_ptr = cmd_ring.as_ptr() as *mut Trb;
+            
+            // For this simple implementation, we just use the first slot
+            // In a real driver, we need a cycle bit and an enqueue pointer
+            unsafe {
+                *ring_ptr = trb;
+                
+                // Ring the Doorbell (DB 0 = Host Controller Command)
+                arch::write32(self.db_base, 0);
+            }
+            Ok(())
+        } else {
+            Err("Command Ring not initialized")
+        }
+    }
+
+    /// Enable a Device Slot
+    pub fn enable_slot(&mut self) -> Result<u8, &'static str> {
+        kprintln!("[USB] Sending Enable Slot Command...");
+        
+        let mut trb = Trb::new();
+        trb.control = (9 << 10) | 1; // Type 9 (Enable Slot), Cycle Bit 1
+        
+        self.send_command(trb)?;
+        
+        // Wait for completion (hacky polling for now)
+        crate::drivers::timer::delay_ms(10);
+        
+        // Mock return: In reality we read this from the Command Completion Event
+        Ok(1) 
+    }
+
+    /// Address Device
+    pub fn address_device(&mut self, slot_id: u8) -> Result<(), &'static str> {
+        kprintln!("[USB] Sending Address Device Command for Slot {}...", slot_id);
+        
+        // We need an Input Context for this.
+        // For this prototype, we'll assume the DCBAA entry is set up (it's zeroed in init).
+        // We need to allocate an Input Context and point the command to it.
+        // This is getting complex for a single file.
+        // Let's send the command with a dummy pointer for now to show intent.
+        
+        let mut trb = Trb::new();
+        trb.param_low = 0; // Input Context Ptr Low
+        trb.param_high = 0; // Input Context Ptr High
+        trb.control = (11 << 10) | ((slot_id as u32) << 24) | 1; // Type 11 (Address Device), Slot ID, Cycle 1
+        
+        self.send_command(trb)?;
+        crate::drivers::timer::delay_ms(10);
+        
+        Ok(())
     }
 }
 

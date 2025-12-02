@@ -51,6 +51,7 @@ impl PerceptionManager {
         
         // Always add CPU Fallback (Sensor Fusion!)
         sensors.push(Box::new(vision::ColorBlobDetector::new_red_detector()));
+        sensors.push(Box::new(vision::EdgeDetector));
         
         Self {
             sensors,

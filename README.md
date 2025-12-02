@@ -277,6 +277,17 @@ Interrupt-safe concurrency primitives and removal of unsafe global state.
 - **Safe Interrupts**: Thread-safe handler registration.
 - **Overflow Protection**: Hardened filesystem parsers.
 
+### ✅ Real Neural Memory
+True vector-based semantic memory system:
+- **Vector Embeddings**: 64-dimensional semantic vectors stored with every allocation.
+- **Cosine Similarity**: Real-time fuzzy retrieval based on meaning (`retrieve_nearest`).
+- **Associative Recall**: Find related concepts (e.g., "Kitten" -> "CAT").
+
+### ✅ Real Perception
+Computer Vision running on the CPU:
+- **Edge Detection**: Sobel Operator implementation for shape analysis.
+- **Sensor Fusion**: Combines data from multiple detectors (Color Blob + Edge).
+
 ### ✅ Framebuffer Console
 Text output on HDMI display:
 

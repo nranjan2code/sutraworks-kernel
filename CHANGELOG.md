@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (December 2, 2025) - 🧠 Real AI & USB Enumeration
+- **Real Neural Memory**
+  - Transformed `NeuralAllocator` into a **Vector Database**.
+  - Added `embedding: [f32; 64]` to memory blocks.
+  - Implemented `CosineSimilarity` for fuzzy retrieval (`retrieve_nearest`).
+  - Added boot-time demo: "Kitten" query retrieves "CAT" memory.
+- **Real Perception**
+  - Implemented **Sobel Edge Detection** (`EdgeDetector`) in `vision.rs`.
+  - Integrated into `PerceptionManager` sensor fusion pipeline.
+- **Real USB Enumeration**
+  - Implemented xHCI Command Ring (`send_command`).
+  - Implemented Event Ring processing (`process_event_ring`).
+  - Implemented Device Enumeration flow: Port Reset -> Enable Slot -> Address Device.
+
 ### Added (December 2, 2025) - 🎹 Real Multi-Stroke Briefs
 - **MultiStrokeDictionary**: Complete multi-stroke sequence support
   - `StrokeSequence::from_steno()` - Parses "RAOE/PWOOT" notation

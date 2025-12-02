@@ -116,6 +116,37 @@ pub extern "C" fn kernel_main() -> ! {
     steno::init();
     kprintln!("       23 keys. 150 years of compression. Now in silicon.");
 
+    // Demo Neural Memory
+    kprintln!("[INIT] Neural Memory Demo...");
+    unsafe {
+        use kernel::memory::neural::NEURAL_ALLOCATOR;
+        use intent::ConceptID;
+        let mut allocator = NEURAL_ALLOCATOR.lock();
+        
+        // Create embeddings (simplified for demo)
+        let mut vec_cat = [0.0; 64]; vec_cat[0] = 1.0; vec_cat[1] = 0.5;
+        let mut vec_dog = [0.0; 64]; vec_dog[0] = 1.0; vec_dog[1] = 0.4; // Close to cat
+        let mut vec_car = [0.0; 64]; vec_car[10] = 1.0; // Far from cat
+        
+        // Allocate with semantic tags
+        allocator.alloc(1024, ConceptID(0xCA7), vec_cat); // CAT
+        allocator.alloc(1024, ConceptID(0xD06), vec_dog); // DOG
+        allocator.alloc(1024, ConceptID(0xCA12), vec_car); // CAR
+        
+        kprintln!("       Allocated: CAT, DOG, CAR");
+        
+        // Query
+        kprintln!("       Query: 'Kitten' (Vector similar to CAT)");
+        let mut vec_kitten = [0.0; 64]; vec_kitten[0] = 0.9; vec_kitten[1] = 0.6;
+        
+        if let Some(ptr) = allocator.retrieve_nearest(&vec_kitten) {
+            kprintln!("       Result: Found Concept {:#x} (Sim: {:.4})", ptr.id.0, ptr.similarity);
+            if ptr.id.0 == 0xCA7 {
+                kprintln!("       SUCCESS: Retrieved CAT!");
+            }
+        }
+    }
+
     // Initialize Perception Layer (Adaptive Hardware Support)
     kprintln!("[INIT] Perception Cortex...");
     let perception_mgr = perception::PerceptionManager::new();

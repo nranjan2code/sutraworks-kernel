@@ -221,25 +221,39 @@ impl PerceptionManager {
 
 ### Supported Sensors
 - **Hailo-8 NPU**: High-speed object detection (26 TOPS).
-- **CPU Fallback**: `ColorBlobDetector` for basic visual tasks.
+- **CPU Vision**:
+  - `EdgeDetector`: Sobel operator for edge/shape detection.
+  - `ColorBlobDetector`: Color-based object tracking.
 - **Virtual Sensors**: For testing and simulation.
 
-### Heads-Up Display (HUD)
-A visual interface that renders directly to the framebuffer (no window manager).
-- **Steno Tape**: Visualizes the raw stroke stream (RTFCRE).
-- **Intent Stream**: Visualizes recognized intents.
-- **Status Bar**: Shows system health and statistics.
+---
+
+## Neural Memory System
+
+The kernel implements a **Vector Database** directly in the memory allocator.
+
+### Semantic Allocator
+Memory blocks are tagged with both a `ConceptID` and a **Semantic Vector** (embedding).
 
 ```rust
-pub struct Hud {
-    tape_log: TextLog<20>,
-    intent_log: TextLog<20>,
+pub struct SemanticBlock {
+    pub concept_id: ConceptID,
+    pub embedding: [f32; 64], // 64-d vector
+    // ...
 }
+```
+
+### Fuzzy Retrieval
+Memory can be retrieved not just by address or ID, but by **meaning** using Cosine Similarity.
+
+```rust
+// Find memory semantically close to "Kitten" vector
+let ptr = allocator.retrieve_nearest(&vec_kitten);
+// Returns pointer to "CAT" block
 ```
 
 ---
 
-## 
 ## Hardware Drivers
 
 ### UART
@@ -455,7 +469,6 @@ For complete documentation, see [ENGLISH_LAYER.md](ENGLISH_LAYER.md).
 These are explicitly NOT part of the architecture:
 
 - ❌ Deep NLP or LLM-based parsing (English layer uses phrase matching + keyword extraction)
-- ❌ Embedding vectors or similarity search (direct lookup only)
 - ❌ Traditional shell/terminal
 - ❌ POSIX compatibility
 - ❌ Backward compatibility with word-based systems
