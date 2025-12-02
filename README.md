@@ -281,7 +281,8 @@ Interrupt-safe concurrency primitives and removal of unsafe global state.
 True "Vector Symbolic Architecture" (VSA) memory system:
 - **1024-bit Binary Hypervectors**: Replaced inefficient floats with holographic bit patterns.
 - **Dynamic Page Allocation**: Memory grows indefinitely with system RAM (Bump Allocator).
-- **LSH Indexing**: Locality Sensitive Hashing for fast O(1) retrieval (no linear scans).
+- **B-Tree Indexing**: O(log N) retrieval for scalable performance (replaced linear scan).
+- **LSH Indexing**: Locality Sensitive Hashing for fast fuzzy retrieval.
 - **Cognitive Algebra**: `Bind`, `Bundle`, and `Permute` operations for semantic reasoning.
 - **Robustness**: Information is distributed across 1024 bits; resilient to noise and bit flips.
 
@@ -296,6 +297,7 @@ Full xHCI Host Controller Driver:
 Computer Vision running on the CPU:
 - **Edge Detection**: Sobel Operator implementation for shape analysis.
 - **Sensor Fusion**: Combines data from multiple detectors (Color Blob + Edge).
+- **Visual Intents**: Automatically generates 1024-bit Hypervectors for detected objects and stores them in Neural Memory. The system "remembers" what it sees.
 
 ### ✅ Framebuffer Console
 Text output on HDMI display:
@@ -361,7 +363,7 @@ intent-kernel/
 | **4. Perception** | ✅ | Hailo-8 (Simulation Mode), Heads-Up Display (HUD) |
 | **5. Input/Output** | ✅ | **Real xHCI Driver** (Command/Event Rings), HID Boot Protocol, Framebuffer Console |
 | **5.5. English Layer** | ✅ ✨ | **Natural Language I/O (200+ phrases, conversation context, templates)** |
-| **6. Sensors** | 🔄 | Camera Driver (In Progress) |
+| **6. Sensors** | ✅ | **Real Hailo-8 Driver Structure** (PCIe, DMA, Command Rings) |
 | **7. Connectivity** | ⏳ | Networking, Multi-core |
 
 ### Test Coverage

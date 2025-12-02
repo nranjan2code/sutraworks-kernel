@@ -13,10 +13,14 @@ pub mod hud;
 
 use crate::drivers::hailo::HailoDriver;
 use vision::{ObjectDetector, DetectedObject};
+use crate::kernel::memory::neural::NEURAL_ALLOCATOR;
+use crate::intent::ConceptID;
+
+use crate::arch::SpinLock;
 
 /// Wrapper to make HailoDriver implement ObjectDetector
 struct HailoSensor {
-    driver: HailoDriver,
+    driver: SpinLock<HailoDriver>,
 }
 
 impl ObjectDetector for HailoSensor {
@@ -27,7 +31,8 @@ impl ObjectDetector for HailoSensor {
     fn detect(&self, _image_data: &[u8], _width: u32, _height: u32) -> Result<heapless::Vec<DetectedObject, 16>, &'static str> {
         // In a real implementation, we would send the image to the Hailo device
         // via self.driver.send_command(...)
-        self.driver.send_command(0x03, &[])?; // 0x03 = INFERENCE
+        let mut output = [0u8; 1024]; // Dummy output buffer
+        self.driver.lock().send_command(0x03, &[], &mut output)?; // 0x03 = INFERENCE
         Err("Hailo inference not implemented")
     }
 }
@@ -45,8 +50,8 @@ impl PerceptionManager {
         
         // Probe Hailo
         let mut hailo = HailoDriver::new();
-        if hailo.probe() {
-            sensors.push(Box::new(HailoSensor { driver: hailo }));
+        if hailo.init().is_ok() {
+            sensors.push(Box::new(HailoSensor { driver: SpinLock::new(hailo) }));
         }
         
         // Always add CPU Fallback (Sensor Fusion!)
@@ -87,6 +92,35 @@ impl PerceptionManager {
              Ok(fused_results)
         }
     }
+
+    /// Perceive the environment and store intents in Neural Memory.
+    /// This bridges the gap between "Seeing" (Vision) and "Thinking" (Memory).
+    pub fn perceive_and_store(&self, image_data: &[u8], width: u32, height: u32) -> Result<usize, &'static str> {
+        let objects = self.detect_objects(image_data, width, height)?;
+        let mut count = 0;
+        
+        let mut allocator = NEURAL_ALLOCATOR.lock();
+        
+        for obj in objects {
+            // Map Class ID to Concept ID (Simple mapping for now)
+            // e.g., Class 1 (Red Blob) -> ConceptID(0xCAFE_0001)
+            let concept_id = ConceptID(0xCAFE_0000 | obj.class_id as u64);
+            
+            // Store in Neural Memory
+            // We store the object metadata as the "data" payload.
+            // The key is the Hypervector.
+            unsafe {
+                allocator.alloc(
+                    core::mem::size_of::<DetectedObject>(), 
+                    concept_id, 
+                    obj.hypervector.data
+                );
+            }
+            count += 1;
+        }
+        
+        Ok(count)
+    }
 }
 
 #[cfg(test)]
@@ -115,7 +149,12 @@ mod tests {
         let mut mgr = PerceptionManager { sensors: Vec::new() };
         
         // Sensor 1: Camera (Virtual)
-        let cam_obj = DetectedObject { class_id: 1, confidence: 0.9, x: 0.5, y: 0.5, width: 0.1, height: 0.1 };
+        let cam_obj = DetectedObject { 
+            class_id: 1, 
+            confidence: 0.9, 
+            x: 0.5, y: 0.5, width: 0.1, height: 0.1,
+            hypervector: crate::perception::vision::VisualHypervector { data: [1; 16] } 
+        };
         let mut cam_objs = Vec::new();
         cam_objs.push(cam_obj);
         
@@ -125,7 +164,12 @@ mod tests {
         }));
         
         // Sensor 2: Lidar (Virtual)
-        let lidar_obj = DetectedObject { class_id: 2, confidence: 0.8, x: 0.2, y: 0.2, width: 0.1, height: 0.1 };
+        let lidar_obj = DetectedObject { 
+            class_id: 2, 
+            confidence: 0.8, 
+            x: 0.2, y: 0.2, width: 0.1, height: 0.1,
+            hypervector: crate::perception::vision::VisualHypervector { data: [2; 16] }
+        };
         let mut lidar_objs = Vec::new();
         lidar_objs.push(lidar_obj);
         

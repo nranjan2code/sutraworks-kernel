@@ -220,10 +220,11 @@ impl PerceptionManager {
 ```
 
 ### Supported Sensors
-- **Hailo-8 NPU**: High-speed object detection (26 TOPS).
+- **Hailo-8 NPU**: Real PCIe Driver Structure (Command Rings, DMA).
 - **CPU Vision**:
   - `EdgeDetector`: Sobel operator for edge/shape detection.
   - `ColorBlobDetector`: Color-based object tracking.
+  - **Visual Intents**: Generates 1024-bit Hypervectors for detected objects.
 - **Virtual Sensors**: For testing and simulation.
 
 ---
@@ -243,8 +244,11 @@ impl PerceptionManager {
  }
  ```
  
- ### Hamming Similarity
- Retrieval is based on **Hamming Distance** (number of differing bits), which is calculated using extremely fast bitwise operations (`XOR` + `PopCount`).
+ ### Hamming Similarity & Indexing
+ Retrieval is based on **Hamming Distance** (number of differing bits).
+ 
+ - **B-Tree Index**: O(log N) lookup for exact/near matches.
+ - **LSH**: Locality Sensitive Hashing for fuzzy retrieval.
  
  ```rust
  // Sim(A, B) = 1.0 - (HammingDist(A, B) / 1024)

@@ -12,6 +12,7 @@ pub struct DetectedObject {
     pub y: f32,
     pub width: f32,
     pub height: f32,
+    pub hypervector: VisualHypervector,
 }
 
 /// Represents a semantic hypervector of an image (1024-bit).
@@ -156,6 +157,16 @@ impl ObjectDetector for ColorBlobDetector {
             let center_y = min_y as f32 / height as f32 + obj_height / 2.0;
             let avg_confidence = total_confidence / count as f32;
 
+            // Generate Semantic Hypervector
+            // Features: [x, y, width, height, r, g, b]
+            let features = [
+                center_x, center_y, obj_width, obj_height,
+                self.target_r as f32 / 255.0,
+                self.target_g as f32 / 255.0,
+                self.target_b as f32 / 255.0
+            ];
+            let hv = RandomProjection::project(&features);
+
             let _ = objects.push(DetectedObject {
                 class_id: 1, // "Target Color"
                 confidence: avg_confidence,
@@ -163,6 +174,7 @@ impl ObjectDetector for ColorBlobDetector {
                 y: center_y,
                 width: obj_width,
                 height: obj_height,
+                hypervector: hv,
             });
         }
 
@@ -235,6 +247,7 @@ impl ObjectDetector for EdgeDetector {
                 y: (center_y as f32) / (edge_pixels as f32),
                 width: 0.0, // Unknown
                 height: 0.0, // Unknown
+                hypervector: VisualHypervector { data: [0; 16] }, // Placeholder
             });
         }
         

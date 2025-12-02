@@ -66,7 +66,9 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 ### Memory Integration
 - [x] ConceptID-based memory allocation
 - [x] HDC Memory (Hypervectors)
-- [x] **LSH Indexing** (O(1) Retrieval)
+- [x] HDC Memory (Hypervectors)
+- [x] **B-Tree Indexing** (O(log N) Retrieval)
+- [x] Stroke history buffer
 - [x] Stroke history buffer
 - [ ] Dictionary caching
 
@@ -148,8 +150,8 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 - [ ] Multi-process
 - [x] Security audit (Base hardening complete)
 - [ ] Performance optimization
-- [ ] Real PCIe Driver (Blocked: BCM2712 ECAM specs)
-- [x] Hailo Driver (Simulation Mode Implemented)
+- [x] Real PCIe Driver (Implemented Structure)
+- [x] Hailo Driver (Real Driver Structure Implemented)
 
 ### System Services
 - [ ] File system (ramfs)

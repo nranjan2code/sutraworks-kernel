@@ -27,7 +27,7 @@
 
 ### Infrastructure ✅
 - [x] **PCIe Driver (BCM2712)**: Root Complex for RP1 and Hailo-8.
-- [x] **Hailo-8 Driver**: HEF model loading and inference.
+- [x] **Hailo-8 Driver**: Real PCIe Driver Structure (Command Rings, DMA).
 - [x] **Persistent Storage**: TAR RamDisk, Read-Write Overlay.
 
 ### Phase 5: Input/Output ✅
@@ -45,6 +45,8 @@
 - [x] **Hyperdimensional Computing**: 1024-bit binary hypervectors.
 - [x] **Cognitive Algebra**: Bind, Bundle, Permute operations.
 - [x] **Hamming Similarity**: Bitwise semantic retrieval.
+- [x] **B-Tree Indexing**: O(log N) retrieval for scalable memory.
+- [x] **Visual Intents**: Vision-to-Memory bridge using Hypervectors.
 
 ### Phase 6: Sensors & Connectivity (Current Focus)
 Expand hardware integration.
