@@ -110,9 +110,12 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 
 ## Phase 6: Advanced Features
 
-### Multi-stroke Processing
-- [ ] Stroke sequence timeout
-- [ ] Prefix/suffix strokes
+### Multi-stroke Processing ✅
+- [x] Stroke sequence timeout (500ms)
+- [x] Prefix matching for buffered strokes
+- [x] Multi-stroke dictionary with 20+ entries
+- [x] 2-stroke and 3-stroke brief support
+- [ ] Prefix/suffix strokes (modifiers)
 - [ ] Stroke correction (undo stroke)
 - [ ] Fingerspelling mode
 

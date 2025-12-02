@@ -77,5 +77,13 @@ test result: ok. 122 passed; 0 failed
 
 ---
 
-**Status:** Phase 4 Complete / Phase 5 Hardening.
+## Latest: Multi-Stroke Briefs ✅
+
+Real multi-stroke support has been implemented:
+- `MultiStrokeDictionary` with prefix matching
+- 500ms timeout for incomplete sequences
+- 20+ multi-stroke entries (2-stroke and 3-stroke briefs)
+- Stats tracking for multi-stroke matches
+
+**Status:** Phase 5 Complete / Phase 6 Sensors & Connectivity.
 **Blocker:** Missing BCM2712 PCIe and Hailo-8L register documentation.

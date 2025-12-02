@@ -14,7 +14,8 @@ Practical examples demonstrating Intent Kernel capabilities.
 6. [Interrupt Handling](#interrupt-handling)
 7. [Framebuffer Graphics](#framebuffer-graphics)
 8. [Intent Processing](#intent-processing)
-9. [Complete Application](#complete-application)
+9. [Multi-Stroke Briefs](#multi-stroke-briefs)
+10. [Complete Application](#complete-application)
 
 ---
 
@@ -731,6 +732,158 @@ pub fn animation_demo() {
         timer::delay_ms(16); // ~60 FPS
     }
 }
+```
+
+---
+
+## Multi-Stroke Briefs
+
+### Adding Custom Multi-Stroke Entries
+
+```rust
+use crate::steno::{StenoDictionary, MultiStrokeEntry};
+use crate::intent::ConceptID;
+
+pub fn custom_multi_stroke_demo() {
+    let mut dictionary = StenoDictionary::new();
+    dictionary.init_defaults();
+    
+    // Add a custom 2-stroke brief
+    dictionary.add_multi(MultiStrokeEntry::from_steno(
+        "KUFT/O*PL",              // Custom notation
+        ConceptID(0x00FF_0001),   // Custom concept ID
+        "CUSTOM_ACTION"           // Debug name
+    ));
+    
+    // Add a 3-stroke brief
+    dictionary.add_multi(MultiStrokeEntry::from_steno(
+        "SET/UP/TKAEU",
+        ConceptID(0x00FF_0002),
+        "SETUP_DAY"
+    ));
+    
+    uart::puts("Custom multi-stroke briefs registered!\r\n");
+}
+```
+
+### Processing Multi-Stroke Sequences
+
+```rust
+use crate::steno::{StenoEngine, Stroke, StrokeSequence};
+use crate::drivers::timer;
+
+pub fn multi_stroke_demo() {
+    let mut engine = StenoEngine::new();
+    engine.init_defaults();
+    
+    uart::puts("Multi-Stroke Demo\r\n");
+    uart::puts("=================\r\n\r\n");
+    
+    // Simulate typing RAOE (first stroke of REBOOT)
+    let stroke1 = Stroke::from_steno("RAOE");
+    uart::puts("Stroke 1: RAOE\r\n");
+    
+    if let Some(intent) = engine.process(stroke1, timer::uptime_us()) {
+        uart::puts("  Intent: ");
+        uart::puts(intent.name);
+        uart::puts("\r\n");
+    } else {
+        uart::puts("  (buffered, waiting for more strokes...)\r\n");
+    }
+    
+    // Simulate typing PWOOT (second stroke)
+    let stroke2 = Stroke::from_steno("PWOOT");
+    uart::puts("Stroke 2: PWOOT\r\n");
+    
+    if let Some(intent) = engine.process(stroke2, timer::uptime_us()) {
+        uart::puts("  Intent: ");
+        uart::puts(intent.name);
+        uart::puts(" (");
+        
+        // Show it's a multi-stroke match
+        if engine.stats().multi_stroke_matches > 0 {
+            uart::puts("multi-stroke");
+        }
+        uart::puts(")\r\n");
+    }
+}
+```
+
+### Timeout Handling
+
+```rust
+use crate::steno::StenoEngine;
+use crate::drivers::timer;
+
+/// External timeout checker for multi-stroke sequences
+pub fn multi_stroke_timeout_demo() {
+    let mut engine = StenoEngine::new();
+    engine.init_defaults();
+    
+    // Main loop with timeout checking
+    let mut last_check = timer::uptime_us();
+    
+    loop {
+        // Check for hardware strokes
+        if let Some(stroke) = get_stroke_from_hardware() {
+            if let Some(intent) = engine.process(stroke, timer::uptime_us()) {
+                intent::execute(&intent);
+            }
+        }
+        
+        // Periodic timeout check (every 100ms)
+        let now = timer::uptime_us();
+        if now - last_check > 100_000 {
+            if engine.is_buffer_timed_out(now) {
+                uart::puts("Buffer timeout - flushing incomplete sequence\r\n");
+                engine.flush_buffer();
+            }
+            last_check = now;
+        }
+        
+        // Sleep to save power
+        timer::delay_ms(10);
+    }
+}
+```
+
+### Prefix Matching Visualization
+
+```rust
+use crate::steno::{StenoDictionary, StrokeSequence};
+
+pub fn prefix_matching_demo() {
+    let mut dict = StenoDictionary::new();
+    dict.init_defaults();
+    
+    // Show how prefix matching works
+    let sequences = [
+        "RAOE",           // Prefix of RAOE/PWOOT (REBOOT)
+        "RAOE/PWOOT",     // Exact match
+        "SHUT",           // Prefix of SHUT/TKOUPB (SHUTDOWN)
+        "SHUT/TKOUPB",    // Exact match
+        "STAT",           // Single-stroke (no prefix in multi-dict)
+    ];
+    
+    for steno in sequences.iter() {
+        let seq = StrokeSequence::from_steno(steno);
+        let (exact, prefix) = dict.check_multi_prefix(&seq);
+        
+        uart::puts(steno);
+        uart::puts(": exact=");
+        uart::puts(if exact { "true" } else { "false" });
+        uart::puts(", prefix=");
+        uart::puts(if prefix { "true" } else { "false" });
+        uart::puts("\r\n");
+    }
+}
+
+// Output:
+// RAOE: exact=false, prefix=true
+// RAOE/PWOOT: exact=true, prefix=true
+// SHUT: exact=false, prefix=true
+// SHUT/TKOUPB: exact=true, prefix=true
+// STAT: exact=false, prefix=false
 ```
 
 ---

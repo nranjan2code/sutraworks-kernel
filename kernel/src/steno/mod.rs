@@ -34,7 +34,7 @@ pub mod engine;
 pub mod history;
 
 pub use stroke::{Stroke, KEYS, NUM_KEYS, parse_steno_to_bits, RtfcreBuffer};
-pub use dictionary::{StenoDictionary, DictEntry, StrokeSequence, concepts};
+pub use dictionary::{StenoDictionary, DictEntry, StrokeSequence, MultiStrokeDictionary, MultiStrokeEntry, concepts};
 pub use engine::{StenoEngine, EngineState, EngineStats, StrokeProducer, IntentConsumer};
 pub use history::{StrokeHistory, HistoryEntry, HISTORY_SIZE};
 

@@ -1085,6 +1085,16 @@ Validate capability has permissions.
 
 ### Module: `steno`
 
+#### Constants
+
+##### `MULTI_STROKE_TIMEOUT_US`
+
+Timeout for multi-stroke sequences (500,000 μs = 500ms).
+
+##### `MAX_BUFFER_STROKES`
+
+Maximum strokes that can be buffered (8).
+
 #### Global Functions
 
 ##### `steno::init()`
@@ -1120,6 +1130,88 @@ Get number of strokes in history.
 ##### `steno::redo() -> Option<Intent>`
 
 Redo the last undone action.
+
+##### `steno::flush_buffer()`
+
+Force-flush the stroke buffer (for external timeout triggers).
+
+##### `steno::stroke_buffer() -> &StrokeSequence`
+
+Get the current stroke buffer (for debugging/display).
+
+---
+
+### Multi-Stroke Dictionary
+
+#### Module: `steno::dictionary`
+
+#### `StrokeSequence`
+
+A sequence of up to 8 strokes for multi-stroke entries.
+
+##### `StrokeSequence::from_steno(steno: &str) -> Self`
+
+Parse a slash-separated steno notation.
+
+```rust
+let seq = StrokeSequence::from_steno("RAOE/PWOOT");
+assert_eq!(seq.len(), 2);
+```
+
+##### `StrokeSequence::matches(&self, other: &StrokeSequence) -> bool`
+
+Exact match comparison.
+
+##### `StrokeSequence::starts_with(&self, prefix: &StrokeSequence) -> bool`
+
+Check if this sequence starts with the given prefix.
+
+---
+
+#### `MultiStrokeDictionary`
+
+Dictionary for multi-stroke entries (128 max).
+
+##### `MultiStrokeDictionary::lookup(&self, sequence: &StrokeSequence) -> Option<&MultiStrokeEntry>`
+
+Exact lookup of a multi-stroke sequence.
+
+##### `MultiStrokeDictionary::check_prefix(&self, sequence: &StrokeSequence) -> (bool, bool)`
+
+Check if sequence matches or could match any entry.
+
+Returns `(has_exact_match, has_prefix_match)` tuple.
+
+```rust
+// After typing "RAOE"
+let (exact, prefix) = dict.check_prefix(&buffer);
+assert_eq!(exact, false);   // "RAOE" alone isn't complete
+assert_eq!(prefix, true);   // But "RAOE/PWOOT" exists
+```
+
+##### `MultiStrokeDictionary::sequence_to_intent(&self, sequence: &StrokeSequence) -> Option<Intent>`
+
+Convert a matched sequence to an Intent.
+
+---
+
+#### `MultiStrokeEntry`
+
+```rust
+pub struct MultiStrokeEntry {
+    pub sequence: StrokeSequence,
+    pub concept_id: ConceptID,
+    pub name: &'static str,
+}
+```
+
+##### `MultiStrokeEntry::from_steno(steno: &str, concept_id: ConceptID, name: &str) -> Self`
+
+Create a multi-stroke entry from slash-separated notation.
+
+```rust
+MultiStrokeEntry::from_steno("RAOE/PWOOT", ConceptID(0x0000_0003), "REBOOT")
+```
 
 ---
 

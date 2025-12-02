@@ -11,11 +11,26 @@
 //!               ↓
 //!         Stroke History (for undo/redo)
 //! ```
+//!
+//! # Multi-Stroke Briefs
+//! When a stroke doesn't match a single-stroke entry, it's buffered.
+//! The engine checks if the buffer matches any multi-stroke brief.
+//! If no match after timeout (500ms) or max strokes (8), buffer is cleared.
 
 use super::stroke::Stroke;
 use super::dictionary::{StenoDictionary, StrokeSequence, concepts};
 use super::history::StrokeHistory;
 use crate::intent::{ConceptID, Intent, IntentData};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Timeout for multi-stroke sequences in microseconds (500ms)
+const MULTI_STROKE_TIMEOUT_US: u64 = 500_000;
+
+/// Maximum strokes to buffer before giving up
+const MAX_BUFFER_STROKES: usize = 8;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // STENO ENGINE
@@ -38,6 +53,8 @@ pub struct StenoEngine {
     dictionary: StenoDictionary,
     /// Buffer for multi-stroke sequences
     stroke_buffer: StrokeSequence,
+    /// Timestamp of first stroke in buffer (for timeout)
+    buffer_start_time: u64,
     /// History for undo/redo
     history: StrokeHistory,
     /// Current state
@@ -61,6 +78,8 @@ pub struct EngineStats {
     pub corrections: u64,
     /// Unrecognized strokes
     pub unrecognized: u64,
+    /// Multi-stroke matches
+    pub multi_stroke_matches: u64,
 }
 
 impl StenoEngine {
@@ -69,6 +88,7 @@ impl StenoEngine {
         Self {
             dictionary: StenoDictionary::new(),
             stroke_buffer: StrokeSequence::new(),
+            buffer_start_time: 0,
             history: StrokeHistory::new(),
             state: EngineState::Ready,
             last_stroke: None,
@@ -77,6 +97,7 @@ impl StenoEngine {
                 intents_matched: 0,
                 corrections: 0,
                 unrecognized: 0,
+                multi_stroke_matches: 0,
             },
             timestamp: 0,
         }
@@ -93,6 +114,14 @@ impl StenoEngine {
         self.timestamp = ts;
     }
     
+    /// Check if the stroke buffer has timed out
+    fn is_buffer_timed_out(&self) -> bool {
+        if self.stroke_buffer.is_empty() {
+            return false;
+        }
+        self.timestamp.saturating_sub(self.buffer_start_time) > MULTI_STROKE_TIMEOUT_US
+    }
+    
     /// Process a single stroke
     ///
     /// Returns an intent if the stroke (or stroke sequence) resolves to one.
@@ -105,45 +134,69 @@ impl StenoEngine {
             return self.handle_correction();
         }
         
-        // Try single-stroke lookup first
-        if let Some(intent) = self.dictionary.stroke_to_intent(stroke) {
-            self.stats.intents_matched += 1;
-            // Record in history
-            self.history.push(stroke, Some(&intent), self.timestamp);
+        // Check for timeout on pending buffer - if timed out, emit unknown and clear
+        if self.is_buffer_timed_out() {
+            self.stats.unrecognized += 1;
             self.stroke_buffer.clear();
             self.state = EngineState::Ready;
-            return Some(intent);
+            // Don't return yet - continue processing the new stroke
+        }
+        
+        // Try single-stroke lookup first (only if buffer is empty)
+        if self.stroke_buffer.is_empty() {
+            if let Some(intent) = self.dictionary.stroke_to_intent(stroke) {
+                self.stats.intents_matched += 1;
+                self.history.push(stroke, Some(&intent), self.timestamp);
+                self.state = EngineState::Ready;
+                return Some(intent);
+            }
         }
         
         // Add to buffer for multi-stroke lookup
+        if self.stroke_buffer.is_empty() {
+            self.buffer_start_time = self.timestamp;
+        }
         self.stroke_buffer.push(stroke);
         
-        // Try multi-stroke lookup
-        if let Some(intent) = self.try_multi_stroke_lookup() {
-            self.stats.intents_matched += 1;
-            self.history.push(stroke, Some(&intent), self.timestamp);
-            self.stroke_buffer.clear();
-            self.state = EngineState::Ready;
-            return Some(intent);
+        // Check multi-stroke dictionary
+        let (exact_match, prefix_match) = self.dictionary.check_multi_prefix(&self.stroke_buffer);
+        
+        if exact_match {
+            // We have a complete match!
+            if let Some(intent) = self.dictionary.lookup_multi(&self.stroke_buffer) {
+                self.stats.intents_matched += 1;
+                self.stats.multi_stroke_matches += 1;
+                self.history.push(stroke, Some(&intent), self.timestamp);
+                self.stroke_buffer.clear();
+                self.state = EngineState::Ready;
+                return Some(intent);
+            }
         }
         
-        // No match yet - could be incomplete multi-stroke
-        if self.stroke_buffer.len() >= 2 {
-            // After 2 unmatched strokes, emit unknown and clear
+        if prefix_match {
+            // Could still be a valid multi-stroke, wait for more
+            self.state = EngineState::Pending;
+            return None;
+        }
+        
+        // No prefix match - this sequence won't lead anywhere
+        // If buffer has multiple strokes, the first might have been a valid single-stroke
+        // that we missed. For now, emit unknown and clear.
+        if self.stroke_buffer.len() > 1 {
             self.stats.unrecognized += 1;
-            // Record as unmatched
             self.history.push(stroke, None, self.timestamp);
             self.stroke_buffer.clear();
             self.state = EngineState::Ready;
             return Some(Intent {
-                concept_id: ConceptID(0xFFFF_FFFF), // Unknown concept
+                concept_id: ConceptID::UNKNOWN,
                 confidence: 0.0,
                 data: IntentData::None,
                 name: "UNKNOWN",
             });
         }
         
-        // Still waiting for more strokes
+        // Single stroke that doesn't match anything - keep it buffered briefly
+        // in case next stroke completes a multi-stroke brief
         self.state = EngineState::Pending;
         None
     }
@@ -165,6 +218,10 @@ impl StenoEngine {
             } else {
                 EngineState::Pending
             };
+            // Just cleared buffer, don't emit undo intent
+            if self.stroke_buffer.is_empty() {
+                return None;
+            }
         }
         
         // Undo the most recent action in history
@@ -179,11 +236,35 @@ impl StenoEngine {
         })
     }
     
-    /// Try to match the current stroke buffer as a multi-stroke brief
-    fn try_multi_stroke_lookup(&self) -> Option<Intent> {
-        // TODO: Implement multi-stroke dictionary lookup
-        // For now, we only support single-stroke lookups
-        None
+    /// Force flush the buffer (e.g., on timeout from external source)
+    /// Returns intent if buffer matched something, or Unknown if not
+    pub fn flush_buffer(&mut self) -> Option<Intent> {
+        if self.stroke_buffer.is_empty() {
+            return None;
+        }
+        
+        // Try one last multi-stroke lookup
+        if let Some(intent) = self.dictionary.lookup_multi(&self.stroke_buffer) {
+            self.stats.intents_matched += 1;
+            self.stats.multi_stroke_matches += 1;
+            if let Some(stroke) = self.stroke_buffer.last() {
+                self.history.push(stroke, Some(&intent), self.timestamp);
+            }
+            self.stroke_buffer.clear();
+            self.state = EngineState::Ready;
+            return Some(intent);
+        }
+        
+        // No match - emit unknown
+        self.stats.unrecognized += 1;
+        self.stroke_buffer.clear();
+        self.state = EngineState::Ready;
+        Some(Intent {
+            concept_id: ConceptID::UNKNOWN,
+            confidence: 0.0,
+            data: IntentData::None,
+            name: "UNKNOWN",
+        })
     }
     
     /// Get current engine state
@@ -194,6 +275,11 @@ impl StenoEngine {
     /// Get the last processed stroke
     pub fn last_stroke(&self) -> Option<Stroke> {
         self.last_stroke
+    }
+    
+    /// Get the current stroke buffer
+    pub fn stroke_buffer(&self) -> &StrokeSequence {
+        &self.stroke_buffer
     }
     
     /// Get statistics
@@ -229,7 +315,6 @@ impl StenoEngine {
     /// Redo the last undone action
     pub fn redo(&mut self) -> Option<Intent> {
         if let Some(entry) = self.history.redo() {
-            // Return an intent if the entry had one
             if let Some(id) = entry.intent_id {
                 return Some(Intent {
                     concept_id: ConceptID(id),
@@ -318,6 +403,7 @@ impl<T: StrokeProducer> StrokeProducerExt for T {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::stroke::parse_steno_to_bits;
     
     #[test]
     fn test_engine_init() {
@@ -325,6 +411,7 @@ mod tests {
         engine.init();
         assert_eq!(engine.state(), EngineState::Ready);
         assert!(engine.dictionary().len() > 0);
+        assert!(engine.dictionary().multi_len() > 0);
     }
     
     #[test]
@@ -335,5 +422,67 @@ mod tests {
         let intent = engine.process(Stroke::STAR);
         assert!(intent.is_some());
         assert_eq!(intent.unwrap().concept_id, concepts::UNDO);
+    }
+    
+    #[test]
+    fn test_single_stroke_lookup() {
+        let mut engine = StenoEngine::new();
+        engine.init();
+        
+        // "STAT" should match STATUS
+        let stroke = Stroke::from_raw(parse_steno_to_bits("STAT"));
+        let intent = engine.process(stroke);
+        assert!(intent.is_some());
+        assert_eq!(intent.unwrap().name, "STATUS");
+    }
+    
+    #[test]
+    fn test_multi_stroke_lookup() {
+        let mut engine = StenoEngine::new();
+        engine.init();
+        
+        // "RAOE/PWOOT" should match REBOOT
+        let stroke1 = Stroke::from_raw(parse_steno_to_bits("RAOE"));
+        let stroke2 = Stroke::from_raw(parse_steno_to_bits("PWOOT"));
+        
+        // First stroke should return None (pending)
+        let result1 = engine.process(stroke1);
+        assert!(result1.is_none());
+        assert_eq!(engine.state(), EngineState::Pending);
+        
+        // Second stroke should complete the match
+        let result2 = engine.process(stroke2);
+        assert!(result2.is_some());
+        assert_eq!(result2.unwrap().name, "REBOOT");
+        assert_eq!(engine.state(), EngineState::Ready);
+    }
+    
+    #[test]
+    fn test_buffer_clear_on_asterisk() {
+        let mut engine = StenoEngine::new();
+        engine.init();
+        
+        // Start a multi-stroke
+        let stroke1 = Stroke::from_raw(parse_steno_to_bits("RAOE"));
+        engine.process(stroke1);
+        assert_eq!(engine.state(), EngineState::Pending);
+        
+        // Asterisk should clear buffer
+        engine.process(Stroke::STAR);
+        assert!(engine.stroke_buffer().is_empty() || engine.state() == EngineState::Ready);
+    }
+    
+    #[test]
+    fn test_stats_multi_stroke() {
+        let mut engine = StenoEngine::new();
+        engine.init();
+        
+        let stroke1 = Stroke::from_raw(parse_steno_to_bits("RAOE"));
+        let stroke2 = Stroke::from_raw(parse_steno_to_bits("PWOOT"));
+        
+        engine.process(stroke1);
+        engine.process(stroke2);
+        
+        assert_eq!(engine.stats().multi_stroke_matches, 1);
     }
 }

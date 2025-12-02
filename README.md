@@ -113,12 +113,22 @@ Key:       #  S-  T-  K-  P-  W-  H-  R-  A-  O-  *  -E  -U  -F  -R  -P  -B  -L 
 
 Strokes map to **concepts**, not text:
 
+**Single-Stroke Briefs:**
 | Stroke | Notation | Concept | Action |
 |--------|----------|---------|--------|
 | `0x42` | `STAT` | STATUS | Display system status |
 | `0x400` | `*` | UNDO | Undo last action |
 | `0x1A4` | `HELP` | HELP | Show help |
 | `0x...` | `SHRO` | SHOW | Display something |
+
+**Multi-Stroke Briefs:**
+| Strokes | Notation | Concept | Action |
+|---------|----------|---------|--------|
+| 2 | `RAOE/PWOOT` | REBOOT | Restart system |
+| 2 | `SHUT/TKOUPB` | SHUTDOWN | Power off |
+| 2 | `SKROL/UP` | SCROLL_UP | Scroll display up |
+| 3 | `TPHU/TPAOEU/-L` | NEW_FILE | Create new file |
+| 3 | `KP-U/EUPB/TPO` | CPU_INFO | Show CPU info |
 
 ### The Intent
 
@@ -154,6 +164,24 @@ if let Some(intent) = steno::process_stroke(stroke) {
 steno::undo();  // Undo last stroke
 steno::redo();  // Redo if possible
 ```
+
+### ✅ Multi-Stroke Briefs
+Real multi-stroke support with prefix matching and timeout:
+
+```rust
+// 2-stroke briefs
+"RAOE/PWOOT" → REBOOT
+"SHUT/TKOUPB" → SHUTDOWN
+"RAOE/KAUL" → RECALL
+
+// 3-stroke briefs
+"TPHU/TPAOEU/-L" → NEW_FILE
+"KP-U/EUPB/TPO" → CPU_INFO
+```
+
+- 500ms timeout between strokes
+- Prefix matching (waits when partial match exists)
+- 20+ built-in multi-stroke entries
 
 ### ✅ User-Defined Handlers
 Register custom handlers for any concept:

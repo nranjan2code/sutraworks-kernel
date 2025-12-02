@@ -10,6 +10,7 @@
 ### Phase 2: Stenographic Engine ✅
 - [x] **Stroke Processing**: 23-bit stroke patterns, RTFCRE notation.
 - [x] **Dictionary**: Stroke→Intent mapping, multi-stroke sequences.
+- [x] **Multi-Stroke Briefs**: Real prefix matching, 500ms timeout, 20+ multi-stroke entries.
 - [x] **Engine**: StenoEngine state machine, StrokeProducer/IntentConsumer traits.
 
 ### Phase 3: Intent Execution ✅

@@ -105,10 +105,35 @@ HELP → concepts::HELP
 STAT → concepts::STATUS
 ```
 
-Multi-stroke sequences:
+Multi-stroke sequences (2+ strokes):
 ```
-SHUT/TKAOPB → concepts::SHUTDOWN
+RAOE/PWOOT → concepts::REBOOT      (2 strokes)
+SHUT/TKOUPB → concepts::SHUTDOWN   (2 strokes)
+TKEUS/PHRAEU → concepts::DISPLAY   (2 strokes)
+TPHU/TPAOEU/-L → concepts::NEW_FILE (3 strokes)
+KP-U/EUPB/TPO → concepts::CPU_INFO  (3 strokes)
 ```
+
+### Multi-Stroke Processing
+
+The engine buffers strokes when a prefix match exists:
+
+```rust
+pub struct MultiStrokeDictionary {
+    entries: [Option<MultiStrokeEntry>; MAX_MULTI_ENTRIES],
+    count: usize,
+}
+
+impl MultiStrokeDictionary {
+    /// Check if sequence matches or could match
+    /// Returns: (has_exact_match, has_prefix_match)
+    pub fn check_prefix(&self, sequence: &StrokeSequence) -> (bool, bool);
+}
+```
+
+**Timeout**: 500ms between strokes. If no match after timeout, buffer is flushed.
+
+**Buffer Size**: Up to 8 strokes can be buffered for long sequences.
 
 ### ConceptID
 
@@ -185,7 +210,8 @@ impl IntentExecutor {
 ```rust
 pub struct StenoEngine {
     dictionary: StenoDictionary,
-    stroke_buffer: StrokeSequence,
+    stroke_buffer: StrokeSequence,  // Buffers up to 8 strokes
+    buffer_start_time: u64,          // For 500ms timeout
     history: StrokeHistory,
     state: EngineState,
     stats: EngineStats,

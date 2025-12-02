@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (December 2, 2025) - 🎹 Real Multi-Stroke Briefs
+- **MultiStrokeDictionary**: Complete multi-stroke sequence support
+  - `StrokeSequence::from_steno()` - Parses "RAOE/PWOOT" notation
+  - `MultiStrokeEntry` struct for multi-stroke definitions
+  - Prefix matching with `check_prefix()` returning (exact, prefix) tuple
+  - 20+ multi-stroke entries (REBOOT, SHUTDOWN, DISPLAY, etc.)
+- **StenoEngine Multi-Stroke Processing**
+  - 500ms timeout for incomplete sequences (`MULTI_STROKE_TIMEOUT_US`)
+  - 8-stroke buffer with timestamp tracking
+  - Prefix-aware processing (waits for more strokes when partial match exists)
+  - `flush_buffer()` method for external timeout triggers
+  - `multi_stroke_matches` in stats tracking
+- **New Concept IDs**: SHUTDOWN, SCROLL_UP, SCROLL_DOWN, FILE, OPEN, CLOSE, NEW_FILE, MEMORY, CPU_INFO, UPTIME
+- **3-Stroke Briefs**: NEW_FILE (`TPHU/TPAOEU/-L`), CPU_INFO (`KP-U/EUPB/TPO`)
+
 ### Added (December 2, 2025) - 🔌 Real Hardware Drivers
 - **Real xHCI Host Controller Driver**
   - Full initialization sequence (Reset, DCBAA, Command/Event Rings).
