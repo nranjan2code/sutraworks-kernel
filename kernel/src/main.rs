@@ -125,6 +125,10 @@ pub extern "C" fn kernel_main() -> ! {
         }
     }
 
+    // Initialize HUD
+    kprintln!("[INIT] Heads-Up Display...");
+    perception::hud::init();
+
     // Initialize Filesystem (RamDisk + Overlay)
     kprintln!("[INIT] Filesystem (RamDisk + Overlay)...");
     unsafe { fs::init(); }
@@ -198,8 +202,16 @@ async fn steno_loop() {
         let input = core::str::from_utf8(&input_buffer[..len]).unwrap_or("");
         let input = input.trim();
         
-        if input.is_empty() { continue; }
-        
+        if i// Update HUD
+            if let Some(stroke) = steno::Stroke::from_steno(input) {
+                perception::hud::update(stroke, Some(&intent));
+            }
+            intent::execute(&intent);
+        } else {
+            // Update HUD for unrecognized stroke
+            if let Some(stroke) = steno::Stroke::from_steno(input) {
+                perception::hud::update(stroke, None);
+            }
         // Process as steno notation
         if let Some(intent) = steno::process_steno(input) {
             intent::execute(&intent);

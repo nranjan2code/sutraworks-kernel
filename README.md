@@ -177,6 +177,12 @@ if !has_capability(CapabilityType::System) {
 }
 ```
 
+### ✅ Heads-Up Display (HUD)
+Real-time visualization of the stenographic stream and intent execution log.
+- **Steno Tape**: Scrolling log of raw strokes (RTFCRE).
+- **Intent Stream**: Visual log of recognized semantic actions.
+- **Status Bar**: Real-time WPM and stroke statistics.
+
 ---
 
 ## Project Structure
@@ -193,10 +199,15 @@ intent-kernel/
 │   │   ├── mod.rs          # Core types
 │   │   ├── handlers.rs     # User handler registry
 │   │   └── queue.rs        # Priority queue
+│   ├── perception/         # Adaptive Perception Layer
+│   │   ├── mod.rs          # Perception Manager
+│   │   ├── vision.rs       # Computer Vision (Hailo/CPU)
+│   │   └── hud.rs          # Heads-Up Display
 │   ├── drivers/            # Hardware
 │   │   ├── uart.rs         # Serial output
 │   │   ├── timer.rs        # ARM timer
-│   │   └── gpio.rs         # Pin control
+│   │   ├── gpio.rs         # Pin control
+│   │   └── framebuffer.rs  # VideoCore display
 │   └── kernel/             # Core OS
 │       ├── capability.rs   # Security
 │       ├── scheduler.rs    # Process management
@@ -215,8 +226,9 @@ intent-kernel/
 | **1. Foundation** | ✅ | Boot, UART, GPIO, Timer, Memory, Scheduler |
 | **2. Steno Engine** | ✅ | Stroke parsing, Dictionary, Engine, RTFCRE |
 | **3. Intent System** | ✅ | Handlers, Queue, History, 122 tests |
-| **4. Hardware** | 🔄 | USB HID driver, Framebuffer |
-| **5. Connectivity** | ⏳ | Networking, Multi-core |
+| **4. Perception** | ✅ | Hailo-8 detection, Heads-Up Display (HUD) |
+| **5. Hardware** | 🔄 | USB HID driver (In Progress) |
+| **6. Connectivity** | ⏳ | Networking, Multi-core |
 
 ### Test Coverage
 

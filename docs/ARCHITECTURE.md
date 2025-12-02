@@ -110,6 +110,7 @@ pub struct Intent {
     pub concept: ConceptID,
     pub data: IntentData,
     pub confidence: u8,
+    pub name: &'static str, // Human-readable name (e.g., "SAVE")
 }
 
 pub enum IntentData {
@@ -397,7 +398,31 @@ pub async fn steno_loop() {
 ```
 
 ---
+Perception Layer
 
+The Perception Layer bridges the gap between raw sensor data and semantic intent.
+
+### Perception Manager
+Automatically detects available hardware acceleration:
+- **Hailo-8**: Uses the NPU for high-speed object detection (26 TOPS).
+- **CPU Fallback**: Uses optimized software routines if no NPU is present.
+
+### Heads-Up Display (HUD)
+A visual interface that renders directly to the framebuffer (no window manager).
+- **Steno Tape**: Visualizes the raw stroke stream (RTFCRE).
+- **Intent Stream**: Visualizes recognized intents.
+- **Status Bar**: Shows system health and statistics.
+
+```rust
+pub struct Hud {
+    tape_log: TextLog<20>,
+    intent_log: TextLog<20>,
+}
+```
+
+---
+
+## 
 ## Hardware Drivers
 
 ### UART

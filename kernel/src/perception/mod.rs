@@ -5,6 +5,7 @@
 //! the appropriate backend for vision and audio tasks.
 
 pub mod vision;
+pub mod hud;
 
 use crate::drivers::hailo::HailoDriver;
 use vision::{ObjectDetector, DetectedObject};

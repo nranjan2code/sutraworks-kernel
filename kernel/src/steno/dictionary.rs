@@ -157,6 +157,7 @@ impl StenoDictionary {
                 concept_id: entry.concept_id,
                 confidence: 1.0, // Dictionary lookup is certain
                 data: IntentData::None,
+                name: entry.name,
             }
         })
     }

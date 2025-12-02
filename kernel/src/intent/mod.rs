@@ -52,6 +52,7 @@ pub struct Intent {
     pub concept_id: ConceptID,
     pub confidence: f32,
     pub data: IntentData,
+    pub name: &'static str,
 }
 
 impl Intent {
@@ -61,6 +62,7 @@ impl Intent {
             concept_id,
             confidence: 1.0,
             data: IntentData::None,
+            name: "UNKNOWN",
         }
     }
     
@@ -70,6 +72,7 @@ impl Intent {
             concept_id,
             confidence,
             data: IntentData::None,
+            name: "UNKNOWN",
         }
     }
     

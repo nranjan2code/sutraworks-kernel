@@ -139,6 +139,7 @@ impl StenoEngine {
                 concept_id: ConceptID(0xFFFF_FFFF), // Unknown concept
                 confidence: 0.0,
                 data: IntentData::None,
+                name: "UNKNOWN",
             });
         }
         
@@ -174,6 +175,7 @@ impl StenoEngine {
             concept_id: concepts::UNDO,
             confidence: 1.0,
             data: IntentData::None,
+            name: "UNDO",
         })
     }
     
@@ -231,6 +233,7 @@ impl StenoEngine {
             if let Some(id) = entry.intent_id {
                 return Some(Intent {
                     concept_id: ConceptID(id),
+                    name: "REDO",
                     confidence: 1.0,
                     data: IntentData::None,
                 });

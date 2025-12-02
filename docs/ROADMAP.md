@@ -19,6 +19,11 @@
 - [x] **Stroke History**: 64-entry ring buffer with undo/redo.
 - [x] **Testing**: 122 host-based tests across 7 modules.
 
+### Phase 4: Perception & UI ✅
+- [x] **Perception Manager**: Adaptive backend selection (Hailo/CPU).
+- [x] **Heads-Up Display (HUD)**: Real-time scrolling steno tape and intent log.
+- [x] **Framebuffer Driver**: High-performance direct pixel access.
+
 ### Infrastructure ✅
 - [x] **PCIe Driver (BCM2712)**: Root Complex for RP1 and Hailo-8.
 - [x] **Hailo-8 Driver**: HEF model loading and inference.
@@ -26,19 +31,18 @@
 
 ## 🚀 Next Strategic Steps
 
-### Phase 4: Hardware Integration (Current Focus)
+### Phase 5: Hardware Integration (Current Focus)
 Connect to real physical hardware.
 
 - [ ] **USB HID Driver**: Connect real steno machines (Georgi, Plover HID).
 - [ ] **Camera Driver**: MIPI CSI-2 / ISP for real image capture.
 
-### Phase 5: Connectivity & Expansion
+### Phase 6: Connectivity & Expansion
 - [ ] **Networking**: Ethernet driver (via RP1/PCIe) for remote intent processing.
 - [ ] **SD Card Write**: FAT32 driver to persist RamDisk state.
 - [ ] **Multi-Core SMP**: Run Perception and Intent Engine on separate cores.
-- [ ] **Framebuffer**: Visual display of intents and system status.
 
-### Phase 6: Cognitive Evolution
+### Phase 7: Cognitive Evolution
 - [ ] **LLM Integration**: Small quantized LLM on CPU/NPU hybrid.
 - [ ] **Voice Interface**: Audio I/O for spoken intents.
 - [ ] **Dictionary Learning**: Track stroke frequency, suggest optimizations.
