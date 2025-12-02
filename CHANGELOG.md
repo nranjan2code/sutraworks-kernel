@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (December 2, 2025) - 🔌 Real Hardware Drivers
+- **Real xHCI Host Controller Driver**
+  - Full initialization sequence (Reset, DCBAA, Command/Event Rings).
+  - DMA-safe memory allocation for rings and contexts.
+  - PCIe integration for dynamic controller discovery.
+- **Real HID Boot Protocol Parser**
+  - Standard 8-byte Keyboard Report parsing.
+  - QWERTY-to-Steno key mapping (Plover standard).
+  - N-Key Rollover (NKRO) support structure.
+
 ### Added (December 2, 2025) - ✨ English I/O Layer (Phase 5.5)
 
 **Production-grade natural language interface for universal accessibility**

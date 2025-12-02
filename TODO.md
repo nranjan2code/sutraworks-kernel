@@ -18,7 +18,7 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 
 ### Boot & Hardware
 - [x] ARM64 boot sequence (EL2→EL1)
-- [x] UART driver for debug output
+- [x] USB Driver (Real xHCI + HID) for debug output
 - [x] Timer driver (ARM generic timer)
 - [x] Basic memory allocator
 - [x] Exception vectors (EL1)

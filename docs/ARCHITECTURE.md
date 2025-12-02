@@ -480,26 +480,28 @@ pub fn gpio_get(pin: u32) -> bool;
 ```
 
 ### USB HID ✅
-
-Steno machine input via USB Host Controller:
-
-```rust
-pub struct UsbHid {
-    controller: XhciController,
-    device: HidDevice,
-}
-
-impl UsbHid {
-    pub fn poll(&mut self) -> Option<Stroke>;
-    pub fn supports_nkro(&self) -> bool;
-}
-
-impl StrokeProducer for UsbHid {
-    fn next_stroke(&mut self) -> Option<Stroke> {
-        self.poll()
-    }
-}
-```
+ 
+ Steno machine input via USB Host Controller (xHCI 1.2):
+ 
+ ```rust
+ pub struct XhciController {
+     base_addr: usize,
+     dcbaa: Option<NonNull<u8>>,      // Device Context Base Address Array
+     cmd_ring: Option<NonNull<u8>>,   // Command Ring
+     event_ring: Option<NonNull<u8>>, // Event Ring (Interrupter 0)
+ }
+ 
+ pub struct UsbHid {
+     // HID Boot Protocol Parser
+     pub fn parse_report(&self, report: &KeyboardReport) -> Option<Stroke>;
+ }
+ ```
+ 
+ **Features**:
+ - **Real xHCI Initialization**: Reset, Ring allocation, Interrupt setup.
+ - **DMA Memory**: Uses `alloc_dma` for physically contiguous buffers.
+ - **Boot Protocol**: Parses standard 8-byte Keyboard Reports.
+ - **Key Mapping**: Maps QWERTY keys to Steno layout (Plover standard).
 
 Supported devices:
 - Georgi (GBoards)

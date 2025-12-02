@@ -11,6 +11,7 @@ pub mod hailo;
 pub mod ramdisk;
 pub mod pcie;
 pub mod rng;
+pub mod usb;
 
 // Re-export commonly used items
 pub use uart::Uart;

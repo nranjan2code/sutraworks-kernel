@@ -57,6 +57,35 @@ impl PcieController {
         }
     }
 
+    /// Find a device by Vendor and Device ID, returning its ECAM address
+    pub fn find_device(&self, target_vendor: u16, target_device: u16) -> Option<(u8, u8, u8)> {
+        for dev in 0..32 {
+            for func in 0..8 {
+                if let Some((vendor, device)) = self.read_id(0, dev, func) {
+                    if vendor == target_vendor && device == target_device {
+                        return Some((0, dev, func));
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Read 32-bit value from config space
+    pub fn read_config_32(&self, bus: u8, dev: u8, func: u8, offset: usize) -> u32 {
+        let ecam_offset = ((bus as usize) << 20) | ((dev as usize) << 15) | ((func as usize) << 12) | (offset & 0xFFF);
+        let addr = self.base_addr + ecam_offset;
+        unsafe { crate::arch::read32(addr) }
+    }
+
+    /// Read BAR0
+    pub fn read_bar0(&self, bus: u8, dev: u8, func: u8) -> usize {
+        let bar0 = self.read_config_32(bus, dev, func, 0x10);
+        // Mask out flag bits (assuming 64-bit BAR or 32-bit memory BAR)
+        // For simplicity, assume 32-bit memory BAR for now
+        (bar0 & 0xFFFF_FFF0) as usize
+    }
+
     /// Read Vendor and Device ID from config space.
     fn read_id(&self, bus: u8, dev: u8, func: u8) -> Option<(u16, u16)> {
         // ECAM address calculation:

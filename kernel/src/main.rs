@@ -144,6 +144,10 @@ pub extern "C" fn kernel_main() -> ! {
     // Initialize PCIe
     drivers::pcie::init();
 
+    // Initialize USB
+    kprintln!("[INIT] USB Subsystem...");
+    drivers::usb::init();
+
     // Initialize Scheduler
     kprintln!("[INIT] Scheduler...");
 
@@ -181,7 +185,34 @@ fn async_executor_agent() {
     kprintln!("[Executor] Starting Steno-Native Async Core...");
     let mut executor = kernel::async_core::Executor::new();
     executor.spawn(steno_loop());
+    executor.spawn(usb_loop());
     executor.run();
+}
+
+/// USB Input Loop - polls for strokes from steno machine
+async fn usb_loop() {
+    loop {
+        // Poll USB HID driver
+        // Note: In a real implementation with interrupts, this would be an awaitable future.
+        // For now, we poll and yield.
+        if let Some(stroke) = drivers::usb::hid::HID_DRIVER.lock().poll() {
+            // Process stroke
+            if let Some(intent) = steno::process_stroke(stroke) {
+                kprintln!("[USB] Stroke: {:?} -> Intent: {}", stroke, intent.name);
+                cprintln!("[USB] Intent: {}", intent.name);
+                intent::execute(&intent);
+                
+                // Update HUD
+                perception::hud::update(stroke, Some(&intent));
+            } else {
+                // Unknown stroke
+                perception::hud::update(stroke, None);
+            }
+        }
+        
+        // Yield to let other tasks run
+        kernel::async_core::yield_now().await;
+    }
 }
 
 /// Main steno input loop - processes strokes as they arrive

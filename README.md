@@ -299,7 +299,7 @@ intent-kernel/
 | **2. Steno Engine** | ✅ | Stroke parsing, Dictionary, Engine, RTFCRE |
 | **3. Intent System** | ✅ | Handlers, Queue, History, 122 tests |
 | **4. Perception** | ✅ | Hailo-8 detection, Heads-Up Display (HUD) |
-| **5. Input/Output** | ✅ | USB HID, Framebuffer Console, Dual Input |
+| **5. Input/Output** | ✅ | **Real xHCI Driver**, HID Boot Protocol, Framebuffer Console |
 | **5.5. English Layer** | ✅ ✨ | **Natural Language I/O (200+ phrases, conversation context, templates)** |
 | **6. Sensors** | 🔄 | Camera Driver (In Progress) |
 | **7. Connectivity** | ⏳ | Networking, Multi-core |
