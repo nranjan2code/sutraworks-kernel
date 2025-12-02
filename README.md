@@ -1,223 +1,287 @@
-# Intent Kernel
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Intent Kernel" width="200" />
+</p>
 
-A bare-metal **stenographic operating system** for Raspberry Pi 5.
+<h1 align="center">Intent Kernel</h1>
 
-## What Is This?
+<p align="center">
+  <strong>The world's first stenographic operating system</strong><br>
+  <em>Where strokes become intents, and intents become action.</em>
+</p>
 
-Intent Kernel is an OS where **steno strokes are the native input unit**. Not characters. Not words. Strokes.
+<p align="center">
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#why-steno">Why Steno?</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#documentation">Docs</a> •
+  <a href="#status">Status</a>
+</p>
 
-A stenographer using a steno machine sends 23-bit stroke patterns directly to the kernel. The kernel maps strokes to **intents** via a dictionary, then executes them.
+---
 
-```
-Steno Machine → Stroke (23-bit) → Dictionary → Intent → Executor
-```
+## The Vision
 
-No parsing. No tokenization. No NLP. Pure stroke→intent mapping.
+What if your computer understood you at 200+ words per minute?
 
-## Why?
-
-Traditional operating systems treat human input as characters. You type "show status", the shell parses it, looks up a command, runs it.
-
-Intent Kernel skips all that. A single stroke like `STAT` maps directly to the STATUS concept. The kernel knows what you mean instantly.
-
-This is **faster** (no parsing), **cleaner** (no string handling), and **more powerful** (strokes can represent complex concepts atomically).
-
-## Stenographic Architecture
-
-The kernel uses the **Plover steno layout** (23 keys):
-
-```
-#  S- T- K- P- W- H- R-  A- O-  *  -E -U  -F -R -P -B -L -G -T -S -D -Z
-0  1  2  3  4  5  6  7   8  9  10  11 12  13 14 15 16 17 18 19 20 21 22
-```
-
-Each stroke is a 23-bit pattern. The kernel stores strokes as `u32` internally.
-
-### Example Strokes
-
-| Stroke | RTFCRE | Concept | Action |
-|--------|--------|---------|--------|
-| `HELP` | H-E-L-P | HELP | Show help |
-| `STAT` | S-T-A-T | STATUS | System status |
-| `PHOR` | P-H-O-R | DISPLAY | Show display |
-| `*` | * | UNDO | Undo last action |
-
-### Multi-Stroke Sequences
-
-Some concepts require multiple strokes:
+**Intent Kernel** is a bare-metal operating system for Raspberry Pi 5 that speaks stenography natively. No characters. No parsing. No shell commands. Just pure **stroke → intent → action**.
 
 ```
-SHUT/TKAOPB → SHUTDOWN
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│ Steno Machine│────▶│   Stroke     │────▶│  Dictionary  │────▶│   Executor   │
+│              │     │   (23-bit)   │     │              │     │              │
+└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
 ```
 
-The engine tracks stroke sequences and matches the longest prefix.
+One stroke. One concept. Instant execution.
 
-## Building
+---
+
+## Quick Start
 
 ```bash
+# Clone the repository
+git clone https://github.com/sutraworks/intent-kernel.git
+cd intent-kernel
+
 # Build the kernel
 make kernel
 
-# Build bootable image
-make image
-
-# Run in QEMU
+# Run in QEMU (for testing)
 make run
 
-# Check for errors
-make check
+# Run 122 unit tests
+make test
 ```
 
 ### Requirements
 
-- Rust nightly (see `rust-toolchain.toml`)
-- `aarch64-unknown-none` target
-- QEMU for testing (optional)
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Rust | nightly | Compiler |
+| aarch64-unknown-none | - | Target triple |
+| QEMU | 8.0+ | Emulation (optional) |
+
+---
+
+## Why Steno?
+
+Stenography is 150-year-old technology that **still** outperforms every input method invented since:
+
+| Method | Speed | Accuracy |
+|--------|-------|----------|
+| Typing | 40-80 WPM | High |
+| Voice | 100-150 WPM | Medium |
+| **Steno** | **200-300 WPM** | **Very High** |
+
+A stenographer doesn't type "show system status" — they press **one chord** that means exactly that. The Intent Kernel takes this further: that chord maps directly to a semantic concept, skipping all text processing entirely.
+
+### Traditional OS
+```
+Keyboard → Characters → Shell → Parser → Tokens → Command Lookup → Execute
+```
+
+### Intent Kernel
+```
+Steno Machine → Stroke → Intent → Execute
+```
+
+**Faster. Cleaner. More powerful.**
+
+---
+
+## Architecture
+
+### The Stroke
+
+Every steno chord produces a 23-bit pattern representing which keys were pressed:
+
+```
+Position:  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22
+Key:       #  S-  T-  K-  P-  W-  H-  R-  A-  O-  *  -E  -U  -F  -R  -P  -B  -L  -G  -T  -S  -D  -Z
+```
+
+### The Dictionary
+
+Strokes map to **concepts**, not text:
+
+| Stroke | Notation | Concept | Action |
+|--------|----------|---------|--------|
+| `0x42` | `STAT` | STATUS | Display system status |
+| `0x400` | `*` | UNDO | Undo last action |
+| `0x1A4` | `HELP` | HELP | Show help |
+| `0x...` | `SHRO` | SHOW | Display something |
+
+### The Intent
+
+```rust
+pub struct Intent {
+    pub concept_id: ConceptID,  // What to do
+    pub confidence: f32,         // How certain
+    pub data: IntentData,        // Parameters
+}
+```
+
+### The Flow
+
+```rust
+// A stroke comes in from hardware
+let stroke = Stroke::from_raw(0x42);
+
+// The engine processes it
+if let Some(intent) = steno::process_stroke(stroke) {
+    // The executor acts on it
+    intent::execute(&intent);
+}
+```
+
+---
+
+## Features
+
+### ✅ Stroke History
+64-entry ring buffer with full undo/redo support.
+
+```rust
+steno::undo();  // Undo last stroke
+steno::redo();  // Redo if possible
+```
+
+### ✅ User-Defined Handlers
+Register custom handlers for any concept:
+
+```rust
+intent::register_handler(
+    concepts::STATUS,
+    my_status_handler,
+    "custom_status"
+);
+```
+
+### ✅ Priority Queue
+Defer and prioritize intent execution:
+
+```rust
+intent::queue_with_priority(
+    Intent::new(concepts::SAVE),
+    Priority::Critical,
+    timestamp
+);
+```
+
+### ✅ Capability Security
+Fine-grained permission control:
+
+```rust
+if !has_capability(CapabilityType::System) {
+    return Err("Permission denied");
+}
+```
+
+---
 
 ## Project Structure
 
 ```
-kernel/src/
-├── steno/           # Stenographic engine
-│   ├── stroke.rs    # Stroke struct (23-bit)
-│   ├── dictionary.rs # Stroke→Intent mapping
-│   ├── engine.rs    # StenoEngine state machine
-│   └── history.rs   # Stroke history (undo/redo)
-├── intent/          # Intent execution
-│   ├── mod.rs       # ConceptID, Intent, IntentExecutor
-│   ├── handlers.rs  # User-defined handler registry
-│   └── queue.rs     # Intent priority queue
-├── drivers/         # Hardware drivers
-│   ├── uart.rs      # Debug output
-│   ├── timer.rs     # ARM generic timer
-│   └── gpio.rs      # GPIO pins
-└── kernel/          # Core subsystems
-    ├── scheduler.rs # Process scheduler
-    ├── capability.rs # Security model
-    └── memory/      # Memory management
+intent-kernel/
+├── kernel/src/
+│   ├── steno/              # Stenographic engine
+│   │   ├── stroke.rs       # 23-bit stroke patterns
+│   │   ├── dictionary.rs   # Stroke → Intent mapping
+│   │   ├── engine.rs       # State machine
+│   │   └── history.rs      # Undo/redo buffer
+│   ├── intent/             # Intent execution
+│   │   ├── mod.rs          # Core types
+│   │   ├── handlers.rs     # User handler registry
+│   │   └── queue.rs        # Priority queue
+│   ├── drivers/            # Hardware
+│   │   ├── uart.rs         # Serial output
+│   │   ├── timer.rs        # ARM timer
+│   │   └── gpio.rs         # Pin control
+│   └── kernel/             # Core OS
+│       ├── capability.rs   # Security
+│       ├── scheduler.rs    # Process management
+│       └── memory/         # Allocation
+├── tests/host/             # 122 unit tests
+├── docs/                   # Documentation
+└── boot/                   # ARM64 bootloader
 ```
 
-## Core Concepts
+---
 
-### ConceptID
+## Status
 
-A 64-bit identifier for semantic concepts:
-
-```rust
-pub struct ConceptID(pub u64);
-
-// System concepts (0x0001_xxxx)
-pub const HELP: ConceptID = ConceptID(0x0001_0001);
-pub const STATUS: ConceptID = ConceptID(0x0001_0002);
-pub const SHUTDOWN: ConceptID = ConceptID(0x0001_0003);
-```
-
-### Intent
-
-The result of stroke processing:
-
-```rust
-pub struct Intent {
-    pub concept: ConceptID,
-    pub data: IntentData,
-    pub confidence: u8,
-}
-```
-
-### Capability
-
-Security tokens that grant permissions:
-
-```rust
-pub enum CapabilityType {
-    System,    // System-level operations
-    Memory,    // Memory allocation
-    Device,    // Hardware access
-    Network,   // Network operations
-}
-```
-
-## Usage Example
-
-```rust
-// Initialize the steno engine
-steno::init();
-
-// Process a stroke from RTFCRE notation
-if let Some(intent) = steno::process_steno("HELP") {
-    intent::execute(&intent);
-}
-
-// Process raw stroke bits from hardware
-if let Some(intent) = steno::process_raw(0x000042) {
-    intent::execute(&intent);
-}
-
-// Register a custom intent handler
-intent::register_handler(
-    concepts::STATUS,
-    |intent| {
-        kprintln!("Custom status handler!");
-        HandlerResult::Handled
-    },
-    "my_status"
-);
-
-// Queue an intent for later execution
-intent::queue_with_priority(
-    Intent::new(concepts::SAVE),
-    Priority::High,
-    timer::uptime_us()
-);
-```
-
-## Testing
-
-```bash
-# Run 122 host-based tests (< 1 second)
-make test
-
-# Modules tested:
-# - stroke (25 tests)
-# - capability (20 tests)
-# - dictionary (20 tests)
-# - concept (22 tests)
-# - history (12 tests)
-# - queue (12 tests)
-# - handlers (11 tests)
-```
-
-## Development Status
-
-| Phase | Status | Description |
+| Phase | Status | What's Done |
 |-------|--------|-------------|
-| 1. Foundation | ✅ | Boot, UART, GPIO, Memory, Scheduler |
-| 2. Steno Engine | ✅ | Stroke processing, Dictionary, Engine |
-| 3. Intent Execution | ✅ | Handlers, Queue, History, 122 tests |
-| 4. Hardware | 🔄 | USB HID, Framebuffer, Camera |
-| 5. Connectivity | ⏳ | Networking, Multi-core, Storage |
+| **1. Foundation** | ✅ | Boot, UART, GPIO, Timer, Memory, Scheduler |
+| **2. Steno Engine** | ✅ | Stroke parsing, Dictionary, Engine, RTFCRE |
+| **3. Intent System** | ✅ | Handlers, Queue, History, 122 tests |
+| **4. Hardware** | 🔄 | USB HID driver, Framebuffer |
+| **5. Connectivity** | ⏳ | Networking, Multi-core |
+
+### Test Coverage
+
+```
+122 tests | 7 modules | < 1 second
+
+stroke .......... 25 tests ✓
+capability ...... 20 tests ✓
+dictionary ...... 20 tests ✓
+concept ......... 22 tests ✓
+history ......... 12 tests ✓
+queue ........... 12 tests ✓
+handlers ........ 11 tests ✓
+```
+
+---
 
 ## Hardware
 
-**Target**: Raspberry Pi 5
+**Target Platform**: Raspberry Pi 5
 
-- ARM Cortex-A76 (4 cores)
-- 4/8 GB RAM
-- Hailo-8L AI accelerator (optional)
+| Component | Specification |
+|-----------|---------------|
+| CPU | ARM Cortex-A76 (4 cores @ 2.4GHz) |
+| RAM | 4GB / 8GB LPDDR4X |
+| AI | Hailo-8L NPU (optional) |
+| Input | Any Plover-compatible steno machine |
 
-**Steno Input**: Any Plover-compatible steno machine via USB HID.
+---
 
 ## Philosophy
 
-1. **Strokes, Not Characters**: The native input unit is a steno stroke.
-2. **Pure Rust**: No libc, minimal crates, everything from scratch.
-3. **Green Computing**: Sleep when idle, no busy loops.
-4. **No Backward Compatibility**: We build the future, not preserve the past.
+### 1. Strokes, Not Characters
+The native input unit is a 23-bit stroke pattern. No character encoding. No Unicode. No string handling.
+
+### 2. Pure Rust
+No libc. No C dependencies. Minimal crates. Everything from scratch in safe, idiomatic Rust.
+
+### 3. Green Computing
+`wfi` when idle. No busy loops. No wasted cycles.
+
+### 4. Forward Only
+We build the future. No backward compatibility with character-based systems.
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design and data flow |
+| [API.md](docs/API.md) | Complete API reference |
+| [ROADMAP.md](docs/ROADMAP.md) | Development phases |
+| [BUILDING.md](docs/BUILDING.md) | Build instructions |
+| [CONTRIBUTING.md](docs/CONTRIBUTING.md) | How to contribute |
+
+---
 
 ## License
 
-MIT
+MIT License. See [LICENSE](LICENSE) for details.
 
-## Contributing
+---
 
-See [CONTRIBUTING.md](docs/CONTRIBUTING.md).
+<p align="center">
+  <strong>Intent Kernel</strong><br>
+  <em>150 years of stenography meets bare-metal computing.</em>
+</p>
