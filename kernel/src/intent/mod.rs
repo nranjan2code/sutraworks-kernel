@@ -11,7 +11,7 @@
 
 use crate::kernel::capability::{
     Capability, CapabilityType, Permissions, 
-    mint_root, validate
+    mint_root
 };
 
 pub mod handlers;

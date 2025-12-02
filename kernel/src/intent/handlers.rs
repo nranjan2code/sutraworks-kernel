@@ -11,7 +11,7 @@
 //! # Thread Safety
 //! Handler registration uses a SpinLock. Handlers run with interrupts enabled.
 
-use crate::intent::{ConceptID, Intent, IntentData};
+use crate::intent::{ConceptID, Intent};
 use crate::kernel::capability::CapabilityType;
 
 // ═══════════════════════════════════════════════════════════════════════════════

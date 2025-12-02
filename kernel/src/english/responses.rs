@@ -3,10 +3,9 @@
 //! This module converts intent execution results into human-readable English responses.
 
 use alloc::format;
-use alloc::string::{String, ToString};
-use core::fmt::Write;
+use alloc::string::String;
 
-use crate::intent::{ConceptID, Intent};
+use crate::intent::Intent;
 use crate::steno::dictionary::concepts;
 use crate::steno::EngineStats;
 

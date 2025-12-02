@@ -14,9 +14,60 @@ pub struct DetectedObject {
     pub height: f32,
 }
 
-/// Represents a semantic embedding of an image (e.g., from CLIP).
-pub struct ImageEmbedding {
-    pub data: [f32; 512], // Fixed size for now, e.g., CLIP-ViT-B/32
+/// Represents a semantic hypervector of an image (1024-bit).
+/// This replaces the old floating-point embedding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VisualHypervector {
+    pub data: [u64; 16], // 1024-bit binary hypervector
+}
+
+/// A projection layer to convert continuous visual features into binary hypervectors.
+/// Uses Random Projection (LSH) logic.
+pub struct RandomProjection {
+    // In a real implementation, this would hold the projection matrix.
+    // For now, it's a marker struct for the architecture.
+}
+
+impl RandomProjection {
+    /// Project a float vector into the hyperdimensional space.
+    /// Returns a 1024-bit binary hypervector.
+    ///
+    /// This implements Locality Sensitive Hashing (LSH) via Random Projection.
+    /// We simulate a fixed random matrix `R` (1024 x N) where each element is -1 or +1.
+    /// The result bit `i` is `sign(dot(features, R[i]))`.
+    pub fn project(features: &[f32]) -> VisualHypervector {
+        let mut hv = [0u64; 16];
+        
+        // We need 1024 bits. Each bit is the sign of the dot product of the feature vector
+        // with a random vector. To ensure stability, the random vectors must be deterministic.
+        // We use a seeded Xorshift RNG to generate the weights on the fly.
+        
+        for i in 0..1024 {
+            let mut dot_product = 0.0;
+            let mut rng_state = 0x12345678 ^ (i as u32); // Seed depends on bit index
+            
+            for &feat in features {
+                // Xorshift32
+                let mut x = rng_state;
+                x ^= x << 13;
+                x ^= x >> 17;
+                x ^= x << 5;
+                rng_state = x;
+                
+                // Weight is -1.0 or 1.0 based on LSB
+                let weight = if (x & 1) == 0 { -1.0 } else { 1.0 };
+                dot_product += feat * weight;
+            }
+            
+            if dot_product > 0.0 {
+                let word_idx = i / 64;
+                let bit_idx = i % 64;
+                hv[word_idx] |= 1 << bit_idx;
+            }
+        }
+        
+        VisualHypervector { data: hv }
+    }
 }
 
 /// Trait for Object Detection capabilities.
@@ -122,6 +173,10 @@ impl ObjectDetector for ColorBlobDetector {
 pub struct EdgeDetector;
 
 impl ObjectDetector for EdgeDetector {
+    fn backend_name(&self) -> &'static str {
+        "CPU-EdgeDetector"
+    }
+
     fn detect(&self, image_data: &[u8], width: u32, height: u32) -> Result<heapless::Vec<DetectedObject, 16>, &'static str> {
         let mut objects = heapless::Vec::new();
         
@@ -136,7 +191,7 @@ impl ObjectDetector for EdgeDetector {
         
         for y in 1..height-1 {
             for x in 1..width-1 {
-                let idx = ((y * width + x) * 3) as usize;
+                let _idx = ((y * width + x) * 3) as usize;
                 
                 // Convert to grayscale: 0.299R + 0.587G + 0.114B
                 // Simplified: (R+G+B)/3
@@ -176,10 +231,10 @@ impl ObjectDetector for EdgeDetector {
             let _ = objects.push(DetectedObject {
                 class_id: 2, // "Edge/Shape"
                 confidence: (max_grad as f32 / 255.0).min(1.0),
-                x: center_x / edge_pixels,
-                y: center_y / edge_pixels,
-                width: 0, // Unknown
-                height: 0, // Unknown
+                x: (center_x as f32) / (edge_pixels as f32),
+                y: (center_y as f32) / (edge_pixels as f32),
+                width: 0.0, // Unknown
+                height: 0.0, // Unknown
             });
         }
         

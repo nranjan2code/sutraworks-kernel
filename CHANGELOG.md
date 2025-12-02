@@ -9,19 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added (December 2, 2025) - 🧠 Real AI & USB Enumeration
-- **Real Neural Memory**
-  - Transformed `NeuralAllocator` into a **Vector Database**.
-  - Added `embedding: [f32; 64]` to memory blocks.
-  - Implemented `CosineSimilarity` for fuzzy retrieval (`retrieve_nearest`).
-  - Added boot-time demo: "Kitten" query retrieves "CAT" memory.
+### Added (December 2, 2025) - 🧠 Hyperdimensional Memory (HDC)
+- **Hyperdimensional Computing (HDC)**
+  - Replaced floating-point `NeuralAllocator` with **1024-bit Binary Hypervectors**.
+  - Implemented **Hamming Similarity** (XOR + PopCount) for ultra-fast retrieval.
+  - Implemented **Cognitive Algebra**:
+    - `bind(A, B)`: XOR binding for variable assignment.
+    - `bundle(A, B)`: Majority superposition for sets.
+    - `permute(A)`: Cyclic shift for sequences.
+  - Verified orthogonality and reversibility properties.
 - **Real Perception**
   - Implemented **Sobel Edge Detection** (`EdgeDetector`) in `vision.rs`.
   - Integrated into `PerceptionManager` sensor fusion pipeline.
+  - **HDC Remediation**: Replaced legacy `ImageEmbedding` (`[f32; 512]`) with `VisualHypervector` (`[u64; 16]`).
+  - Implemented **Random Projection** (LSH) stub for converting float features to binary hypervectors.
 - **Real USB Enumeration**
   - Implemented xHCI Command Ring (`send_command`).
   - Implemented Event Ring processing (`process_event_ring`).
   - Implemented Device Enumeration flow: Port Reset -> Enable Slot -> Address Device.
+
+### Changed
+- **Codebase Cleanup**
+  - Achieved **Zero Compiler Warnings** across the entire kernel.
+  - Removed all legacy floating-point embedding code (`[f32; 64]`, `cosine_similarity`).
+  - Removed unused imports and fields in `drivers`, `english`, and `kernel` modules.
+  - Clarified "Fake/Stub" comments in `xhci.rs` and `hid.rs` to reflect hardware reality.
 
 ### Added (December 2, 2025) - 🎹 Real Multi-Stroke Briefs
 - **MultiStrokeDictionary**: Complete multi-stroke sequence support

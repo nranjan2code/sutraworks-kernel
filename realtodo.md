@@ -18,17 +18,26 @@ This plan addresses the gaps identified in the "No Sugar Coating" review, but wi
     - [ ] Queue Transfer TRBs to receive keystrokes.
 - [ ] **Connect to HID Parser**: Pass received data to `hid.rs`.
 
-## Phase 2: Real Neural Memory (Vector Space)
-**Goal**: Transform `NeuralAllocator` from a tagged list into a true **Vector Database** for semantic retrieval.
+## Phase 2: Hyperdimensional Memory (HDC)
+**Goal**: Transform `NeuralAllocator` into a **Hyperdimensional Computing** engine for cognitive algebra.
 
-- [x] **Implement Vector Embeddings**:
-    - [x] Add `embedding: [f32; 64]` to `SemanticBlock`.
-    - [x] Implement `CosineSimilarity` trait for vectors.
-- [x] **Implement Semantic Retrieval**:
-    - [x] Create `retrieve_nearest(query_vector: &[f32]) -> Option<IntentPtr>`.
-    - [x] This enables "fuzzy" memory recall based on meaning, not just exact ID.
-- [x] **Implement "Associative Memory"**:
-    - [x] Allow linking blocks based on vector proximity.
+- [x] **Implement Hypervectors**:
+    - [x] Replace `[f32; 64]` with `[u64; 16]` (1024-bit binary).
+    - [x] Implement `HammingSimilarity` (XOR + PopCount).
+- [x] **Implement Cognitive Algebra**:
+    - [x] `bind(A, B)`: XOR binding.
+    - [x] `bundle(A, B)`: Majority superposition.
+    - [x] `permute(A)`: Cyclic shift.
+- [x] **Verify Logic**:
+    - [x] Standalone verification script (`tests/verify_hdc.rs`).
+    - [ ] **Real Random Projection**
+    - [ ] Implement `Matrix` struct for projection weights (1024 x N).
+    - [ ] Implement `matmul_sign` for efficient projection.
+    - [ ] Store projection matrices in persistent storage (or generate from seed).
+- [ ] **Audio Projection**
+    - [ ] Implement MFCC feature extractor.
+    - [ ] Implement `AudioHypervector` projection.
+    - [x] Prove Orthogonality, Binding, and Unbinding properties.
 
 ## Phase 3: Real Perception (Computer Vision)
 **Goal**: Replace the "Red Blob" detector with a real Computer Vision algorithm running on CPU.

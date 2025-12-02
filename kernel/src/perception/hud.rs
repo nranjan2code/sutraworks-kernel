@@ -5,7 +5,7 @@
 //! but a high-speed visualization of intent.
 
 use crate::drivers::framebuffer::{self, Color, Framebuffer};
-use crate::steno::{Stroke, EngineStats};
+use crate::steno::Stroke;
 use crate::intent::Intent;
 
 // ═══════════════════════════════════════════════════════════════════════════════

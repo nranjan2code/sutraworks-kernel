@@ -9,7 +9,7 @@ use core::pin::Pin;
 use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 use core::sync::atomic::{AtomicBool, Ordering};
 use alloc::boxed::Box;
-use alloc::vec::Vec;
+
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use crate::arch::{self, SpinLock};
@@ -90,7 +90,7 @@ impl Executor {
             // If no tasks were ready to run, sleep
             if !did_work {
                 // Wait for interrupt
-                unsafe { arch::wfi(); }
+                arch::wfi();
             }
         }
     }

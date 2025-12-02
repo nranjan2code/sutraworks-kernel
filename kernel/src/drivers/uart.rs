@@ -1,9 +1,10 @@
 //! PL011 UART Driver for Raspberry Pi 5
 //!
 //! Provides reliable serial communication for debugging and user interaction.
+#![allow(dead_code)]
 
 use crate::arch::{self, SpinLock};
-use super::{PERIPHERAL_BASE, UART0_BASE};
+use super::UART0_BASE;
 use core::fmt::{self, Write};
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -345,7 +346,7 @@ pub fn init_with_config(config: &UartConfig) {
     
     // Register and enable interrupt
     use super::interrupts::{self, IRQ_UART0};
-    unsafe {
+    {
         interrupts::register_handler(IRQ_UART0, handle_irq);
         interrupts::enable(IRQ_UART0);
     }

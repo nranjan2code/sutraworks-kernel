@@ -6,7 +6,7 @@
 //! This replaces traditional Unix-style permissions with fine-grained,
 //! transferable, revocable capabilities.
 
-use core::sync::atomic::{AtomicU64, AtomicU32, Ordering};
+use core::sync::atomic::{AtomicU64, Ordering};
 use crate::arch::SpinLock;
 
 // ═══════════════════════════════════════════════════════════════════════════════

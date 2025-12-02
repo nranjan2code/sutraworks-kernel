@@ -104,5 +104,5 @@ if !has_capability(CapabilityType::System) {
 ## What NOT To Do
 -   ❌ Do not add character/word parsing
 -   ❌ Do not add NLP or tokenization
--   ❌ Do not use embeddings or vector similarity
+-   ❌ Do not use floating-point embeddings (Use HDC binary hypervectors instead)
 -   ❌ Do not maintain backward compatibility with old code

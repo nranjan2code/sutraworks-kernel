@@ -228,29 +228,42 @@ impl PerceptionManager {
 
 ---
 
-## Neural Memory System
-
-The kernel implements a **Vector Database** directly in the memory allocator.
-
-### Semantic Allocator
-Memory blocks are tagged with both a `ConceptID` and a **Semantic Vector** (embedding).
-
-```rust
-pub struct SemanticBlock {
-    pub concept_id: ConceptID,
-    pub embedding: [f32; 64], // 64-d vector
-    // ...
-}
-```
-
-### Fuzzy Retrieval
-Memory can be retrieved not just by address or ID, but by **meaning** using Cosine Similarity.
-
-```rust
-// Find memory semantically close to "Kitten" vector
-let ptr = allocator.retrieve_nearest(&vec_kitten);
-// Returns pointer to "CAT" block
-```
+## Hyperdimensional Memory System
+ 
+ The kernel implements a **Hyperdimensional Computing (HDC)** architecture, also known as Vector Symbolic Architecture (VSA). This is a paradigm shift from traditional "Deep Learning" dense vectors to high-dimensional binary spaces.
+ 
+ ### 1024-bit Hypervectors
+ Memory blocks are tagged with a **Hypervector** (1024-bit binary pattern) instead of a floating-point embedding.
+ 
+ ```rust
+ pub struct SemanticBlock {
+     pub concept_id: ConceptID,
+     pub hypervector: [u64; 16], // 1024 bits
+     // ...
+ }
+ ```
+ 
+ ### Hamming Similarity
+ Retrieval is based on **Hamming Distance** (number of differing bits), which is calculated using extremely fast bitwise operations (`XOR` + `PopCount`).
+ 
+ ```rust
+ // Sim(A, B) = 1.0 - (HammingDist(A, B) / 1024)
+ let ptr = allocator.retrieve_nearest(&query_hv);
+ ```
+ 
+ ### Cognitive Algebra
+ HDC allows for algebraic manipulation of concepts directly in memory:
+ 
+ - **Bind (`*`)**: `A * B` (XOR). Creates a new concept orthogonal to both inputs. Used for variable binding (e.g., `Color * Red`).
+ - **Bundle (`+`)**: `A + B` (Majority). Creates a concept similar to both inputs. Used for sets/superposition.
+ - **Permute (`Π`)**: `Π(A)` (Cyclic Shift). Creates an orthogonal concept. Used for sequences/order.
+ 
+ **Example**:
+ ```rust
+ let running_cat = bind(CAT, ACTION_RUN);
+ // running_cat is distinct from CAT and RUN, but can be unbound:
+ let cat = bind(running_cat, ACTION_RUN); // Recovers CAT
+ ```
 
 ---
 

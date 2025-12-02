@@ -3,7 +3,7 @@
 //! Provides direct access to the display through the VideoCore mailbox.
 //! Supports high-resolution displays with hardware-accelerated pixel operations.
 
-use crate::drivers::mailbox::{self, PropertyBuffer, PropertyRequest};
+use crate::drivers::mailbox::{PropertyBuffer, PropertyRequest};
 use crate::drivers::mailbox::{
     TAG_SET_PHYSICAL_SIZE, TAG_SET_VIRTUAL_SIZE, TAG_SET_DEPTH,
     TAG_SET_PIXEL_ORDER, TAG_ALLOCATE_BUFFER, TAG_GET_PITCH,

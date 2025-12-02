@@ -7,7 +7,7 @@
 //! 4. Keyword extraction
 //! 5. Fallback to steno lookup
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use alloc::vec::Vec;
 
 use crate::intent::{ConceptID, Intent, IntentData};

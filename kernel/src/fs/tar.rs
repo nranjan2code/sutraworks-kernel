@@ -73,7 +73,7 @@ impl FileSystem for TarFileSystem {
 
             // Add to list if it's a regular file or directory
             if type_flag == b'0' || type_flag == 0 || is_dir {
-                let mut name: String<64> = String::from(name_str);
+                let name: String<64> = String::from(name_str);
                 let _ = files.push(FileEntry {
                     name,
                     size,

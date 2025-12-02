@@ -30,6 +30,7 @@ use crate::intent::{ConceptID, Intent, IntentData};
 const MULTI_STROKE_TIMEOUT_US: u64 = 500_000;
 
 /// Maximum strokes to buffer before giving up
+#[allow(dead_code)]
 const MAX_BUFFER_STROKES: usize = 8;
 
 // ═══════════════════════════════════════════════════════════════════════════════

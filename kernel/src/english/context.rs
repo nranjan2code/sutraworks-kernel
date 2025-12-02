@@ -40,10 +40,10 @@ impl UserMode {
 /// A single entry in conversation history
 #[derive(Clone)]
 struct HistoryEntry {
-    input: alloc::string::String,
-    concept: ConceptID,
-    result: Option<IntentResult>,
-    timestamp: u64,
+    _input: alloc::string::String,
+    _concept: ConceptID,
+    _result: Option<IntentResult>,
+    _timestamp: u64,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -80,7 +80,6 @@ impl ConversationContext {
 
     /// Parse with conversation context
     pub fn parse(&mut self, input: &str) -> Option<Intent> {
-        use alloc::string::ToString;
 
         // Handle context-aware phrases first
         if let Some(intent) = self.resolve_context(input) {

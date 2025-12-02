@@ -277,11 +277,14 @@ Interrupt-safe concurrency primitives and removal of unsafe global state.
 - **Safe Interrupts**: Thread-safe handler registration.
 - **Overflow Protection**: Hardened filesystem parsers.
 
-### ✅ Real Neural Memory
-True vector-based semantic memory system:
-- **Vector Embeddings**: 64-dimensional semantic vectors stored with every allocation.
-- **Cosine Similarity**: Real-time fuzzy retrieval based on meaning (`retrieve_nearest`).
-- **Associative Recall**: Find related concepts (e.g., "Kitten" -> "CAT").
+### ✅ Hyperdimensional Memory ✨ NEW!
+True "Vector Symbolic Architecture" (VSA) memory system:
+- **1024-bit Binary Hypervectors**: Replaced inefficient floats with holographic bit patterns.
+- **Clean Architecture**: Zero compiler warnings, no legacy code, strict type safety.
+- **Hyperdimensional Memory**: 1024-bit binary hypervectors with Hamming similarity.
+- **Cognitive Algebra**: `Bind`, `Bundle`, and `Permute` operations for semantic reasoning.
+- **Sensory Projection**: Random Projection (LSH) bridges continuous sensory data to binary memory.
+- **Robustness**: Information is distributed across 1024 bits; resilient to noise and bit flips.
 
 ### ✅ Real Perception
 Computer Vision running on the CPU:

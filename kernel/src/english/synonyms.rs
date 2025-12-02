@@ -2,7 +2,6 @@
 //!
 //! This module handles synonym expansion to increase phrase matching flexibility.
 
-use heapless::FnvIndexMap;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SYNONYM DATABASE
@@ -95,7 +94,6 @@ pub const SYNONYM_COUNT: usize = SYNONYMS.len();
 /// Expand synonyms in a phrase
 /// Example: "what's the sys info" → "what is the system information"
 pub fn expand(phrase: &str) -> alloc::string::String {
-    use alloc::string::ToString;
     use alloc::vec::Vec;
 
     let words: Vec<&str> = phrase.split_whitespace().collect();

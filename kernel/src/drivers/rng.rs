@@ -1,9 +1,10 @@
-//! Hardware Random Number Generator (RNG) Driver
+//! Hardware Random Number Generator (TRNG) driver.
+#![allow(dead_code)]
 //!
 //! Provides access to the BCM2712 hardware RNG for entropy.
 
 use crate::arch;
-use super::{PERIPHERAL_BASE, RNG_OFFSET};
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // RNG REGISTERS

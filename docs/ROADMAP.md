@@ -41,6 +41,11 @@
 - [x] **Sensor Fusion**: N:1 perception aggregation (Virtual Camera + Lidar).
 - [x] **Hot-Pluggable Sensors**: Dynamic sensor registration.
 
+### Phase 5.9: Next-Gen Memory (HDC) ✅
+- [x] **Hyperdimensional Computing**: 1024-bit binary hypervectors.
+- [x] **Cognitive Algebra**: Bind, Bundle, Permute operations.
+- [x] **Hamming Similarity**: Bitwise semantic retrieval.
+
 ### Phase 6: Sensors & Connectivity (Current Focus)
 Expand hardware integration.
 

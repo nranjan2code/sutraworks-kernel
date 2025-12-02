@@ -65,7 +65,7 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 
 ### Memory Integration
 - [x] ConceptID-based memory allocation
-- [x] Neural memory regions
+- [x] HDC Memory (Hypervectors)
 - [x] Stroke history buffer
 - [ ] Dictionary caching
 
@@ -121,6 +121,11 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 - [x] Virtual sensor verification
 - [ ] Camera Driver (MIPI CSI-2)
 
+### Next-Gen Memory (HDC) ✅
+- [x] Hyperdimensional Computing (1024-bit vectors)
+- [x] Cognitive Algebra (Bind, Bundle, Permute)
+- [x] Hamming Similarity (Bitwise retrieval)
+
 ### Multi-stroke Processing ✅
 - [x] Stroke sequence timeout (500ms)
 - [x] Prefix matching for buffered strokes
@@ -157,7 +162,10 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 
 ### Testing
 - [x] Unit tests for stroke parsing (25 tests)
-- [ ] Dictionary lookup tests
+- [x] **Codebase Cleanup**
+    - [x] Remove legacy floating-point embeddings.
+    - [x] Fix all compiler warnings.
+    - [x] Clarify stub/fake implementations.
 - [ ] Integration tests on QEMU
 - [ ] Hardware tests on Pi 5
 
@@ -179,7 +187,6 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 
 These are explicitly **NOT** planned:
 - ❌ NLP or tokenization (English uses direct lookup, not parsing)
-- ❌ Embedding vectors or similarity search
 - ❌ Backward compatibility with word-based systems
 - ❌ Traditional shell/terminal
 - ❌ POSIX compatibility

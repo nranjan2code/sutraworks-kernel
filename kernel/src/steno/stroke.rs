@@ -322,19 +322,19 @@ fn normalize_steno(steno: &str) -> Option<&str> {
 /// Parse steno string into individual keys
 fn parse_steno_keys(steno: &str) -> StenoKeyIter<'_> {
     StenoKeyIter {
-        steno,
-        pos: 0,
-        seen_hyphen: false,
-        seen_vowel: false,
+        _steno: steno,
+        _pos: 0,
+        _seen_hyphen: false,
+        _seen_vowel: false,
     }
 }
 
 /// Iterator over steno keys in a notation string
 struct StenoKeyIter<'a> {
-    steno: &'a str,
-    pos: usize,
-    seen_hyphen: bool,
-    seen_vowel: bool,
+    _steno: &'a str,
+    _pos: usize,
+    _seen_hyphen: bool,
+    _seen_vowel: bool,
 }
 
 impl<'a> Iterator for StenoKeyIter<'a> {

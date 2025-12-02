@@ -1,6 +1,7 @@
 //! GPIO Driver for Raspberry Pi 5 (BCM2712)
 //!
-//! Provides control over GPIO pins as capabilities.
+//! Controls the GPIO pins on the BCM2712.
+#![allow(dead_code)]
 
 use crate::arch;
 use super::GPIO_BASE;

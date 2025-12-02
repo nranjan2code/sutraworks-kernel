@@ -3,9 +3,8 @@
 //! Handles Human Interface Devices, specifically Steno machines.
 //! Implements HID Boot Protocol for Keyboard.
 
-use crate::steno::{Stroke, StrokeProducer, KEYS, NUM_KEYS};
+use crate::steno::{Stroke, StrokeProducer};
 use crate::drivers::usb::xhci::CONTROLLER;
-use crate::kprintln;
 
 /// Standard HID Boot Protocol Keyboard Report (8 bytes)
 #[repr(C, packed)]
@@ -18,16 +17,16 @@ pub struct KeyboardReport {
 
 /// USB HID Driver
 pub struct UsbHid {
-    connected: bool,
-    last_report: Option<KeyboardReport>,
+    _connected: bool,
+    _last_report: Option<KeyboardReport>,
 }
 
 impl UsbHid {
     /// Create a new HID driver instance
     pub const fn new() -> Self {
         Self {
-            connected: false,
-            last_report: None,
+            _connected: false,
+            _last_report: None,
         }
     }
 

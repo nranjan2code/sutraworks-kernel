@@ -3,7 +3,7 @@
 //! Handles synchronous exceptions (Data Abort, Instruction Abort), IRQs, and System Errors.
 //! Provides detailed decoding of ESR_EL1 to diagnose faults.
 
-use core::panic::PanicInfo;
+
 use crate::arch;
 use crate::drivers;
 

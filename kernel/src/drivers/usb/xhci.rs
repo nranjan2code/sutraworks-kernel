@@ -2,6 +2,7 @@
 //!
 //! Handles the low-level USB 3.0 host controller interface.
 //! Implements the xHCI 1.2 Specification.
+#![allow(dead_code)]
 
 use crate::kprintln;
 use crate::arch::{self, SpinLock};
@@ -82,6 +83,17 @@ pub struct ErstEntry {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// xHCI Controller structure
+pub struct XhciController {
+    base_addr: usize,
+    op_base: usize,
+    rt_base: usize,
+    db_base: usize,
+    
+    dcbaa: Option<NonNull<u8>>,
+    cmd_ring: Option<NonNull<u8>>,
+    event_ring: Option<NonNull<u8>>,
+    erst: Option<NonNull<u8>>,
+    
     // Ring State
     event_ring_dequeue_ptr: Option<NonNull<Trb>>,
     event_ring_cycle_bit: u32,
@@ -125,7 +137,8 @@ impl XhciController {
         // Let's use the address from `pcie.rs` if it finds one.
         
         // Mock finding for now, but use real logic structure
-        if let Some((bus, dev, func)) = pcie.find_device(0x1de4, 0x0001) { // Fake ID for RP1
+        // 0x1de4 is VLI VL805 (Pi 4). For Pi 5 RP1, we'd look for 0x1de4:0x0001 (placeholder).
+        if let Some((bus, dev, func)) = pcie.find_device(0x1de4, 0x0001) { 
              self.base_addr = pcie.read_bar0(bus, dev, func);
         } else {
              // Fallback to a hardcoded address for Pi 5 RP1 xHCI if not found via ECAM

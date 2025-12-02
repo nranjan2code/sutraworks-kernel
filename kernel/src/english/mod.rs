@@ -33,14 +33,11 @@
 //! - Response generation: Stack-allocated, zero-copy templates
 //! - Total overhead: ~10-30μs per command (negligible at <200 WPM)
 
-#![no_std]
 
 extern crate alloc;
 use alloc::string::String;
-use alloc::vec::Vec;
 
-use crate::intent::{ConceptID, Intent, IntentData};
-use crate::steno::dictionary::concepts;
+use crate::intent::Intent;
 
 pub mod parser;
 pub mod responses;

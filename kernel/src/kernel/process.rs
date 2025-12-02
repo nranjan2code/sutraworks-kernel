@@ -3,7 +3,7 @@
 //! Defines the Agent Control Block (ACB) and associated structures.
 //! Simplified for stroke-native kernel.
 
-use alloc::boxed::Box;
+
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 use crate::kernel::memory::paging::VMM;
@@ -111,7 +111,7 @@ impl Agent {
 
         // Set up trampoline
         // switch_to restores x19..x29. We use them to pass args to jump_to_userspace.
-        agent.context.lr = user_trampoline as u64;
+        agent.context.lr = user_trampoline as *const () as u64;
         agent.context.x19 = entry as u64;      // Entry point
         agent.context.x20 = ustack_top;        // User Stack
         agent.context.x21 = arg;               // Argument

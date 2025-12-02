@@ -1,7 +1,8 @@
 //! VideoCore Mailbox Driver for Raspberry Pi 5
 //!
 //! The mailbox is the primary communication channel between the ARM cores
-//! and the VideoCore GPU. It's used for:
+//! Communicates with the VideoCore IV GPU via the Mailbox interface.
+#![allow(dead_code)]
 //! - Framebuffer allocation
 //! - Power management
 //! - Clock configuration
