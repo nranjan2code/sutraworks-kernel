@@ -81,9 +81,12 @@ kernel/src/
 ├── steno/           # Stenographic engine
 │   ├── stroke.rs    # Stroke struct (23-bit)
 │   ├── dictionary.rs # Stroke→Intent mapping
-│   └── engine.rs    # StenoEngine state machine
+│   ├── engine.rs    # StenoEngine state machine
+│   └── history.rs   # Stroke history (undo/redo)
 ├── intent/          # Intent execution
-│   └── mod.rs       # ConceptID, Intent, IntentExecutor
+│   ├── mod.rs       # ConceptID, Intent, IntentExecutor
+│   ├── handlers.rs  # User-defined handler registry
+│   └── queue.rs     # Intent priority queue
 ├── drivers/         # Hardware drivers
 │   ├── uart.rs      # Debug output
 │   ├── timer.rs     # ARM generic timer
@@ -149,7 +152,50 @@ if let Some(intent) = steno::process_steno("HELP") {
 if let Some(intent) = steno::process_raw(0x000042) {
     intent::execute(&intent);
 }
+
+// Register a custom intent handler
+intent::register_handler(
+    concepts::STATUS,
+    |intent| {
+        kprintln!("Custom status handler!");
+        HandlerResult::Handled
+    },
+    "my_status"
+);
+
+// Queue an intent for later execution
+intent::queue_with_priority(
+    Intent::new(concepts::SAVE),
+    Priority::High,
+    timer::uptime_us()
+);
 ```
+
+## Testing
+
+```bash
+# Run 122 host-based tests (< 1 second)
+make test
+
+# Modules tested:
+# - stroke (25 tests)
+# - capability (20 tests)
+# - dictionary (20 tests)
+# - concept (22 tests)
+# - history (12 tests)
+# - queue (12 tests)
+# - handlers (11 tests)
+```
+
+## Development Status
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| 1. Foundation | ✅ | Boot, UART, GPIO, Memory, Scheduler |
+| 2. Steno Engine | ✅ | Stroke processing, Dictionary, Engine |
+| 3. Intent Execution | ✅ | Handlers, Queue, History, 122 tests |
+| 4. Hardware | 🔄 | USB HID, Framebuffer, Camera |
+| 5. Connectivity | ⏳ | Networking, Multi-core, Storage |
 
 ## Hardware
 

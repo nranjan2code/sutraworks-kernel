@@ -1,94 +1,80 @@
-# Next Steps: Expanding Test Coverage
+# Next Steps: Phase 4 - Hardware Integration
 
 ## Current Status ✅
 
-Test infrastructure is **working**! QEMU exits cleanly with semihosting on `virt` machine.
+**Phase 3 Complete!** Intent execution system fully implemented.
 
 ```bash
-make test-unit  # Completes in <10 seconds
+make test       # Runs host-based tests (fast, native on Mac)
+make test-host  # Same as above
+make kernel     # Build kernel
 ```
 
-## Limitation
+## Host-Based Tests ✅ EXPANDED
 
-The actual unit tests require Pi 5 hardware initialization (UART, memory addresses) which doesn't work on QEMU's `virt` machine. The current test just verifies the harness works.
+**Location:** `tests/host/`  
+**Tests:** 122 tests across 7 modules  
+**Time:** < 1 second  
 
-## Options to Expand Testing
+Modules tested:
+- **stroke_tests.rs** (25 tests) - Stroke parsing, RTFCRE notation, key layout
+- **capability_tests.rs** (20 tests) - Permissions, derivation, revocation
+- **dictionary_tests.rs** (20 tests) - Lookup, sequences, default entries
+- **concept_tests.rs** (22 tests) - ConceptID, Intent, categories
+- **history_tests.rs** (12 tests) - Stroke history, undo/redo
+- **queue_tests.rs** (12 tests) - Intent queue, priority ordering
+- **handlers_tests.rs** (11 tests) - User-defined handlers, dispatch
 
-## Option 1: Host-Based Tests (RECOMMENDED)
+## Phase 3 Completed ✅
 
-**Time:** 2-3 hours  
-**Difficulty:** Easy  
-**Benefit:** Fast tests, no QEMU, runs on Mac natively
+- [x] Stroke history buffer (64-entry ring buffer with undo/redo)
+- [x] User-defined intent handlers (128 handlers, priority dispatch)
+- [x] Intent queue (32-entry priority queue with deadlines)
+- [x] Full integration with engine and executor
 
-Create a separate test crate that tests pure Rust logic:
-- ConceptID hashing
-- Embedding similarity math
-- Capability permission checks
-- Intent parsing logic
+## Next: Phase 4 - Hardware Integration
+
+### Option 1: USB HID Driver (Steno Input)
+Connect real steno machines!
+- Georgi/Plover HID protocol
+- N-key rollover detection
+- Stroke timing for disambiguation
+
+### Option 2: Framebuffer Driver (Display)
+Visual output on Pi 5:
+- Intent visualization
+- Stroke echo display
+- System status
+
+### Option 3: Hardware Testing
+Flash to real Pi 5:
+1. `make image` - Create bootable image
+2. Flash to SD card
+3. Connect UART for output
+4. Test on real hardware
+
+## Current Working Commands
 
 ```bash
-# In a new crate with std support
-cargo test  # Runs instantly on Mac
+make test       # 122 host-based tests (< 1 second)
+make kernel     # Build kernel ELF
+make check      # Quick syntax check
+```
+
+## Sample Output
+
+```
+running 35 tests (new modules)
+running 25 tests (stroke)
+running 20 tests (capability)
+running 20 tests (dictionary)
+running 22 tests (concept)
+
+test result: ok. 122 passed; 0 failed
+
+✓ All host tests passed!
 ```
 
 ---
 
-## Option 2: Hardware Tests on Real Pi 5
-
-**Time:** Hardware setup
-**Difficulty:** Medium  
-**Benefit:** Tests real kernel behavior with real hardware
-
-1. Flash kernel to SD card
-2. Connect UART for test output
-3. Run tests on actual Pi 5
-4. Capture output via serial
-
----
-
-## Option 3: QEMU raspi4b with Full Boot
-
-**Time:** 6-8 hours  
-**Difficulty:** Hard  
-**Benefit:** Tests real kernel boot sequence
-
-Note: raspi4b machine doesn't support semihosting exit, so tests would need to:
-- Use UART output to signal pass/fail
-- External script parses output and kills QEMU
-- Or use watchdog timer approach
-
----
-
-## Recommendation
-
-**Start with Option 1 (Host-Based Tests)** for fast iteration on pure logic, then use Pi 5 hardware for integration tests.
-
-## Current Working Command
-
-```bash
-make test-unit  # Works! Uses QEMU virt machine, exits cleanly
-```
-
-## Output
-
-```
-=== INTENT KERNEL UNIT TESTS ===
-Timeout: 10s
-
-=== TESTS COMPLETED ===
-
-✓ All unit tests passed!
-```
-
-## Success Criteria
-
-- [x] Test harness compiles
-- [x] QEMU exits cleanly (semihosting works)
-- [x] Timeout prevents CPU heating
-- [ ] Host-based tests for pure Rust logic
-- [ ] Hardware tests on real Pi 5
-- [ ] CI/CD pipeline
-
----
-
-**Current Status:** Test infrastructure working. Ready to expand coverage!
+**Status:** Phase 3 Complete! Ready for Phase 4 (Hardware Integration).

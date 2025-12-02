@@ -1081,6 +1081,103 @@ Validate capability has permissions.
 
 ---
 
+## Steno Engine
+
+### Module: `steno`
+
+#### Global Functions
+
+##### `steno::init()`
+
+Initialize the stenographic engine with default dictionary.
+
+##### `steno::process_stroke(stroke: Stroke) -> Option<Intent>`
+
+Process a stroke and return intent if matched.
+
+##### `steno::process_steno(steno: &str) -> Option<Intent>`
+
+Process from RTFCRE notation.
+
+```rust
+if let Some(intent) = steno::process_steno("HELP") {
+    intent::execute(&intent);
+}
+```
+
+##### `steno::process_raw(bits: u32) -> Option<Intent>`
+
+Process from raw stroke bits (hardware input).
+
+##### `steno::stats() -> EngineStats`
+
+Get engine statistics.
+
+##### `steno::history_len() -> usize`
+
+Get number of strokes in history.
+
+##### `steno::redo() -> Option<Intent>`
+
+Redo the last undone action.
+
+---
+
+### Stroke History
+
+#### Module: `steno::history`
+
+#### `StrokeHistory`
+
+64-entry ring buffer for stroke history with undo/redo.
+
+##### `StrokeHistory::new() -> Self`
+
+Create empty history.
+
+##### `StrokeHistory::push(&mut self, stroke: Stroke, intent: Option<&Intent>, timestamp: u64)`
+
+Push a new stroke to history.
+
+##### `StrokeHistory::last(&self) -> Option<&HistoryEntry>`
+
+Get the most recent entry.
+
+##### `StrokeHistory::at(&self, offset: usize) -> Option<&HistoryEntry>`
+
+Get entry at offset from most recent (0 = most recent).
+
+##### `StrokeHistory::undo(&mut self) -> Option<&HistoryEntry>`
+
+Mark the most recent non-undone entry as undone.
+
+##### `StrokeHistory::redo(&mut self) -> Option<&HistoryEntry>`
+
+Redo the most recently undone entry.
+
+##### `StrokeHistory::len(&self) -> usize`
+
+Get number of entries.
+
+##### `StrokeHistory::recent(&self, max: usize) -> RecentStrokesIter`
+
+Iterate over recent strokes (most recent first).
+
+---
+
+#### `HistoryEntry`
+
+```rust
+pub struct HistoryEntry {
+    pub stroke: Stroke,
+    pub intent_id: Option<u64>,
+    pub timestamp: u64,
+    pub undone: bool,
+}
+```
+
+---
+
 ## Intent Engine
 
 Natural language intent processing.
@@ -1178,6 +1275,149 @@ intent::run(); // Starts "intent>" prompt
 
 ---
 
+### Intent Handlers
+
+#### Module: `intent::handlers`
+
+#### `HandlerRegistry`
+
+128-handler registry with priority dispatch.
+
+##### `HandlerRegistry::new() -> Self`
+
+Create empty registry.
+
+##### `HandlerRegistry::register(&mut self, concept_id: ConceptID, handler: HandlerFn, name: &'static str) -> bool`
+
+Register a handler for a specific concept.
+
+```rust
+registry.register(concepts::STATUS, my_handler, "custom_status");
+```
+
+##### `HandlerRegistry::register_with_options(&mut self, concept_id: ConceptID, handler: HandlerFn, name: &'static str, priority: u8, required_cap: Option<CapabilityType>) -> bool`
+
+Register with full options.
+
+##### `HandlerRegistry::register_wildcard(&mut self, handler: HandlerFn, name: &'static str, priority: u8) -> bool`
+
+Register a wildcard handler (receives all intents).
+
+##### `HandlerRegistry::unregister(&mut self, name: &'static str) -> bool`
+
+Unregister a handler by name.
+
+##### `HandlerRegistry::dispatch(&mut self, intent: &Intent, has_cap: impl Fn(CapabilityType) -> bool) -> bool`
+
+Dispatch an intent to registered handlers.
+
+---
+
+#### `HandlerResult`
+
+```rust
+pub enum HandlerResult {
+    Handled,       // Intent was handled
+    NotHandled,    // Pass to next handler
+    Error(u32),    // Handler failed
+}
+```
+
+---
+
+#### Global Functions
+
+##### `intent::register_handler(concept_id: ConceptID, handler: HandlerFn, name: &'static str) -> bool`
+
+Register a user-defined handler.
+
+##### `intent::unregister_handler(name: &'static str) -> bool`
+
+Unregister a handler.
+
+---
+
+### Intent Queue
+
+#### Module: `intent::queue`
+
+#### `IntentQueue`
+
+32-entry priority queue for deferred execution.
+
+##### `IntentQueue::new() -> Self`
+
+Create empty queue.
+
+##### `IntentQueue::push(&mut self, intent: Intent, timestamp: u64) -> bool`
+
+Push with default priority.
+
+##### `IntentQueue::push_with_priority(&mut self, intent: Intent, priority: Priority, timestamp: u64, deadline: u64) -> bool`
+
+Push with specific priority and deadline.
+
+##### `IntentQueue::pop(&mut self) -> Option<QueuedIntent>`
+
+Pop highest priority intent.
+
+##### `IntentQueue::peek(&self) -> Option<&QueuedIntent>`
+
+Peek at highest priority without removing.
+
+##### `IntentQueue::remove_expired(&mut self, now: u64) -> usize`
+
+Remove expired intents.
+
+---
+
+#### `Priority`
+
+```rust
+pub enum Priority {
+    Low = 0,
+    Normal = 1,
+    High = 2,
+    Critical = 3,
+}
+```
+
+---
+
+#### `QueuedIntent`
+
+```rust
+pub struct QueuedIntent {
+    pub intent: Intent,
+    pub priority: Priority,
+    pub sequence: u64,
+    pub queued_at: u64,
+    pub deadline: u64,
+}
+```
+
+---
+
+#### Global Functions
+
+##### `intent::queue(intent: Intent, timestamp: u64) -> bool`
+
+Queue an intent for deferred execution.
+
+##### `intent::queue_with_priority(intent: Intent, priority: Priority, timestamp: u64) -> bool`
+
+Queue with specific priority.
+
+##### `intent::process_queue() -> bool`
+
+Process next queued intent.
+
+##### `intent::queue_len() -> usize`
+
+Get number of queued intents.
+
+---
+
 ## Error Handling
 
 ### `KernelError` Enum
@@ -1240,7 +1480,7 @@ pub const GIC_BASE: usize = PERIPHERAL_BASE + 0x40000;
 
 ---
 
-*API Reference v0.1.0 - Intent Kernel*
+*API Reference v0.3.0 - Intent Kernel (Phase 3 Complete)*
 
 ---
 

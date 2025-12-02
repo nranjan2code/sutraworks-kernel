@@ -33,7 +33,8 @@ _start:
 _primary_entry:
     // Save DTB pointer (firmware passes it in x0, but we got core ID there)
     // Re-read it from x21 where firmware also stores it
-    adr     x1, __dtb_ptr
+    adrp    x1, __dtb_ptr
+    add     x1, x1, :lo12:__dtb_ptr
     str     xzr, [x1]               // Clear for now
     
     // Determine current exception level
@@ -135,8 +136,10 @@ _at_el1:
     // ─────────────────────────────────────────────────────────────────────────
     // BSS Clear - Zero uninitialized data
     // ─────────────────────────────────────────────────────────────────────────
-    adr     x0, __bss_start
-    adr     x1, __bss_end
+    adrp    x0, __bss_start
+    add     x0, x0, :lo12:__bss_start
+    adrp    x1, __bss_end
+    add     x1, x1, :lo12:__bss_end
     cmp     x0, x1
     b.ge    _bss_done
     
@@ -179,7 +182,8 @@ _secondary_entry:
     and     x0, x0, #0xff
     
     // Calculate our release slot address
-    adr     x1, __core_release
+    adrp    x1, __core_release
+    add     x1, x1, :lo12:__core_release
     add     x1, x1, x0, lsl #3
     
 _secondary_wait:
@@ -488,7 +492,8 @@ wake_core:
     cmp     x0, #4
     b.ge    1f                      // Invalid core
     
-    adr     x2, __core_release
+    adrp    x2, __core_release
+    add     x2, x2, :lo12:__core_release
     str     x1, [x2, x0, lsl #3]
     dsb     sy
     sev

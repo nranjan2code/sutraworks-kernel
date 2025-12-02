@@ -14,6 +14,12 @@ use crate::kernel::capability::{
     mint_root, validate
 };
 
+pub mod handlers;
+pub mod queue;
+
+pub use handlers::{HandlerRegistry, HandlerResult, HandlerFn, HandlerEntry};
+pub use queue::{IntentQueue, QueuedIntent, Priority};
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // CORE TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -84,6 +90,10 @@ pub struct IntentExecutor {
     memory_cap: Option<Capability>,
     system_cap: Option<Capability>,
     compute_cap: Option<Capability>,
+    // User-defined handlers
+    handlers: HandlerRegistry,
+    // Intent queue for deferred execution
+    queue: IntentQueue,
 }
 
 impl IntentExecutor {
@@ -93,6 +103,8 @@ impl IntentExecutor {
             memory_cap: None,
             system_cap: None,
             compute_cap: None,
+            handlers: HandlerRegistry::new(),
+            queue: IntentQueue::new(),
         }
     }
     
@@ -119,6 +131,24 @@ impl IntentExecutor {
     
     /// Execute an intent
     pub fn execute(&mut self, intent: &Intent) {
+        // First, try user-defined handlers
+        // Pre-compute capability checks to avoid borrow issues
+        let caps = [
+            (CapabilityType::Display, self.has_capability(CapabilityType::Display)),
+            (CapabilityType::Memory, self.has_capability(CapabilityType::Memory)),
+            (CapabilityType::System, self.has_capability(CapabilityType::System)),
+            (CapabilityType::Compute, self.has_capability(CapabilityType::Compute)),
+        ];
+        
+        let has_cap = |cap: CapabilityType| {
+            caps.iter().find(|(c, _)| *c == cap).map(|(_, v)| *v).unwrap_or(false)
+        };
+        
+        if self.handlers.dispatch(intent, has_cap) {
+            return; // Handled by user handler
+        }
+        
+        // Fall back to built-in handlers
         use crate::steno::dictionary::concepts;
         
         // Route by concept ID
@@ -273,6 +303,81 @@ impl IntentExecutor {
     fn handle_cancel(&self) {
         crate::kprintln!("[CONFIRM] Cancelled");
     }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // USER-DEFINED HANDLERS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    /// Register a user-defined handler for a concept
+    pub fn register_handler(
+        &mut self,
+        concept_id: ConceptID,
+        handler: HandlerFn,
+        name: &'static str,
+    ) -> bool {
+        self.handlers.register(concept_id, handler, name)
+    }
+    
+    /// Register a handler with full options
+    pub fn register_handler_with_options(
+        &mut self,
+        concept_id: ConceptID,
+        handler: HandlerFn,
+        name: &'static str,
+        priority: u8,
+        required_cap: Option<CapabilityType>,
+    ) -> bool {
+        self.handlers.register_with_options(concept_id, handler, name, priority, required_cap)
+    }
+    
+    /// Unregister a handler
+    pub fn unregister_handler(&mut self, name: &'static str) -> bool {
+        self.handlers.unregister(name)
+    }
+    
+    /// Get handler count
+    pub fn handler_count(&self) -> usize {
+        self.handlers.len()
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // INTENT QUEUE
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    /// Queue an intent for later execution
+    pub fn queue_intent(&mut self, intent: Intent, timestamp: u64) -> bool {
+        self.queue.push(intent, timestamp)
+    }
+    
+    /// Queue an intent with priority
+    pub fn queue_intent_with_priority(
+        &mut self,
+        intent: Intent,
+        priority: Priority,
+        timestamp: u64,
+    ) -> bool {
+        self.queue.push_with_priority(intent, priority, timestamp, 0)
+    }
+    
+    /// Process next queued intent
+    pub fn process_queue(&mut self) -> bool {
+        if let Some(queued) = self.queue.pop() {
+            self.execute(&queued.intent);
+            true
+        } else {
+            false
+        }
+    }
+    
+    /// Get queue length
+    pub fn queue_len(&self) -> usize {
+        self.queue.len()
+    }
+    
+    /// Remove expired intents from queue
+    pub fn cleanup_queue(&mut self, now: u64) -> usize {
+        self.queue.remove_expired(now)
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -300,4 +405,44 @@ pub fn execute(intent: &Intent) {
 pub fn has_capability(cap_type: CapabilityType) -> bool {
     let executor = EXECUTOR.lock();
     executor.has_capability(cap_type)
+}
+
+/// Register a user-defined intent handler
+pub fn register_handler(
+    concept_id: ConceptID,
+    handler: HandlerFn,
+    name: &'static str,
+) -> bool {
+    let mut executor = EXECUTOR.lock();
+    executor.register_handler(concept_id, handler, name)
+}
+
+/// Unregister a handler by name
+pub fn unregister_handler(name: &'static str) -> bool {
+    let mut executor = EXECUTOR.lock();
+    executor.unregister_handler(name)
+}
+
+/// Queue an intent for deferred execution
+pub fn queue(intent: Intent, timestamp: u64) -> bool {
+    let mut executor = EXECUTOR.lock();
+    executor.queue_intent(intent, timestamp)
+}
+
+/// Queue with priority
+pub fn queue_with_priority(intent: Intent, priority: Priority, timestamp: u64) -> bool {
+    let mut executor = EXECUTOR.lock();
+    executor.queue_intent_with_priority(intent, priority, timestamp)
+}
+
+/// Process next queued intent
+pub fn process_queue() -> bool {
+    let mut executor = EXECUTOR.lock();
+    executor.process_queue()
+}
+
+/// Get the number of queued intents
+pub fn queue_len() -> usize {
+    let executor = EXECUTOR.lock();
+    executor.queue_len()
 }

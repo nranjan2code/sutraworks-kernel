@@ -13,12 +13,14 @@
 # Target: AArch64 bare metal
 TARGET := aarch64-unknown-none
 
-# Tools
-CROSS_COMPILE ?= aarch64-none-elf-
-AS = $(CROSS_COMPILE)as
-LD = $(CROSS_COMPILE)ld
-OBJCOPY = $(CROSS_COMPILE)objcopy
-OBJDUMP = $(CROSS_COMPILE)objdump
+# Tools - Use LLVM/Clang (no third-party toolchain needed)
+# Clang can cross-compile to any target
+CC = clang
+AS = clang
+LD = rust-lld -flavor gnu
+# Use llvm-objcopy from rustup nightly (stable doesn't include it by default)
+OBJCOPY = $(shell find ~/.rustup/toolchains -name "llvm-objcopy" 2>/dev/null | head -1)
+OBJDUMP = llvm-objdump
 
 # Directories
 BOOT_DIR := boot
@@ -58,32 +60,23 @@ $(BOOT_OBJ): $(BOOT_DIR)/boot.s
 	@echo "╔═══════════════════════════════════════════════════════════════╗"
 	@echo "║  Assembling Boot Code                                        ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
-	$(AS) -march=armv8.2-a -o $@ $<
+	$(AS) --target=aarch64-unknown-none -c -o $@ $<
 
-# Build kernel (Rust)
-kernel: $(BUILD_DIR)
+# Build kernel (Rust) - includes boot.o via linker args
+kernel: $(BUILD_DIR) $(BOOT_OBJ)
 	@echo "╔═══════════════════════════════════════════════════════════════╗"
 	@echo "║  Building Intent Kernel (Rust)                               ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
 	cd $(KERNEL_DIR) && \
-	RUSTFLAGS="-C target-feature=-fp-armv8 -C link-arg=-T../$(LINKER)" cargo build --release --target $(TARGET)
+	RUSTFLAGS="-C link-arg=-T../$(LINKER) -C link-arg=../$(BOOT_OBJ)" cargo build --release --target $(TARGET)
+	cp $(TARGET_DIR)/release/kernel $(KERNEL_ELF)
 
-# Link everything together
-$(KERNEL_ELF): boot kernel
-	@echo "╔═══════════════════════════════════════════════════════════════╗"
-	@echo "║  Linking Kernel                                              ║"
-	@echo "╚═══════════════════════════════════════════════════════════════╝"
-	$(LD) -T $(LINKER) -nostdlib \
-		$(BOOT_OBJ) \
-		$(TARGET_DIR)/release/libintent_kernel.a \
-		-o $@
-
-# Create binary image
-$(KERNEL_IMG): $(KERNEL_ELF)
+# Create binary image (skip separate linking, cargo already linked)
+$(KERNEL_IMG): kernel
 	@echo "╔═══════════════════════════════════════════════════════════════╗"
 	@echo "║  Creating Bootable Image                                     ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
-	$(OBJCOPY) -O binary $< $@
+	$(OBJCOPY) -O binary $(KERNEL_ELF) $@
 	@echo ""
 	@echo "  ✓ Kernel image created: $@"
 	@echo "  ✓ Size: $$(ls -lh $@ | awk '{print $$5}')"
@@ -194,15 +187,24 @@ check:
 # TESTING
 # ═══════════════════════════════════════════════════════════════════════════════
 
-.PHONY: test test-unit test-integration
+.PHONY: test test-unit test-host test-integration
 
 # Run all tests
-test: test-unit
+test: test-host
 
-# Run unit tests
+# Run host-based tests (fast, native on Mac)
+test-host:
+	@echo "╔═══════════════════════════════════════════════════════════════╗"
+	@echo "║  Running Host-Based Tests (Native)                           ║"
+	@echo "╚═══════════════════════════════════════════════════════════════╝"
+	cd tests/host && cargo test
+	@echo ""
+	@echo "✓ All host tests passed!"
+
+# Run unit tests (QEMU)
 test-unit: $(BUILD_DIR)
 	@echo "╔═══════════════════════════════════════════════════════════════╗"
-	@echo "║  Running Unit Tests                                          ║"
+	@echo "║  Running Unit Tests (QEMU)                                   ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
 	clang --target=aarch64-none-elf -c -o $(BUILD_DIR)/boot_test.o $(BOOT_DIR)/boot_test.s
 	cd $(KERNEL_DIR) && \
@@ -262,7 +264,8 @@ help:
 	@echo "║    make check    - Check without building                     ║"
 	@echo "║                                                               ║"
 	@echo "║  Testing:                                                     ║"
-	@echo "║    make test     - Run all tests                              ║"
-	@echo "║    make test-unit - Run unit tests                            ║"
+	@echo "║    make test      - Run all tests (host-based)                ║"
+	@echo "║    make test-host - Run host-based tests (fast, native)       ║"
+	@echo "║    make test-unit - Run unit tests (QEMU)                     ║"
 	@echo "║                                                               ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"

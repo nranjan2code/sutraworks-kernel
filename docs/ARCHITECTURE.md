@@ -122,22 +122,30 @@ pub enum IntentData {
 
 ### Executor
 
-The `IntentExecutor` handles intents with capability checks:
+The `IntentExecutor` handles intents with capability checks and user-defined handlers:
 
 ```rust
 pub struct IntentExecutor {
-    capabilities: CapabilitySet,
+    display_cap: Option<Capability>,
+    memory_cap: Option<Capability>,
+    system_cap: Option<Capability>,
+    compute_cap: Option<Capability>,
+    handlers: HandlerRegistry,  // User-defined handlers
+    queue: IntentQueue,          // Deferred execution
 }
 
 impl IntentExecutor {
-    pub fn execute(&self, intent: &Intent) -> Result<(), &'static str> {
-        match intent.concept {
-            concepts::HELP => self.handle_help(),
-            concepts::STATUS => self.handle_status(),
-            concepts::SHUTDOWN => self.handle_shutdown(),
-            _ => self.handle_unknown(intent),
+    pub fn execute(&self, intent: &Intent) {
+        // Try user handlers first
+        if self.handlers.dispatch(intent, has_cap) {
+            return;
         }
+        // Fall back to built-in handlers
+        // ...
     }
+    
+    pub fn register_handler(&mut self, concept_id: ConceptID, handler: HandlerFn, name: &'static str);
+    pub fn queue_intent(&mut self, intent: Intent, timestamp: u64);
 }
 ```
 
@@ -150,15 +158,36 @@ impl IntentExecutor {
 ```rust
 pub struct StenoEngine {
     dictionary: StenoDictionary,
+    stroke_buffer: StrokeSequence,
+    history: StrokeHistory,
     state: EngineState,
-    pending: StrokeSequence,
     stats: EngineStats,
+    timestamp: u64,
 }
 
 pub enum EngineState {
-    Idle,
-    Accumulating,  // Building multi-stroke sequence
+    Ready,
+    Pending,       // Building multi-stroke sequence
     Error,
+}
+```
+
+### Stroke History
+
+64-entry ring buffer for undo/redo and context:
+
+```rust
+pub struct StrokeHistory {
+    entries: [HistoryEntry; 64],
+    head: usize,
+    count: usize,
+    undo_cursor: usize,
+}
+
+impl StrokeHistory {
+    pub fn push(&mut self, stroke: Stroke, intent: Option<&Intent>, timestamp: u64);
+    pub fn undo(&mut self) -> Option<&HistoryEntry>;
+    pub fn redo(&mut self) -> Option<&HistoryEntry>;
 }
 ```
 
@@ -179,6 +208,87 @@ pub trait StrokeProducer {
 
 pub trait IntentConsumer {
     fn consume(&mut self, intent: Intent);
+}
+```
+
+---
+
+## User-Defined Handlers
+
+### Handler Registry
+
+128 handlers with priority-based dispatch:
+
+```rust
+pub struct HandlerRegistry {
+    handlers: [HandlerEntry; 128],
+    count: usize,
+}
+
+pub struct HandlerEntry {
+    concept_id: ConceptID,       // 0 = wildcard
+    required_cap: Option<CapabilityType>,
+    handler: HandlerFn,
+    priority: u8,                // Higher runs first
+    name: &'static str,
+}
+
+pub type HandlerFn = fn(&Intent) -> HandlerResult;
+```
+
+### Handler Results
+
+```rust
+pub enum HandlerResult {
+    Handled,     // Intent was processed
+    NotHandled,  // Pass to next handler
+    Error(u32),  // Handler failed
+}
+```
+
+### Registration Example
+
+```rust
+intent::register_handler(
+    concepts::STATUS,
+    my_status_handler,
+    "custom_status"
+);
+```
+
+---
+
+## Intent Queue
+
+### Priority Queue
+
+32-entry queue for deferred intent execution:
+
+```rust
+pub struct IntentQueue {
+    entries: [QueuedIntent; 32],
+    count: usize,
+}
+
+pub enum Priority {
+    Low = 0,
+    Normal = 1,
+    High = 2,
+    Critical = 3,
+}
+```
+
+### Deadline Support
+
+Intents can have deadlines; expired intents are automatically pruned:
+
+```rust
+pub struct QueuedIntent {
+    intent: Intent,
+    priority: Priority,
+    sequence: u64,     // For FIFO within priority
+    queued_at: u64,
+    deadline: u64,     // 0 = no deadline
 }
 ```
 

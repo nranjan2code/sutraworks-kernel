@@ -8,10 +8,13 @@
 //! Raw Bits → Stroke → Dictionary → Intent → Action
 //!               ↓
 //!         Stroke Buffer (for multi-stroke briefs)
+//!               ↓
+//!         Stroke History (for undo/redo)
 //! ```
 
 use super::stroke::Stroke;
 use super::dictionary::{StenoDictionary, StrokeSequence, concepts};
+use super::history::StrokeHistory;
 use crate::intent::{ConceptID, Intent, IntentData};
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -35,12 +38,16 @@ pub struct StenoEngine {
     dictionary: StenoDictionary,
     /// Buffer for multi-stroke sequences
     stroke_buffer: StrokeSequence,
+    /// History for undo/redo
+    history: StrokeHistory,
     /// Current state
     state: EngineState,
     /// Last processed stroke
     last_stroke: Option<Stroke>,
     /// Statistics
     stats: EngineStats,
+    /// Current timestamp (updated externally)
+    timestamp: u64,
 }
 
 /// Engine statistics
@@ -62,6 +69,7 @@ impl StenoEngine {
         Self {
             dictionary: StenoDictionary::new(),
             stroke_buffer: StrokeSequence::new(),
+            history: StrokeHistory::new(),
             state: EngineState::Ready,
             last_stroke: None,
             stats: EngineStats {
@@ -70,6 +78,7 @@ impl StenoEngine {
                 corrections: 0,
                 unrecognized: 0,
             },
+            timestamp: 0,
         }
     }
     
@@ -77,6 +86,11 @@ impl StenoEngine {
     pub fn init(&mut self) {
         self.dictionary.init_defaults();
         self.state = EngineState::Ready;
+    }
+    
+    /// Update the timestamp (call this from timer interrupt)
+    pub fn set_timestamp(&mut self, ts: u64) {
+        self.timestamp = ts;
     }
     
     /// Process a single stroke
@@ -94,6 +108,8 @@ impl StenoEngine {
         // Try single-stroke lookup first
         if let Some(intent) = self.dictionary.stroke_to_intent(stroke) {
             self.stats.intents_matched += 1;
+            // Record in history
+            self.history.push(stroke, Some(&intent), self.timestamp);
             self.stroke_buffer.clear();
             self.state = EngineState::Ready;
             return Some(intent);
@@ -105,6 +121,7 @@ impl StenoEngine {
         // Try multi-stroke lookup
         if let Some(intent) = self.try_multi_stroke_lookup() {
             self.stats.intents_matched += 1;
+            self.history.push(stroke, Some(&intent), self.timestamp);
             self.stroke_buffer.clear();
             self.state = EngineState::Ready;
             return Some(intent);
@@ -114,6 +131,8 @@ impl StenoEngine {
         if self.stroke_buffer.len() >= 2 {
             // After 2 unmatched strokes, emit unknown and clear
             self.stats.unrecognized += 1;
+            // Record as unmatched
+            self.history.push(stroke, None, self.timestamp);
             self.stroke_buffer.clear();
             self.state = EngineState::Ready;
             return Some(Intent {
@@ -146,6 +165,9 @@ impl StenoEngine {
                 EngineState::Pending
             };
         }
+        
+        // Undo the most recent action in history
+        self.history.undo();
         
         // Emit undo intent
         Some(Intent {
@@ -190,6 +212,31 @@ impl StenoEngine {
     /// Get mutable dictionary reference (for adding custom entries)
     pub fn dictionary_mut(&mut self) -> &mut StenoDictionary {
         &mut self.dictionary
+    }
+    
+    /// Get history reference
+    pub fn history(&self) -> &StrokeHistory {
+        &self.history
+    }
+    
+    /// Get mutable history reference
+    pub fn history_mut(&mut self) -> &mut StrokeHistory {
+        &mut self.history
+    }
+    
+    /// Redo the last undone action
+    pub fn redo(&mut self) -> Option<Intent> {
+        if let Some(entry) = self.history.redo() {
+            // Return an intent if the entry had one
+            if let Some(id) = entry.intent_id {
+                return Some(Intent {
+                    concept_id: ConceptID(id),
+                    confidence: 1.0,
+                    data: IntentData::None,
+                });
+            }
+        }
+        None
     }
 }
 

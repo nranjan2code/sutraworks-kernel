@@ -1,0 +1,25 @@
+[package]
+name = "intent-kernel-tests"
+version = "0.1.0"
+edition = "2021"
+description = "Host-based tests for Intent Kernel pure Rust logic"
+
+[dependencies]
+
+[dev-dependencies]
+
+[[test]]
+name = "stroke_tests"
+path = "src/stroke_tests.rs"
+
+[[test]]
+name = "capability_tests"
+path = "src/capability_tests.rs"
+
+[[test]]
+name = "dictionary_tests"
+path = "src/dictionary_tests.rs"
+
+[[test]]
+name = "concept_tests"
+path = "src/concept_tests.rs"

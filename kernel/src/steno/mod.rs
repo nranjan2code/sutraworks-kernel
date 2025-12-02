@@ -31,10 +31,12 @@ use crate::intent::Intent;
 pub mod stroke;
 pub mod dictionary;
 pub mod engine;
+pub mod history;
 
 pub use stroke::{Stroke, KEYS, NUM_KEYS, parse_steno_to_bits, RtfcreBuffer};
 pub use dictionary::{StenoDictionary, DictEntry, StrokeSequence, concepts};
 pub use engine::{StenoEngine, EngineState, EngineStats, StrokeProducer, IntentConsumer};
+pub use history::{StrokeHistory, HistoryEntry, HISTORY_SIZE};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GLOBAL STENO ENGINE
@@ -77,4 +79,22 @@ pub fn stats() -> EngineStats {
 pub fn state() -> EngineState {
     let engine = STENO_ENGINE.lock();
     engine.state()
+}
+
+/// Get stroke history length
+pub fn history_len() -> usize {
+    let engine = STENO_ENGINE.lock();
+    engine.history().len()
+}
+
+/// Redo the last undone action
+pub fn redo() -> Option<Intent> {
+    let mut engine = STENO_ENGINE.lock();
+    engine.redo()
+}
+
+/// Update engine timestamp (call from timer)
+pub fn set_timestamp(ts: u64) {
+    let mut engine = STENO_ENGINE.lock();
+    engine.set_timestamp(ts);
 }
