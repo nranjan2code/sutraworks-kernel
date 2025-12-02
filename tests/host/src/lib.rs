@@ -13,3 +13,7 @@ pub mod concept;
 pub mod history;
 pub mod queue;
 pub mod handlers;
+
+// Re-exports for convenience
+pub use concept::concepts;
+pub use concept::{ConceptID, Intent, IntentData};

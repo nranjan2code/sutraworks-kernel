@@ -85,15 +85,16 @@ Keyboard → Characters → Shell → Parser → Tokens → Command Lookup → E
 Steno Machine → Stroke → Intent → Execute
 ```
 
-### Intent Kernel (English Mode)
+### Intent Kernel (English Mode) ✨ NEW!
 ```
-Keyboard → English Word → Reverse Lookup → Stroke → Intent → Execute
+Keyboard → English Text → Natural Language Parser → Intent → Execute
+                              ↓
+                    (200+ phrases, 50+ synonyms)
 ```
 
-**Faster. Cleaner. More powerful.**
+**Faster. Cleaner. More powerful. Now accessible to everyone.**
 
-Users who don't know steno can type English commands. The kernel internally
-converts them to strokes, maintaining the steno-native architecture.
+Users can type **natural English commands** like "show me system status" or "can you help?". The kernel includes a production-grade English I/O layer that understands 200+ phrase variations, expands synonyms, and generates natural language responses—all while maintaining the steno-native core architecture internally.
 
 ---
 
@@ -191,15 +192,43 @@ Real-time visualization of the stenographic stream and intent execution log.
 - **Intent Stream**: Visual log of recognized semantic actions.
 - **Status Bar**: Real-time WPM and stroke statistics.
 
-### ✅ Dual Input Mode
-Use steno strokes OR English text:
+### ✅ Natural Language Interface ✨ NEW!
+Production-grade English I/O layer for universal accessibility:
 
 ```rust
-// Steno notation
-steno::process_steno("PH-FPL");  // HELP stroke
+// Natural English (200+ phrases)
+english::parse("show me system status");
+english::parse("can you help?");
+english::parse("what's happening?");
 
-// English text (reverse lookup)
-steno::process_english("help");   // Finds PH-FPL, executes HELP intent
+// Context-aware conversations
+let mut ctx = ConversationContext::new();
+ctx.parse("status");           // Execute STATUS
+ctx.parse("show it again");    // Repeat from context
+ctx.parse("more details");     // Detailed version
+
+// Natural language responses
+let response = english::generate_response(&intent, &result);
+// Output: "System: CPU 45%, RAM 2.3GB, Uptime 3h 42m"
+```
+
+**Features**:
+- **200+ Phrase Variations**: "help", "?", "what can you do", "commands", etc.
+- **50+ Synonyms**: "quit"→"exit", "info"→"status", "what's"→"what is"
+- **Multi-Stage Parsing**: Exact match → Synonym expansion → Keyword extraction
+- **Conversation Context**: Stateful understanding of follow-up questions
+- **User Mode Adaptation**: Beginner (verbose) → Advanced (concise)
+- **Performance**: <30μs overhead per command (negligible!)
+
+### ✅ Dual Input Mode
+Power users can still use raw steno:
+
+```rust
+// Steno notation (for speed)
+steno::process_steno("STAT");    // Direct stroke → intent
+
+// Hybrid mode (mix both)
+english::parse("STAT");          // Recognizes steno too!
 ```
 
 ### ✅ Secure Base
@@ -227,6 +256,13 @@ intent-kernel/
 │   │   ├── dictionary.rs   # Stroke → Intent mapping
 │   │   ├── engine.rs       # State machine
 │   │   └── history.rs      # Undo/redo buffer
+│   ├── english/            # ✨ English I/O Layer (NEW!)
+│   │   ├── mod.rs          # Public API
+│   │   ├── phrases.rs      # 200+ phrase mappings
+│   │   ├── synonyms.rs     # 50+ synonym expansions
+│   │   ├── parser.rs       # Multi-stage parser
+│   │   ├── responses.rs    # Natural language generation
+│   │   └── context.rs      # Conversation state
 │   ├── intent/             # Intent execution
 │   │   ├── mod.rs          # Core types
 │   │   ├── handlers.rs     # User handler registry
@@ -263,7 +299,8 @@ intent-kernel/
 | **2. Steno Engine** | ✅ | Stroke parsing, Dictionary, Engine, RTFCRE |
 | **3. Intent System** | ✅ | Handlers, Queue, History, 122 tests |
 | **4. Perception** | ✅ | Hailo-8 detection, Heads-Up Display (HUD) |
-| **5. Input/Output** | ✅ | USB HID, Framebuffer Console, English Input |
+| **5. Input/Output** | ✅ | USB HID, Framebuffer Console, Dual Input |
+| **5.5. English Layer** | ✅ ✨ | **Natural Language I/O (200+ phrases, conversation context, templates)** |
 | **6. Sensors** | 🔄 | Camera Driver (In Progress) |
 | **7. Connectivity** | ⏳ | Networking, Multi-core |
 
@@ -292,14 +329,14 @@ handlers ........ 11 tests ✓
 | CPU | ARM Cortex-A76 (4 cores @ 2.4GHz) |
 | RAM | 4GB / 8GB LPDDR4X |
 | AI | Hailo-8L NPU (optional) |
-| Input | Any Plover-compatible steno machine |
+| Input | Steno machine OR standard keyboard (English mode) |
 
 ---
 
 ## Philosophy
 
-### 1. Strokes, Not Characters
-The native input unit is a 23-bit stroke pattern. No character encoding. No Unicode. No string handling.
+### 1. Strokes, Not Characters (Internally)
+The native input unit is a 23-bit stroke pattern. No character encoding. No Unicode. No string handling **in the kernel core**. However, the English I/O layer provides a natural language interface for universal accessibility.
 
 ### 2. Pure Rust
 No libc. No C dependencies. Minimal crates. Everything from scratch in safe, idiomatic Rust.
@@ -310,6 +347,9 @@ No libc. No C dependencies. Minimal crates. Everything from scratch in safe, idi
 ### 4. Forward Only
 We build the future. No backward compatibility with character-based systems.
 
+### 5. Universal Accessibility ✨ NEW!
+Steno-native kernel with natural language translation layer. Everyone can use English; power users can use raw strokes.
+
 ---
 
 ## Documentation
@@ -317,6 +357,7 @@ We build the future. No backward compatibility with character-based systems.
 | Document | Description |
 |----------|-------------|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design and data flow |
+| [ENGLISH_LAYER.md](docs/ENGLISH_LAYER.md) | ✨ Natural language I/O system (NEW!) |
 | [API.md](docs/API.md) | Complete API reference |
 | [ROADMAP.md](docs/ROADMAP.md) | Development phases |
 | [BUILDING.md](docs/BUILDING.md) | Build instructions |

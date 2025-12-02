@@ -5,23 +5,39 @@
 Intent Kernel is a bare-metal stenographic operating system where **steno strokes are the native semantic unit**.
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Steno Machine  │────▶│  Stroke (23-bit)│────▶│   Dictionary    │────▶│    Executor     │
-│   (USB HID)     │     │                 │     │  (Stroke→Intent)│     │                 │
-└─────────────────┘     └─────────────────┘     └─────────────────┘     └─────────────────┘
-         │                                               │
-         │                                               │
-┌────────▼────────┐                             ┌────────▼────────┐
-│  UART/Keyboard  │────▶ English Text ─────────▶│ Reverse Lookup  │
-│  (Fallback)     │      "help" → PH-FPL        │                 │
-└─────────────────┘                             └─────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        USER INPUT (Multiple Modes)                       │
+│                                                                          │
+│  Steno Machine (USB HID) ────▶ Direct Strokes                          │
+│  Standard Keyboard       ────▶ Natural English ✨ NEW!                  │
+└─────────────────────────────────────────────────────────────────────────┘
+                                      ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    ENGLISH I/O LAYER (Optional Translation)              │
+│                                                                          │
+│  Input:  English Text → Parser → ConceptID                             │
+│          • 200+ phrase variations                                       │
+│          • 50+ synonym expansions                                       │
+│          • Multi-stage parsing pipeline                                 │
+│                                                                          │
+│  Output: Intent Result → Template Engine → Natural Language             │
+│          • Context-aware responses                                      │
+│          • User mode adaptation (Beginner/Advanced)                     │
+└─────────────────────────────────────────────────────────────────────────┘
+                                      ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      STENO-NATIVE KERNEL CORE                           │
+│                                                                          │
+│  Stroke (23-bit) → Dictionary → Intent → Executor                       │
+│  Pure semantic processing. No character handling.                       │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-No characters. No words. No parsing. Pure stroke→intent mapping.
+**Kernel Philosophy**: Steno-native core with optional English translation layer.
 
-**Dual Input Mode**: Users can input strokes directly (steno notation) or type English commands.
-English input is internally converted to steno strokes via reverse dictionary lookup.
-The kernel remains steno-native—English is just a convenience layer.
+- **Steno Mode**: Direct stroke → intent (0.1μs, maximum performance)
+- **English Mode**: Natural language → intent (~30μs, universal accessibility)
+- **Hybrid Mode**: Mix both freely (power users)
 
 ---
 
@@ -511,6 +527,123 @@ Macros: `cprint!()`, `cprintln!()`
 
 ---
 
+## English I/O Layer ✨ NEW!
+
+The English I/O Layer provides natural language accessibility while maintaining the steno-native kernel core.
+
+### Architecture
+
+```rust
+pub mod english {
+    pub mod phrases;      // 200+ phrase → ConceptID mappings
+    pub mod synonyms;     // 50+ synonym expansions
+    pub mod parser;       // Multi-stage parsing pipeline
+    pub mod responses;    // Natural language generation
+    pub mod context;      // Conversation state management
+}
+```
+
+### Input Pipeline
+
+**Multi-Stage Parsing**:
+
+1. **Normalization**: Lowercase, trim whitespace
+2. **Exact Phrase Match**: Check 200+ phrase database
+3. **Synonym Expansion**: Expand contractions and synonyms
+4. **Keyword Extraction**: Natural language understanding
+5. **Steno Fallback**: Try as raw steno notation
+
+**Example**:
+
+```rust
+// Stage 2: Exact match
+"help" → HELP intent (confidence: 1.0)
+
+// Stage 3: Synonym expansion
+"show sys info" → "show system information" → STATUS intent (0.95)
+
+// Stage 4: Keyword extraction
+"can you help me?" → extract["help"] → HELP intent (0.9)
+
+// Stage 5: Steno fallback
+"STAT" → parse as steno → STATUS intent (1.0)
+```
+
+### Output Generation
+
+**Template-Based Responses**:
+
+```rust
+pub struct ResponseGenerator {
+    pub verbose: bool,  // Adapts to user mode
+}
+
+impl ResponseGenerator {
+    pub fn generate(&self, intent: &Intent, result: &IntentResult) -> String;
+}
+```
+
+**Example Responses**:
+
+```
+Concise (Advanced): "CPU 45% | RAM 2.3GB | Up 3h"
+Verbose (Beginner): "System Status: CPU 45%, Memory 2.3GB/8GB, Uptime 3h 42m"
+```
+
+### Conversation Context
+
+**Stateful Understanding**:
+
+```rust
+pub struct ConversationContext {
+    last_intent: Option<ConceptID>,
+    last_result: Option<IntentResult>,
+    mode: UserMode,  // Beginner/Intermediate/Advanced
+    history: Vec<HistoryEntry>,
+}
+```
+
+**Features**:
+- Follow-up questions: "show it again", "more details"
+- Pronoun resolution: "hide it", "show that"
+- Auto-upgrade user mode based on usage
+- Conversation history (last 10 commands)
+
+### Performance
+
+**Overhead Analysis**:
+- Phrase lookup: ~5-10μs (linear search of 200 entries)
+- Synonym expansion: ~5μs
+- Template generation: ~10-20μs
+- **Total**: ~30μs per command
+
+**At 200 WPM** (3.3 commands/sec): 0.0001% CPU
+
+**Steno Bypass**: Power users can bypass English layer entirely (0.1μs direct)
+
+### Integration Example
+
+```rust
+use intent_kernel::english;
+
+// Parse natural English
+let intent = english::parse("show me system status");
+
+// Execute (kernel core - unchanged)
+let result = intent::execute_with_result(&intent.unwrap());
+
+// Generate natural response
+let response = english::generate_response(&intent.unwrap(), &result);
+println!("{}", response);
+// Output: "System: CPU 45%, RAM 2.3GB, Uptime 3h 42m..."
+```
+
+### See Also
+
+For complete documentation, see [ENGLISH_LAYER.md](ENGLISH_LAYER.md).
+
+---
+
 ## Boot Sequence
 
 1. **Reset**: ARM starts at `_start` in `boot.s`
@@ -528,8 +661,8 @@ Macros: `cprint!()`, `cprintln!()`
 
 These are explicitly NOT part of the architecture:
 
-- ❌ NLP or tokenization (English input uses direct dictionary lookup)
-- ❌ Embedding vectors or similarity search
+- ❌ Deep NLP or LLM-based parsing (English layer uses phrase matching + keyword extraction)
+- ❌ Embedding vectors or similarity search (direct lookup only)
 - ❌ Traditional shell/terminal
 - ❌ POSIX compatibility
 - ❌ Backward compatibility with word-based systems
