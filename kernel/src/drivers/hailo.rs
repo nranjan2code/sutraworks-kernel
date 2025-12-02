@@ -295,6 +295,7 @@ impl HailoDriver {
         
         Err("Inference Timeout")
     }
+}
 
 pub static HAILO: SpinLock<HailoDriver> = SpinLock::new(HailoDriver::new());
 

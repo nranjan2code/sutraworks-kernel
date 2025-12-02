@@ -332,7 +332,6 @@ impl VMM {
             Ok(&mut *table)
         }
     }
-    }
 }
 
 /// User Address Space

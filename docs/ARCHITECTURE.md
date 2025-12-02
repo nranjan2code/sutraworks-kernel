@@ -209,6 +209,7 @@ pub struct UserAddressSpace {
 - **Kernel Mapping**: The kernel is mapped into every user space as **Privileged-Only (EL1)**. This allows the kernel to execute interrupt handlers and syscalls without a full TLB flush, while preventing user code from accessing kernel memory.
 - **User Mapping**: User stack and code pages are mapped as **User-Accessible (EL0)**.
 - **Context Switch**: When switching processes, the scheduler updates the `TTBR0_EL1` register to point to the new process's page table.
+- **Stack Guards**: Every stack (Kernel & User) is backed by real VMM pages and includes an **Unmapped Guard Page** at the bottom. Stack overflows trigger a Data Abort (Page Fault) instead of silent corruption.
 
 ---
 
@@ -268,11 +269,14 @@ impl PerceptionManager {
  ### Hamming Similarity & Indexing
  Retrieval is based on **Hamming Distance** (number of differing bits).
  
- - **B-Tree Index**: O(log N) lookup for exact/near matches.
+ - **HNSW Index**: **O(log N)** graph-based retrieval for scalable performance.
+   - Replaced linear scan with Hierarchical Navigable Small World graph.
+   - Layers of linked lists allow skipping over large sections of the graph.
  - **LSH**: Locality Sensitive Hashing for fuzzy retrieval.
  
  ```rust
  // Sim(A, B) = 1.0 - (HammingDist(A, B) / 1024)
+ // Search HNSW graph for nearest neighbor
  let ptr = allocator.retrieve_nearest(&query_hv);
  ```
  

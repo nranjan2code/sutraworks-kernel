@@ -11,6 +11,7 @@ use core::ptr::NonNull;
 use alloc::collections::BTreeMap;
 use crate::intent::ConceptID;
 use crate::arch::SpinLock;
+use super::hnsw::HnswIndex;
 
 /// Global Neural Allocator instance
 pub static NEURAL_ALLOCATOR: SpinLock<NeuralAllocator> = SpinLock::new(NeuralAllocator::new());
@@ -51,6 +52,7 @@ pub struct NeuralAllocator {
     current_page: Option<NonNull<SemanticPage>>,
     total_items: usize,
     index: BTreeMap<ConceptID, IntentPtr>,
+    hnsw: HnswIndex,
 }
 
 // SAFETY: NeuralAllocator is protected by SpinLock.
@@ -63,6 +65,7 @@ impl NeuralAllocator {
             current_page: None,
             total_items: 0,
             index: BTreeMap::new(),
+            hnsw: HnswIndex::new(),
         }
     }
 
@@ -105,6 +108,9 @@ impl NeuralAllocator {
 
         // Update Index (O(log N))
         self.index.insert(concept_id, ptr);
+        
+        // Update HNSW Index
+        self.hnsw.insert(concept_id, hv);
         
         Some(ptr)
     }
@@ -152,41 +158,18 @@ impl NeuralAllocator {
 
     
     /// Retrieve nearest memory block by semantic hypervector (Fuzzy Match)
+    /// Uses HNSW Index for O(log N) lookup.
     pub unsafe fn retrieve_nearest(&self, query: &Hypervector) -> Option<IntentPtr> {
-        let mut best_match: Option<IntentPtr> = None;
-        let mut best_sim = -1.0;
+        // Search HNSW for k=1 nearest neighbor
+        let results = self.hnsw.search(query, 1);
         
-        let mut page_iter = self.head_page;
-        
-        while let Some(page_ptr) = page_iter {
-            let page = page_ptr.as_ref();
-            let mut offset = 0;
-            let base_ptr = (page_ptr.as_ptr() as *mut u8).add(core::mem::size_of::<SemanticPage>());
-            
-            while offset < page.used {
-                let block = (base_ptr.add(offset)) as *const SemanticBlock;
-                let sim = hamming_similarity(query, &(*block).hypervector);
-                
-                if sim > best_sim {
-                    best_sim = sim;
-                    best_match = Some(IntentPtr {
-                        id: (*block).concept_id,
-                        ptr: NonNull::new_unchecked((base_ptr.add(offset + core::mem::size_of::<SemanticBlock>())) as *mut u8),
-                        size: (*block).size,
-                        similarity: sim,
-                    });
-                }
-                
-                // Advance
-                let total_size = core::mem::size_of::<SemanticBlock>() + (*block).size;
-                let align = (16 - (total_size % 16)) % 16;
-                offset += total_size + align;
-            }
-            
-            page_iter = page.next;
+        if let Some((id, _sim)) = results.first() {
+            // Retrieve the pointer from the exact index
+            // Note: HNSW returns the ConceptID, we use that to look up the pointer
+            self.retrieve(*id)
+        } else {
+            None
         }
-        
-        best_match
     }
     
     /// Get count of allocated blocks

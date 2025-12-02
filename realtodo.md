@@ -32,6 +32,7 @@ This plan addresses the gaps identified in the "No Sugar Coating" review, but wi
 - [x] **Verify Logic**:
     - [x] Standalone verification script (`tests/verify_hdc.rs`).
     - [x] **Real Random Projection** (LSH Indexing Implemented)
+    - [x] **HNSW Indexing** (O(log N) Graph Retrieval)
     - [ ] Implement `Matrix` struct for projection weights (1024 x N).
     - [ ] Implement `matmul_sign` for efficient projection.
     - [ ] Store projection matrices in persistent storage (or generate from seed).

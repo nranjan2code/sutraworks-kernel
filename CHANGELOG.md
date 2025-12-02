@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (December 2, 2025) - Real Memory Architecture
+- **VMM-Backed Stacks (Safety)**
+  - Replaced heap-allocated `Vec<u8>` stacks with real VMM-mapped pages.
+  - Implemented **Guard Pages**: Unmapped pages at the bottom of every stack to trap overflows.
+  - Updated `process.rs` to use the new `Stack` struct for both Kernel and User agents.
+- **HNSW Neural Index (Performance)**
+  - Implemented **HNSW (Hierarchical Navigable Small World)** index for Neural Allocator.
+  - Replaced O(N) linear scan with **O(log N)** graph traversal for semantic retrieval.
+  - Integrated into `neural.rs` for scalable "Remember/Recall" operations.
+
 ### Added (December 2, 2025) - Real OS Transition
 - **Real Neural Memory**
   - Upgraded `NeuralAllocator` to use **Dynamic Page Allocation** (Bump Allocator).

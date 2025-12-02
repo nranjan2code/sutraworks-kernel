@@ -6,9 +6,8 @@
 
 use crate::kprintln;
 use crate::arch::{self, SpinLock};
-use crate::kernel::memory::{self, PAGE_SIZE};
-use core::ptr::NonNull;
 use crate::kernel::memory::{self, PAGE_SIZE, free_dma};
+use core::ptr::NonNull;
 
 /// RAII Wrapper for DMA Memory
 pub struct DmaBuffer {

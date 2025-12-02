@@ -280,11 +280,14 @@ Interrupt-safe concurrency primitives and removal of unsafe global state.
 ### ✅ Real Neural Memory ✨ NEW!
 True "Vector Symbolic Architecture" (VSA) memory system:
 - **1024-bit Binary Hypervectors**: Replaced inefficient floats with holographic bit patterns.
+- **HNSW Indexing**: **O(log N)** graph-based retrieval for scalable performance (replaced linear scan).
 - **Dynamic Page Allocation**: Memory grows indefinitely with system RAM (Bump Allocator).
-- **B-Tree Indexing**: O(log N) retrieval for scalable performance (replaced linear scan).
-- **LSH Indexing**: Locality Sensitive Hashing for fast fuzzy retrieval.
 - **Cognitive Algebra**: `Bind`, `Bundle`, and `Permute` operations for semantic reasoning.
 - **Robustness**: Information is distributed across 1024 bits; resilient to noise and bit flips.
+
+### ✅ Safe Stack Architecture
+- **VMM-Backed Stacks**: Real virtual memory pages for process stacks.
+- **Guard Pages**: Unmapped pages at the bottom of every stack to trap overflows instantly.
 
 ### ✅ True Memory Isolation
 Process isolation via ARM64 VMSA (Virtual Memory System Architecture):

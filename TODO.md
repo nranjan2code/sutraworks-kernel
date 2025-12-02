@@ -67,8 +67,8 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 - [x] ConceptID-based memory allocation
 - [x] HDC Memory (Hypervectors)
 - [x] HDC Memory (Hypervectors)
-- [x] **B-Tree Indexing** (O(log N) Retrieval)
-- [x] Stroke history buffer
+- [x] **HNSW Indexing** (O(log N) Retrieval)
+- [x] **Stack Safety** (VMM-backed Guard Pages)
 - [x] Stroke history buffer
 - [ ] Dictionary caching
 

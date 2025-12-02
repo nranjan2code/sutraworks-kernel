@@ -6,8 +6,8 @@
 
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
-use core::sync::atomic::{AtomicU64, Ordering};
-use crate::kernel::memory::paging::{VMM, UserAddressSpace};
+use crate::kernel::memory::paging::UserAddressSpace;
+use crate::kernel::memory::{Stack, alloc_stack};
 use crate::kernel::capability::Capability;
 
 /// Unique Agent Identifier
@@ -60,8 +60,8 @@ pub struct Agent {
     pub context: Context,
     pub capabilities: Vec<Capability>,
     pub vmm: Option<UserAddressSpace>,
-    pub kernel_stack: Vec<u8>,
-    pub user_stack: Vec<u8>,
+    pub kernel_stack: Stack,
+    pub user_stack: Option<Stack>, // User stack might be managed by user? For now kernel manages it.
 }
 
 impl Agent {
@@ -73,13 +73,13 @@ impl Agent {
             context: Context::default(),
             capabilities: Vec::new(),
             vmm: None,
-            kernel_stack: alloc::vec![0u8; 16 * 1024], // 16KB stack
-            user_stack: alloc::vec![], // No user stack
+            kernel_stack: alloc_stack(4).expect("Failed to alloc kernel stack"), // 16KB (4 pages)
+            user_stack: None,
         };
 
-        let stack_top = agent.kernel_stack.as_ptr() as u64 + agent.kernel_stack.len() as u64;
+        let stack_top = agent.kernel_stack.top;
         
-        // Align stack to 16 bytes
+        // Align stack to 16 bytes (already aligned by page, but good practice)
         let stack_top = stack_top & !0xF;
 
         agent.context.sp = stack_top;
@@ -95,14 +95,26 @@ impl Agent {
         let mut space = UserAddressSpace::new().expect("Failed to create user address space");
         
         // 2. Allocate Stacks (Kernel & User)
-        let kernel_stack = alloc::vec![0u8; 16 * 1024];
-        let user_stack = alloc::vec![0u8; 16 * 1024];
+        // Kernel stack: 16KB (4 pages)
+        let kernel_stack = alloc_stack(4).expect("Failed to alloc kernel stack");
+        // User stack: 16KB (4 pages)
+        let user_stack = alloc_stack(4).expect("Failed to alloc user stack");
         
         // 3. Map User Stack into Address Space
         // We identity map it for now, but with User Permissions
-        let ustack_phys = user_stack.as_ptr() as u64;
-        let ustack_size = user_stack.len();
-        space.map_user(ustack_phys, ustack_phys, ustack_size).expect("Failed to map user stack");
+        // Note: alloc_stack returns a kernel mapped address.
+        // We need to map the physical pages to user space.
+        // Since we are identity mapping kernel space, the virtual address is the physical address.
+        // But wait, alloc_stack returns a virtual address in kernel space.
+        // In our current identity-mapped kernel, Virt == Phys.
+        // So we can use stack.bottom (start of usable stack) to stack.top.
+        // We should map from bottom (inclusive) to top (exclusive).
+        let _ustack_phys = user_stack.bottom - 4096; // Include guard page? No, user shouldn't access guard.
+        // Actually, let's just map the usable stack pages.
+        let ustack_start = user_stack.bottom;
+        let ustack_size = (user_stack.top - user_stack.bottom) as usize;
+        
+        space.map_user(ustack_start, ustack_start, ustack_size).expect("Failed to map user stack");
         
         // 4. Map User Code (The entry point)
         // We assume the entry point is in the kernel binary, so it's already mapped as EL1.
@@ -120,16 +132,16 @@ impl Agent {
             capabilities: Vec::new(),
             vmm: Some(space),
             kernel_stack,
-            user_stack,
+            user_stack: Some(user_stack),
         };
 
         // Kernel Stack Setup (for when we are in kernel mode handling this process)
-        let kstack_top = agent.kernel_stack.as_ptr() as u64 + agent.kernel_stack.len() as u64;
+        let kstack_top = agent.kernel_stack.top;
         let kstack_top = kstack_top & !0xF;
         agent.context.sp = kstack_top;
 
         // User Stack Setup (passed to jump_to_userspace)
-        let ustack_top = agent.user_stack.as_ptr() as u64 + agent.user_stack.len() as u64;
+        let ustack_top = agent.user_stack.as_ref().unwrap().top;
         let ustack_top = ustack_top & !0xF;
 
         // Set up trampoline

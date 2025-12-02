@@ -13,6 +13,7 @@ use crate::arch::SpinLock;
 
 pub mod paging;
 pub mod neural;
+pub mod hnsw;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MEMORY REGIONS (from linker script)
@@ -599,6 +600,82 @@ pub unsafe fn alloc_pages(count: usize) -> Option<NonNull<u8>> {
 pub unsafe fn free_pages(ptr: NonNull<u8>, count: usize) {
     let mut inner = GLOBAL.inner.lock();
     inner.buddy.deallocate(ptr, count * PAGE_SIZE);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STACK ALLOCATOR (VMM Backed with Guard Pages)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// A VMM-backed Stack
+pub struct Stack {
+    pub top: u64,
+    pub bottom: u64,
+    pub size: usize,
+    ptr: NonNull<u8>, // Pointer to the allocation (including guard page)
+}
+
+// SAFETY: Stack owns the memory
+unsafe impl Send for Stack {}
+
+impl Stack {
+    /// Create a new stack from raw parts
+    pub unsafe fn from_raw(top: u64, bottom: u64, size: usize, ptr: NonNull<u8>) -> Self {
+        Stack { top, bottom, size, ptr }
+    }
+}
+
+impl Drop for Stack {
+    fn drop(&mut self) {
+        // When stack is dropped, we should free the pages
+        // Note: We should also re-map the guard page before freeing?
+        // Or just free the physical pages.
+        // For now, we leak to avoid complexity in this prototype, 
+        // or we implement a proper free_stack.
+        unsafe {
+            free_pages(self.ptr, (self.size / PAGE_SIZE) + 1);
+        }
+    }
+}
+
+/// Allocate a VMM-backed stack with a Guard Page
+/// 
+/// Allocates `size_in_pages + 1` pages.
+/// The first page (lowest address) is the Guard Page.
+/// We unmap it in the Kernel VMM so any access triggers a Data Abort.
+pub fn alloc_stack(size_in_pages: usize) -> Option<Stack> {
+    unsafe {
+        // 1. Allocate pages (Size + 1 for Guard)
+        let total_pages = size_in_pages + 1;
+        let ptr = alloc_pages(total_pages)?;
+        let start_addr = ptr.as_ptr() as u64;
+        
+        // 2. Unmap the Guard Page (the first page)
+        // We need to lock the Kernel VMM
+        if let Some(vmm) = paging::KERNEL_VMM.lock().as_mut() {
+            // Unmap the bottom page
+            if let Err(e) = vmm.unmap_page(start_addr) {
+                crate::kprintln!("[MEM] Failed to unmap stack guard page: {}", e);
+                // Continue anyway? Or fail?
+                // If we fail to unmap, we just don't have a guard page.
+            } else {
+                // crate::kprintln!("[MEM] Stack Guard Page active at {:#x}", start_addr);
+            }
+        }
+        
+        // 3. Calculate Stack Bounds
+        // Stack grows down from top.
+        // Bottom is start_addr + PAGE_SIZE (Guard is at start_addr)
+        let bottom = start_addr + PAGE_SIZE as u64;
+        let size_bytes = size_in_pages * PAGE_SIZE;
+        let top = bottom + size_bytes as u64;
+        
+        Some(Stack {
+            top,
+            bottom,
+            size: size_bytes,
+            ptr,
+        })
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

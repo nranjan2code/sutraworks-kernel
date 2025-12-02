@@ -50,7 +50,8 @@
 - [x] **Hyperdimensional Computing**: 1024-bit binary hypervectors.
 - [x] **Cognitive Algebra**: Bind, Bundle, Permute operations.
 - [x] **Hamming Similarity**: Bitwise semantic retrieval.
-- [x] **B-Tree Indexing**: O(log N) retrieval for scalable memory.
+- [x] **HNSW Indexing**: O(log N) graph-based retrieval for scalable memory.
+- [x] **Stack Safety**: VMM-backed stacks with Guard Pages.
 - [x] **Visual Intents**: Vision-to-Memory bridge using Hypervectors.
 
 ### Phase 6: Sensors & Connectivity (Current Focus)
