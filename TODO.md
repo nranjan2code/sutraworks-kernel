@@ -154,8 +154,8 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 - [x] Hailo Driver (Real Driver Structure Implemented)
 
 ### System Services
-- [ ] File system (ramfs)
-- [ ] Process spawning via stroke
+- [x] Virtual memory with page tables
+- [x] Process isolationing via stroke
 - [ ] Inter-process messaging
 - [ ] Power management
 

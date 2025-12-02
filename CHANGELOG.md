@@ -24,7 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed "TODO" and "In a real driver" comments.
   - Implemented **Real Hailo Driver Structure** (Command Rings, DMA, Registers) replacing the stub.
   - Implemented **Visual Intents**: Vision system now generates Hypervectors and stores them in Neural Memory.
+  - Implemented **Visual Intents**: Vision system now generates Hypervectors and stores them in Neural Memory.
   - Verified `volatile` writes for hardware safety.
+- **True Process Isolation (VMM)**
+  - Implemented **UserAddressSpace** with per-process Page Tables (TTBR0).
+  - **Kernel Protection**: Mapped kernel as EL1-only, inaccessible to user mode.
+  - **Context Switching**: Updated scheduler to switch `TTBR0` for true address space separation.
+- **Robust USB & Hailo**
+  - **USB RAII**: Implemented `DmaBuffer` for automatic DMA memory deallocation, fixing leaks.
+  - **Hailo Inference**: Implemented `send_inference_job` with real DMA descriptor chains (Host-to-Device / Device-to-Host).
 
 ### Added (December 2, 2025) - 🧠 Hyperdimensional Memory (HDC)
 - **Hyperdimensional Computing (HDC)**

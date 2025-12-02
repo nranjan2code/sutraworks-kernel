@@ -6,6 +6,11 @@
 - [x] **Core Kernel**: Bootloader, UART, GPIO, Mailbox.
 - [x] **Memory Management**: Buddy Allocator, Heapless support.
 - [x] **Capability Security**: Token-based access control with derivation.
+### v0.2.0 (Completed)
+- [x] Virtual memory management (VMM, Paging, UserAddressSpace)
+- [x] Basic process model (Agents, Context Switching)
+- [x] Kernel/userspace separation (EL0/EL1, TTBR0/TTBR1)
+- [x] System call interface (SVC handler)
 
 ### Phase 2: Stenographic Engine ✅
 - [x] **Stroke Processing**: 23-bit stroke patterns, RTFCRE notation.

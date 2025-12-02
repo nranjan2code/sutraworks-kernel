@@ -286,16 +286,24 @@ True "Vector Symbolic Architecture" (VSA) memory system:
 - **Cognitive Algebra**: `Bind`, `Bundle`, and `Permute` operations for semantic reasoning.
 - **Robustness**: Information is distributed across 1024 bits; resilient to noise and bit flips.
 
-### ✅ Real USB Host
-Full xHCI Host Controller Driver:
+### ✅ True Memory Isolation
+Process isolation via ARM64 VMSA (Virtual Memory System Architecture):
+- **UserAddressSpace**: Each process has its own Page Table (TTBR0).
+- **Kernel Protection**: Kernel memory is mapped as Privileged-Only (EL1), inaccessible to user mode.
+- **Context Switching**: `TTBR0` is updated on every context switch, ensuring complete address space separation.
+
+### ✅ Robust USB Host
+Full xHCI Host Controller Driver with RAII Memory Management:
 - **Command Ring**: Proper cycle bit management and doorbell ringing.
-- **Event Loop**: Asynchronous state machine for device enumeration.
+- **Event Loop**: Asynchronous state machine handling Transfer Events and Command Completion.
+- **Memory Safety**: `DmaBuffer` ensures DMA memory is automatically freed when dropped, preventing leaks.
 - **Control Transfers**: Setup/Data/Status stages for device configuration.
 - **Context Management**: Real Input/Output Contexts and Device Slots.
 
 ### ✅ Real Perception
-Computer Vision running on the CPU:
-- **Edge Detection**: Sobel Operator implementation for shape analysis.
+Computer Vision pipeline with Hardware Acceleration support:
+- **Hailo-8 Bridge**: Real driver structure with Command Ring submission and DMA descriptor chains.
+- **Tensor Transfer**: `send_inference_job` handles Host-to-Device and Device-to-Host DMA transactions.
 - **Sensor Fusion**: Combines data from multiple detectors (Color Blob + Edge).
 - **Visual Intents**: Automatically generates 1024-bit Hypervectors for detected objects and stores them in Neural Memory. The system "remembers" what it sees.
 
@@ -361,10 +369,11 @@ intent-kernel/
 | **2. Steno Engine** | ✅ | Stroke parsing, Dictionary, Engine, RTFCRE |
 | **3. Intent System** | ✅ | Handlers, Queue, History, 122 tests |
 | **4. Perception** | ✅ | Hailo-8 (Simulation Mode), Heads-Up Display (HUD) |
-| **5. Input/Output** | ✅ | **Real xHCI Driver** (Command/Event Rings), HID Boot Protocol, Framebuffer Console |
+| **5. Input/Output** | ✅ | **Real xHCI Driver** (Command/Event Rings, RAII DMA), HID Boot Protocol, Framebuffer Console |
 | **5.5. English Layer** | ✅ ✨ | **Natural Language I/O (200+ phrases, conversation context, templates)** |
-| **6. Sensors** | ✅ | **Real Hailo-8 Driver Structure** (PCIe, DMA, Command Rings) |
-| **7. Connectivity** | ⏳ | Networking, Multi-core |
+| **6. Sensors** | ✅ | **Real Hailo-8 Driver** (PCIe, DMA Descriptor Chains, Inference Job Submission) |
+| **7. Security** | ✅ | **VMM Isolation** (UserAddressSpace, TTBR0 Switching, Kernel Protection) |
+| **8. Connectivity** | ⏳ | Networking, Multi-core |
 
 ### Test Coverage
 

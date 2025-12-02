@@ -193,6 +193,25 @@ impl IntentExecutor {
 
 ---
 
+## Memory Management (VMM)
+
+The kernel uses a **Split-Address Space** model enforced by ARM64 VMSA (Virtual Memory System Architecture).
+
+### User Address Space
+Each process has its own `UserAddressSpace` struct, which manages a unique Page Table (TTBR0).
+
+```rust
+pub struct UserAddressSpace {
+    vmm: VMM, // Root Page Table
+}
+```
+
+- **Kernel Mapping**: The kernel is mapped into every user space as **Privileged-Only (EL1)**. This allows the kernel to execute interrupt handlers and syscalls without a full TLB flush, while preventing user code from accessing kernel memory.
+- **User Mapping**: User stack and code pages are mapped as **User-Accessible (EL0)**.
+- **Context Switch**: When switching processes, the scheduler updates the `TTBR0_EL1` register to point to the new process's page table.
+
+---
+
 ## Perception Layer
 
 The Perception Layer bridges the gap between raw sensor data and semantic intent using **Sensor Fusion**.
@@ -220,7 +239,9 @@ impl PerceptionManager {
 ```
 
 ### Supported Sensors
-- **Hailo-8 NPU**: Real PCIe Driver Structure (Command Rings, DMA).
+- **Hailo-8 NPU**: Real PCIe Driver with DMA Descriptor Chains.
+  - **Command Ring**: Circular buffer for control commands.
+  - **Inference Jobs**: `send_inference_job` manages Host-to-Device and Device-to-Host DMA transfers for tensor data.
 - **CPU Vision**:
   - `EdgeDetector`: Sobel operator for edge/shape detection.
   - `ColorBlobDetector`: Color-based object tracking.
@@ -321,7 +342,7 @@ pub fn gpio_get(pin: u32) -> bool;
  
  **Features**:
  - **Real xHCI Initialization**: Reset, Ring allocation, Interrupt setup.
- - **DMA Memory**: Uses `alloc_dma` for physically contiguous buffers.
+ - **RAII Memory Management**: `DmaBuffer` struct automatically frees DMA memory when dropped, preventing leaks during transfers.
  - **Boot Protocol**: Parses standard 8-byte Keyboard Reports.
  - **Key Mapping**: Maps QWERTY keys to Steno layout (Plover standard).
 

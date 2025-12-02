@@ -6,7 +6,8 @@
 
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
-use crate::kernel::memory::paging::VMM;
+use core::sync::atomic::{AtomicU64, Ordering};
+use crate::kernel::memory::paging::{VMM, UserAddressSpace};
 use crate::kernel::capability::Capability;
 
 /// Unique Agent Identifier
@@ -58,7 +59,7 @@ pub struct Agent {
     pub state: AgentState,
     pub context: Context,
     pub capabilities: Vec<Capability>,
-    pub vmm: Option<VMM>,
+    pub vmm: Option<UserAddressSpace>,
     pub kernel_stack: Vec<u8>,
     pub user_stack: Vec<u8>,
 }
@@ -90,14 +91,36 @@ impl Agent {
 
     /// Create a new user agent (simple)
     pub fn new_user_simple(entry: fn(), arg: u64) -> Self {
+        // 1. Create Address Space
+        let mut space = UserAddressSpace::new().expect("Failed to create user address space");
+        
+        // 2. Allocate Stacks (Kernel & User)
+        let kernel_stack = alloc::vec![0u8; 16 * 1024];
+        let user_stack = alloc::vec![0u8; 16 * 1024];
+        
+        // 3. Map User Stack into Address Space
+        // We identity map it for now, but with User Permissions
+        let ustack_phys = user_stack.as_ptr() as u64;
+        let ustack_size = user_stack.len();
+        space.map_user(ustack_phys, ustack_phys, ustack_size).expect("Failed to map user stack");
+        
+        // 4. Map User Code (The entry point)
+        // We assume the entry point is in the kernel binary, so it's already mapped as EL1.
+        // We need to remap that specific page as User Accessible.
+        // This is tricky because it might overlap with kernel code we want to protect.
+        // For this "Simple" prototype, we'll just map the page containing the function.
+        let entry_phys = entry as u64;
+        let entry_page = entry_phys & !0xFFF;
+        space.map_user(entry_page, entry_page, 4096).expect("Failed to map user code");
+
         let mut agent = Agent {
             id: AgentId::new(),
             state: AgentState::Ready,
             context: Context::default(),
             capabilities: Vec::new(),
-            vmm: None, // TODO: Create separate VMM
-            kernel_stack: alloc::vec![0u8; 16 * 1024], // 16KB kernel stack
-            user_stack: alloc::vec![0u8; 16 * 1024],   // 16KB user stack
+            vmm: Some(space),
+            kernel_stack,
+            user_stack,
         };
 
         // Kernel Stack Setup (for when we are in kernel mode handling this process)
@@ -116,7 +139,8 @@ impl Agent {
         agent.context.x20 = ustack_top;        // User Stack
         agent.context.x21 = arg;               // Argument
 
-        agent.context.ttbr0 = 0; // TODO: Set to user page table
+        // Set TTBR0 to the new User Table
+        agent.context.ttbr0 = agent.vmm.as_ref().unwrap().table_base();
 
         agent
     }

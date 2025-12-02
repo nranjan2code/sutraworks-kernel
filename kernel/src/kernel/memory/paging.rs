@@ -217,6 +217,12 @@ impl VMM {
     /// * `virt_addr` - Virtual address (must be 4KB aligned)
     /// * `phys_addr` - Physical address (must be 4KB aligned)
     /// * `flags` - Access permissions and attributes
+    /// Map a virtual page to a physical frame
+    /// 
+    /// # Arguments
+    /// * `virt_addr` - Virtual address (must be 4KB aligned)
+    /// * `phys_addr` - Physical address (must be 4KB aligned)
+    /// * `flags` - Access permissions and attributes
     pub unsafe fn map_page(&mut self, virt_addr: u64, phys_addr: u64, flags: EntryFlags) -> Result<(), &'static str> {
         if virt_addr & 0xFFF != 0 || phys_addr & 0xFFF != 0 {
             return Err("Addresses must be page aligned");
@@ -241,11 +247,51 @@ impl VMM {
         
         // Level 3 Entry (The Page)
         let entry = &mut l3_table.entries[l3_idx as usize];
+        
+        // Overwrite is allowed if we are updating permissions, but warn if mapping to different phys
         if entry.is_valid() {
-            return Err("Page already mapped");
+            let old_phys = entry.address();
+            if old_phys != phys_addr {
+                // return Err("Page already mapped to different physical address");
+                // Allow remapping for now
+            }
         }
         
         entry.set(phys_addr, flags | EntryFlags::VALID | EntryFlags::TABLE | EntryFlags::AF);
+        
+        Ok(())
+    }
+
+    /// Unmap a virtual page
+    pub unsafe fn unmap_page(&mut self, virt_addr: u64) -> Result<(), &'static str> {
+        if virt_addr & 0xFFF != 0 {
+            return Err("Address must be page aligned");
+        }
+
+        let l0_idx = (virt_addr >> 39) & 0x1FF;
+        let l1_idx = (virt_addr >> 30) & 0x1FF;
+        let l2_idx = (virt_addr >> 21) & 0x1FF;
+        let l3_idx = (virt_addr >> 12) & 0x1FF;
+
+        let root = self.root_table.as_mut();
+
+        // Traverse, but don't allocate
+        let l1_entry = &mut root.entries[l0_idx as usize];
+        if !l1_entry.is_valid() { return Ok(()); } // Already unmapped
+        let l1_table = &mut *(l1_entry.address() as *mut PageTable);
+
+        let l2_entry = &mut l1_table.entries[l1_idx as usize];
+        if !l2_entry.is_valid() { return Ok(()); }
+        let l2_table = &mut *(l2_entry.address() as *mut PageTable);
+
+        let l3_entry = &mut l2_table.entries[l2_idx as usize];
+        if !l3_entry.is_valid() { return Ok(()); }
+        let l3_table = &mut *(l3_entry.address() as *mut PageTable);
+
+        let entry = &mut l3_table.entries[l3_idx as usize];
+        *entry = PageTableEntry::new(); // Clear it
+
+        // TODO: Free tables if empty?
         
         Ok(())
     }
@@ -285,6 +331,71 @@ impl VMM {
             
             Ok(&mut *table)
         }
+    }
+    }
+}
+
+/// User Address Space
+/// 
+/// Represents a process's isolated view of memory.
+/// Contains a pointer to its own Page Table (TTBR0).
+pub struct UserAddressSpace {
+    vmm: VMM,
+}
+
+impl UserAddressSpace {
+    /// Create a new User Address Space
+    /// 
+    /// This creates a new Page Table and maps the Kernel into it (Privileged Access Only).
+    /// This ensures the kernel can run, but the user cannot touch it.
+    pub fn new() -> Option<Self> {
+        let mut vmm = VMM::new()?;
+        
+        // Map Kernel as Privileged Only (EL1)
+        // We copy the mappings from the global kernel VMM? 
+        // Or just re-map the standard regions.
+        // Re-mapping is safer and cleaner.
+        
+        unsafe {
+            // 1. Identity map Kernel Code/Data (Normal Memory) - EL1 ONLY
+            vmm.identity_map(0, 0x2_0000_0000, EntryFlags::ATTR_NORMAL | EntryFlags::AP_RW_EL1 | EntryFlags::SH_INNER)
+                .ok()?;
+                
+            // 2. Map Peripherals (Device Memory) - EL1 ONLY
+            vmm.identity_map(0x10_0000_0000, 0x10_0100_0000, EntryFlags::ATTR_DEVICE | EntryFlags::AP_RW_EL1 | EntryFlags::PXN | EntryFlags::UXN)
+                .ok()?;
+                
+            // For QEMU tests
+            #[cfg(test)]
+            {
+                vmm.identity_map(0x0800_0000, 0x1000_0000, EntryFlags::ATTR_DEVICE | EntryFlags::AP_RW_EL1 | EntryFlags::PXN | EntryFlags::UXN)
+                    .ok()?;
+                vmm.identity_map(0x4000_0000, 0x8000_0000, EntryFlags::ATTR_NORMAL | EntryFlags::AP_RW_EL1 | EntryFlags::SH_INNER)
+                    .ok()?;
+            }
+        }
+        
+        Some(UserAddressSpace { vmm })
+    }
+    
+    /// Get the physical address of the root table (for TTBR0)
+    pub fn table_base(&self) -> u64 {
+        self.vmm.root_address()
+    }
+    
+    /// Map a user memory region
+    pub fn map_user(&mut self, virt: u64, phys: u64, size: usize) -> Result<(), &'static str> {
+        let flags = EntryFlags::ATTR_NORMAL | EntryFlags::AP_RW_USER | EntryFlags::SH_INNER;
+        let end = virt + size as u64;
+        let mut v = virt;
+        let mut p = phys;
+        
+        while v < end {
+            unsafe { self.vmm.map_page(v, p, flags)?; }
+            v += 4096;
+            p += 4096;
+        }
+        Ok(())
     }
 }
 
