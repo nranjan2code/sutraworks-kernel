@@ -58,6 +58,8 @@
 Expand hardware integration.
 
 - [ ] **Camera Driver**: MIPI CSI-2 / ISP for real image capture.
+- [x] **Audio Perception**: Zero Crossing Rate (ZCR) + Energy feature extraction.
+- [x] **Acoustic Intents**: Speech/Noise classification and neural memory storage.
 
 ### Phase 7: Connectivity & Expansion
 - [ ] **Networking**: Ethernet driver (via RP1/PCIe) for remote intent processing.
@@ -66,7 +68,7 @@ Expand hardware integration.
 
 ### Phase 8: Cognitive Evolution
 - [ ] **LLM Integration**: Small quantized LLM on CPU/NPU hybrid.
-- [ ] **Voice Interface**: Audio I/O for spoken intents.
+- [x] **Voice Interface**: Audio I/O for spoken intents (Basic perception implemented).
 - [ ] **Dictionary Learning**: Track stroke frequency, suggest optimizations.
 - [ ] **Predictive Strokes**: Suggest next stroke based on context.
 

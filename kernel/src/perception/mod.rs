@@ -9,6 +9,7 @@ use alloc::vec::Vec;
 use alloc::boxed::Box;
 
 pub mod vision;
+pub mod audio;
 pub mod hud;
 
 use crate::drivers::hailo::HailoDriver;
@@ -144,6 +145,29 @@ impl PerceptionManager {
         }
         
         Ok(count)
+    }
+
+    /// Process audio samples and store acoustic intents in Neural Memory.
+    pub fn perceive_audio(&self, samples: &[i16]) -> Result<bool, &'static str> {
+        if let Some(event) = audio::AudioProcessor::process(samples) {
+            let mut allocator = NEURAL_ALLOCATOR.lock();
+            
+            // Map Audio Class to Concept ID
+            // Class 1 (Speech) -> 0x500D_0001 (SOUND_SPEECH)
+            // Class 2 (Noise) -> 0x500D_0002 (SOUND_NOISE)
+            let concept_id = ConceptID(0x500D_0000 | event.class_id as u64);
+            
+            unsafe {
+                allocator.alloc(
+                    core::mem::size_of::<audio::AudioEvent>(),
+                    concept_id,
+                    event.hypervector.data
+                );
+            }
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 }
 

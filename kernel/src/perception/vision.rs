@@ -240,14 +240,41 @@ impl ObjectDetector for EdgeDetector {
         }
         
         if edge_pixels > 100 {
+            // Feature Extraction
+            let center_x_norm = (center_x as f32) / (edge_pixels as f32) / (width as f32);
+            let center_y_norm = (center_y as f32) / (edge_pixels as f32) / (height as f32);
+            let density = (edge_pixels as f32) / ((width * height) as f32);
+            let intensity = (max_grad as f32) / 255.0;
+            
+            // Features: [x, y, density, intensity, 0...] (padded to match projection dim if needed)
+            // Our RandomProjection expects a slice. We'll provide key features.
+            // Note: In a real system we'd pad this to 64 or whatever INPUT_DIM is.
+            // For now, let's provide a fixed size array.
+            let mut features = [0.0f32; 64];
+            features[0] = center_x_norm;
+            features[1] = center_y_norm;
+            features[2] = density;
+            features[3] = intensity;
+            
+            let hv = RandomProjection::project(&features);
+
             let _ = objects.push(DetectedObject {
                 class_id: 2, // "Edge/Shape"
-                confidence: (max_grad as f32 / 255.0).min(1.0),
-                x: (center_x as f32) / (edge_pixels as f32),
-                y: (center_y as f32) / (edge_pixels as f32),
+                confidence: intensity.min(1.0),
+                x: center_x_norm * (width as f32), // Convert back to pixels for struct (or keep norm? struct says x/y f32, usually pixels)
+                // Wait, struct doc says x,y f32. Let's assume normalized 0..1 or pixels?
+                // ColorBlobDetector used: center_x as f32 / width ... + obj_width/2. 
+                // It stored normalized values in `features` but `x` in struct seems to be... 
+                // `center_x` in ColorBlob was `min_x / width + width/2`. So it's normalized 0..1.
+                // But `x` field in DetectedObject? 
+                // Let's look at ColorBlobDetector again.
+                // `x: center_x` where center_x is 0..1.
+                // So we should return normalized.
+                x: center_x_norm,
+                y: center_y_norm,
                 width: 0.0, // Unknown
                 height: 0.0, // Unknown
-                hypervector: VisualHypervector { data: [0; 16] }, // Placeholder
+                hypervector: hv,
             });
         }
         

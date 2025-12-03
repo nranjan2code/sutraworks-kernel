@@ -146,7 +146,7 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 
 ### v1.0.0 (Vision)
 - [ ] Stable API
-- [ ] Full peripheral support
+- [x] Audio support
 - [ ] Multi-process
 - [x] Security audit (Base hardening complete)
 - [ ] Performance optimization

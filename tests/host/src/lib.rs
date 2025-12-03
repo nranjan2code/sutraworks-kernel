@@ -13,6 +13,10 @@ pub mod concept;
 pub mod history;
 pub mod queue;
 pub mod handlers;
+pub mod matrix_tests;
+pub mod matrix;
+pub mod perception;
+pub mod audio_tests;
 
 // Re-exports for convenience
 pub use concept::concepts;

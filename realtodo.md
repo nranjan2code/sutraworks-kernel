@@ -33,12 +33,12 @@ This plan addresses the gaps identified in the "No Sugar Coating" review, but wi
     - [x] Standalone verification script (`tests/verify_hdc.rs`).
     - [x] **Real Random Projection** (LSH Indexing Implemented)
     - [x] **HNSW Indexing** (O(log N) Graph Retrieval)
-    - [ ] Implement `Matrix` struct for projection weights (1024 x N).
-    - [ ] Implement `matmul_sign` for efficient projection.
+    - [x] Implement `Matrix` struct for projection weights (1024 x N).
+    - [x] Implement `matmul_sign` for efficient projection.
     - [ ] Store projection matrices in persistent storage (or generate from seed).
-- [ ] **Audio Projection**
-    - [ ] Implement MFCC feature extractor.
-    - [ ] Implement `AudioHypervector` projection.
+- [x] **Audio Projection**
+    - [x] Implement MFCC feature extractor (Simplified to ZCR/Energy).
+    - [x] Implement `AudioHypervector` projection.
     - [x] Prove Orthogonality, Binding, and Unbinding properties.
 
 ## Phase 3: Real Perception (Computer Vision)

@@ -309,6 +309,12 @@ Computer Vision pipeline with Hardware Acceleration support:
 - **Tensor Transfer**: `send_inference_job` handles Host-to-Device and Device-to-Host DMA transactions.
 - **Sensor Fusion**: Combines data from multiple detectors (Color Blob + Edge).
 - **Visual Intents**: Automatically generates 1024-bit Hypervectors for detected objects and stores them in Neural Memory. The system "remembers" what it sees.
+313: 
+314: ### ✅ Audio Perception ✨ NEW!
+315: The kernel can "hear" and classify sounds:
+316: - **Feature Extraction**: Zero Crossing Rate (ZCR) + Energy.
+317: - **Acoustic Intents**: Maps sounds (Speech, Noise, Silence) to Semantic Hypervectors.
+318: - **Neural Integration**: Stores acoustic memories alongside visual ones.
 
 ### ✅ Framebuffer Console
 Text output on HDMI display:
@@ -374,7 +380,7 @@ intent-kernel/
 | **4. Perception** | ✅ | Hailo-8 (Simulation Mode), Heads-Up Display (HUD) |
 | **5. Input/Output** | ✅ | **Real xHCI Driver** (Command/Event Rings, RAII DMA), HID Boot Protocol, Framebuffer Console |
 | **5.5. English Layer** | ✅ ✨ | **Natural Language I/O (200+ phrases, conversation context, templates)** |
-| **6. Sensors** | ✅ | **Real Hailo-8 Driver** (PCIe, DMA Descriptor Chains, Inference Job Submission) |
+| **6. Sensors** | ✅ | **Real Hailo-8 Driver**, **Real Audio Perception** (ZCR/Energy), **Real Vision** (Random Projection) |
 | **7. Security** | ✅ | **VMM Isolation** (UserAddressSpace, TTBR0 Switching, Kernel Protection) |
 | **8. Connectivity** | ⏳ | Networking, Multi-core |
 

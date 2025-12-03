@@ -12,6 +12,7 @@ use alloc::collections::BTreeMap;
 use crate::intent::ConceptID;
 use crate::arch::SpinLock;
 use super::hnsw::HnswIndex;
+use super::matrix::Matrix;
 
 /// Global Neural Allocator instance
 pub static NEURAL_ALLOCATOR: SpinLock<NeuralAllocator> = SpinLock::new(NeuralAllocator::new());
@@ -53,6 +54,7 @@ pub struct NeuralAllocator {
     total_items: usize,
     index: BTreeMap<ConceptID, IntentPtr>,
     hnsw: HnswIndex,
+    projection_matrix: Matrix,
 }
 
 // SAFETY: NeuralAllocator is protected by SpinLock.
@@ -64,9 +66,16 @@ impl NeuralAllocator {
             head_page: None,
             current_page: None,
             total_items: 0,
+            total_items: 0,
             index: BTreeMap::new(),
             hnsw: HnswIndex::new(),
+            projection_matrix: Matrix::new_random(0xCAFEBABE), // Deterministic seed
         }
+    }
+
+    /// Project feature vector to Hypervector
+    pub fn project(&self, features: &[f32]) -> Hypervector {
+        self.projection_matrix.project(features)
     }
 
     /// Allocate memory with a concept ID tag and semantic hypervector

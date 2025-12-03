@@ -244,9 +244,12 @@ impl PerceptionManager {
   - **Command Ring**: Circular buffer for control commands.
   - **Inference Jobs**: `send_inference_job` manages Host-to-Device and Device-to-Host DMA transfers for tensor data.
 - **CPU Vision**:
-  - `EdgeDetector`: Sobel operator for edge/shape detection.
+  - `EdgeDetector`: Sobel operator with **Random Projection** (LSH) for real semantic hypervectors.
   - `ColorBlobDetector`: Color-based object tracking.
   - **Visual Intents**: Generates 1024-bit Hypervectors for detected objects.
+- **Audio Perception**:
+  - `AudioProcessor`: Extracts **Zero Crossing Rate (ZCR)** and **Short-Time Energy (STE)**.
+  - **Acoustic Intents**: Classifies Silence/Speech/Noise and maps to 1024-bit Hypervectors.
 - **Virtual Sensors**: For testing and simulation.
 
 ---
@@ -272,7 +275,10 @@ impl PerceptionManager {
  - **HNSW Index**: **O(log N)** graph-based retrieval for scalable performance.
    - Replaced linear scan with Hierarchical Navigable Small World graph.
    - Layers of linked lists allow skipping over large sections of the graph.
- - **LSH**: Locality Sensitive Hashing for fuzzy retrieval.
+  - **LSH (Locality Sensitive Hashing)**:
+    - Implemented via **Random Projection Matrix** (1024 x N).
+    - Projects continuous sensor data (Vision/Audio) into binary hypervectors.
+    - Preserves semantic similarity (similar inputs -> similar hypervectors).
  
  ```rust
  // Sim(A, B) = 1.0 - (HammingDist(A, B) / 1024)

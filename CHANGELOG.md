@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (December 3, 2025) - 👂 Real Perception & Audio
+- **Real Vision Features**
+  - Upgraded `EdgeDetector` to use **Random Projection**.
+  - Replaced placeholder hypervectors with real semantic signatures derived from edge density, position, and intensity.
+- **Audio Perception Subsystem**
+  - Implemented `kernel/src/perception/audio.rs`.
+  - **Feature Extraction**: Zero Crossing Rate (ZCR) and Short-Time Energy (STE).
+  - **Audio Classification**: Distinguishes Silence, Speech, and Noise.
+  - **Acoustic Intents**: Generates `AudioHypervector` (1024-bit) and stores in Neural Memory.
+- **HDC Matrix Math**
+  - Implemented `Matrix` struct for **Random Projection** (Locality Sensitive Hashing).
+  - Implemented `matmul_sign` for efficient feature-to-hypervector conversion.
+  - Verified **LSH Property** (similar inputs -> similar hypervectors) via unit tests.
+
 ### Added (December 2, 2025) - Real Memory Architecture
 - **VMM-Backed Stacks (Safety)**
   - Replaced heap-allocated `Vec<u8>` stacks with real VMM-mapped pages.

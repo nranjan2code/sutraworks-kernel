@@ -14,6 +14,7 @@ use crate::arch::SpinLock;
 pub mod paging;
 pub mod neural;
 pub mod hnsw;
+pub mod matrix;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MEMORY REGIONS (from linker script)
