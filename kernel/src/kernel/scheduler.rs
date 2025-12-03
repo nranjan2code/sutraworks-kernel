@@ -32,6 +32,13 @@ impl IntentScheduler {
         self.agents.push_back(Box::new(agent));
     }
 
+    /// Spawn a new user agent from ELF binary
+    pub fn spawn_user_elf(&mut self, elf_data: &[u8]) -> Result<(), &'static str> {
+        let agent = Agent::new_user_elf(elf_data)?;
+        self.agents.push_back(Box::new(agent));
+        Ok(())
+    }
+
     /// Schedule the next agent
     /// 
     /// Returns a tuple of (prev_context_ptr, next_context_ptr) if a switch is needed.
@@ -49,7 +56,7 @@ impl IntentScheduler {
             } else if prev.state == AgentState::Terminated {
                 // Drop it (it's already popped)
             } else {
-                // Blocked or Ready, put it back
+                // Blocked, Sleeping, or Ready, put it back
                 self.agents.push_back(prev);
             }
         }
@@ -101,6 +108,31 @@ impl IntentScheduler {
         
         None
     }
+    /// Execute a closure with mutable access to the current agent
+    pub fn with_current_agent<F, R>(&mut self, f: F) -> Option<R>
+    where
+        F: FnOnce(&mut Agent) -> R,
+    {
+        if let Some(id) = self.current_agent_id {
+            // The current agent is always at the front of the queue
+            if let Some(agent) = self.agents.front_mut() {
+                if agent.id.0 == id {
+                    return Some(f(agent));
+                }
+            }
+        }
+        None
+    }
+
+    /// Find an agent by ID
+    pub fn get_agent_mut(&mut self, id: u64) -> Option<&mut Agent> {
+        for agent in self.agents.iter_mut() {
+            if agent.id.0 == id {
+                return Some(agent);
+            }
+        }
+        None
+    }
 }
 
 pub static SCHEDULER: SpinLock<IntentScheduler> = SpinLock::new(IntentScheduler::new());
@@ -110,10 +142,19 @@ pub fn tick() {
     // Re-arm timer for next tick (10ms = 10,000us)
     crate::drivers::timer::set_timer_interrupt(10_000);
 
-    // Schedule next task
-    // Note: We are in IRQ context, so interrupts are already disabled.
-    // We can safely lock the scheduler.
     let mut scheduler = SCHEDULER.lock();
+    
+    // 1. Wake up sleeping agents
+    let now = crate::drivers::timer::uptime_ms();
+    for agent in scheduler.agents.iter_mut() {
+        if agent.state == AgentState::Sleeping && now >= agent.wake_time {
+            agent.state = AgentState::Ready;
+            agent.wake_time = 0;
+        }
+    }
+
+    // 2. Schedule next task
+    // Note: We are in IRQ context, so interrupts are already disabled.
     if let Some((prev, next)) = scheduler.schedule() {
         drop(scheduler);
         unsafe {

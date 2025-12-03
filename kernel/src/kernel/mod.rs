@@ -13,6 +13,8 @@ pub mod async_core;
 pub mod process;
 pub mod scheduler;
 pub mod syscall;
+pub mod elf;
+pub mod signal;
 
 // Re-export key types
 pub use memory::{PAGE_SIZE, stats as memory_stats};

@@ -10,7 +10,7 @@
 
 use crate::kprintln;
 use crate::arch::{self, SpinLock};
-use crate::drivers::pcie::{self, PcieDevice, VENDOR_ID_RPI, DEVICE_ID_RP1_C0};
+use crate::drivers::pcie::{self, PcieDevice, VENDOR_ID_RPI};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // OFFSETS WITHIN RP1 BAR1

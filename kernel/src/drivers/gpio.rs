@@ -136,8 +136,8 @@ pub fn activity_led(on: bool) {
 
     let led = Pin::new(42); // ACT LED
     // Ensure it's output (lazy init)
-    led.into_output();
-    
+    let led = led.into_output();
+
     if on {
         led.set_high();
     } else {

@@ -152,13 +152,13 @@ pub fn start_core(core: usize, entry: extern "C" fn()) {
 }
 
 /// Spin lock for multicore synchronization
-pub struct SpinLock<T> {
+pub struct SpinLock<T: ?Sized> {
     lock: core::sync::atomic::AtomicBool,
     data: core::cell::UnsafeCell<T>,
 }
 
-unsafe impl<T: Send> Sync for SpinLock<T> {}
-unsafe impl<T: Send> Send for SpinLock<T> {}
+unsafe impl<T: ?Sized + Send> Sync for SpinLock<T> {}
+unsafe impl<T: ?Sized + Send> Send for SpinLock<T> {}
 
 impl<T> SpinLock<T> {
     pub const fn new(data: T) -> Self {
@@ -167,7 +167,9 @@ impl<T> SpinLock<T> {
             data: core::cell::UnsafeCell::new(data),
         }
     }
-    
+}
+
+impl<T: ?Sized> SpinLock<T> {
     pub fn lock(&self) -> SpinLockGuard<'_, T> {
         use core::sync::atomic::Ordering;
         
@@ -217,25 +219,25 @@ impl<T> SpinLock<T> {
 }
 
 /// RAII guard for SpinLock
-pub struct SpinLockGuard<'a, T> {
+pub struct SpinLockGuard<'a, T: ?Sized> {
     lock: &'a SpinLock<T>,
     saved_int_state: u64,
 }
 
-impl<'a, T> core::ops::Deref for SpinLockGuard<'a, T> {
+impl<'a, T: ?Sized> core::ops::Deref for SpinLockGuard<'a, T> {
     type Target = T;
     fn deref(&self) -> &T {
         unsafe { &*self.lock.data.get() }
     }
 }
 
-impl<'a, T> core::ops::DerefMut for SpinLockGuard<'a, T> {
+impl<'a, T: ?Sized> core::ops::DerefMut for SpinLockGuard<'a, T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.lock.data.get() }
     }
 }
 
-impl<'a, T> Drop for SpinLockGuard<'a, T> {
+impl<'a, T: ?Sized> Drop for SpinLockGuard<'a, T> {
     fn drop(&mut self) {
         self.lock.unlock();
         irq_restore(self.saved_int_state);

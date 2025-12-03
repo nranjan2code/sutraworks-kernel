@@ -11,6 +11,9 @@
 // Use the library
 use intent_kernel::*;
 
+use intent_kernel::*;
+extern crate alloc;
+use alloc::sync::Arc;
 use core::panic::PanicInfo;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -194,13 +197,72 @@ pub extern "C" fn kernel_main() -> ! {
     kprintln!("[INIT] Heads-Up Display...");
     perception::hud::init();
 
-    // Initialize Filesystem (RamDisk + Overlay)
-    kprintln!("[INIT] Filesystem (RamDisk + Overlay)...");
-    unsafe { fs::init(); }
-    if let Some(_fs) = fs::get().as_ref() {
-        kprintln!("       Mounted at {:#010x}", drivers::ramdisk::RAMDISK_BASE);
-    } else {
-        kprintln!("       Failed to mount filesystem");
+    // Initialize Filesystem
+    kprintln!("[INIT] Filesystem...");
+    fs::init();
+    
+    // Initialize SD Card
+    kprintln!("[INIT] SD Card Driver...");
+    drivers::sd::init();
+    
+    // Mount FAT32 on SD
+    kprintln!("[INIT] Mounting FAT32 on SD...");
+    {
+        // Get SD Driver instance
+        // Note: In a real system we'd have a BlockDevice registry.
+        // Here we just use the static instance wrapped in an Arc-like adapter or just pass it if we change Fat32 to take a reference?
+        // Fat32FileSystem takes Arc<dyn BlockDevice>.
+        // We need to implement BlockDevice for Arc<SpinLock<SdCardDriver>> or similar.
+        // Or just implement it for the static?
+        // Let's create a wrapper struct that implements BlockDevice and calls the static SD_DRIVER.
+        
+        struct SdWrapper;
+        impl fs::vfs::BlockDevice for SdWrapper {
+            fn read_sector(&self, sector: u32, buf: &mut [u8]) -> Result<(), &'static str> {
+                drivers::sd::SD_DRIVER.lock().read_sector(sector, buf)
+            }
+            fn write_sector(&self, sector: u32, buf: &[u8]) -> Result<(), &'static str> {
+                drivers::sd::SD_DRIVER.lock().write_sector(sector, buf)
+            }
+        }
+        
+        let sd_dev = Arc::new(SdWrapper);
+        
+        match fs::fat32::Fat32FileSystem::new(sd_dev) {
+            Ok(fat32) => {
+                let mut vfs = fs::VFS.lock();
+                if let Err(e) = vfs.mount("/sd", fat32.clone()) {
+                    kprintln!("       Mount failed: {}", e);
+                } else {
+                    kprintln!("       Mounted FAT32 at /sd");
+                    
+                    // Test: List Root Directory
+                    kprintln!("       Listing /sd:");
+                    if let Ok(entries) = vfs.read_dir("/sd") {
+                        for entry in entries {
+                            kprintln!("       - {} ({})", entry.name, entry.size);
+                        }
+                    } else {
+                        kprintln!("       Failed to read directory");
+                    }
+                }
+            },
+            Err(e) => kprintln!("       Failed to initialize FAT32: {}", e),
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // SYSCALL TEST
+    // ═══════════════════════════════════════════════════════════════════════════════
+    kprintln!("\n[KERNEL] Spawning Syscall Test Task...");
+    crate::kernel::scheduler::SCHEDULER.lock().spawn_simple(syscall_test_task);
+    
+    // Start Scheduler (This will not return)
+    kprintln!("[KERNEL] Starting Scheduler...");
+    loop {
+        crate::kernel::scheduler::tick();
+        // Simulate timer interrupt
+        for _ in 0..100000 { core::hint::spin_loop(); }
     }
 
     // Initialize PCIe
@@ -217,9 +279,45 @@ pub extern "C" fn kernel_main() -> ! {
     kernel::scheduler::SCHEDULER.lock().spawn_simple(async_executor_agent);
     kprintln!("       Spawned Async Executor Agent");
 
-    // Spawn User Task (EL0 Process)
-    kernel::scheduler::SCHEDULER.lock().spawn_user_simple(user_task, 0);
-    kprintln!("       Spawned User Task (EL0)");
+    // Spawn User Task (EL0 Process) from init.elf
+    kprintln!("[INIT] Loading /init.elf...");
+    {
+        // Read init.elf
+        let mut vfs = fs::VFS.lock();
+        if let Ok(file) = vfs.open("/sd/init.elf", 0) {
+            let mut file = file.lock();
+            let size = file.stat().map(|s| s.size).unwrap_or(0);
+            if size > 0 {
+                // Allocate buffer (using Vec for convenience)
+                let mut buf = alloc::vec::Vec::with_capacity(size as usize);
+                buf.resize(size as usize, 0);
+                
+                if let Ok(n) = file.read(&mut buf) {
+                    kprintln!("       Read {} bytes", n);
+                    
+                    // Spawn User Process
+                    let mut scheduler = kernel::scheduler::SCHEDULER.lock();
+                    match scheduler.spawn_user_elf(&buf) {
+                        Ok(_) => kprintln!("       Spawned User Process 1 (init)"),
+                        Err(e) => kprintln!("       Failed to spawn user process 1: {}", e),
+                    }
+                    match scheduler.spawn_user_elf(&buf) {
+                        Ok(_) => kprintln!("       Spawned User Process 2 (init)"),
+                        Err(e) => kprintln!("       Failed to spawn user process 2: {}", e),
+                    }
+                } else {
+                    kprintln!("       Failed to read /init.elf");
+                }
+            } else {
+                kprintln!("       /init.elf is empty");
+            }
+        } else {
+            kprintln!("       Failed to open /init.elf");
+            // Fallback to internal test
+            kernel::scheduler::SCHEDULER.lock().spawn_user_simple(user_task, 0);
+            kprintln!("       Spawned Fallback User Task (EL0)");
+        }
+    }
 
     // Enable Timer Interrupt (10ms)
     kprintln!("[INIT] Enabling Preemption...");
@@ -451,5 +549,69 @@ fn panic(info: &PanicInfo) -> ! {
         for _ in 0..500_000 { core::hint::spin_loop(); }
         drivers::gpio::activity_led(false);
         for _ in 0..500_000 { core::hint::spin_loop(); }
+    }
+}
+
+fn syscall_test_task() {
+    kprintln!("[TASK] Syscall Test Task Started");
+    
+    // 1. Print
+    let msg = "Hello from Syscall Task!\n";
+    crate::kernel::syscall::dispatcher(
+        crate::kernel::syscall::SyscallNumber::Print as u64,
+        msg.as_ptr() as u64,
+        msg.len() as u64,
+        0
+    );
+    
+    // 2. Open
+    let path = "config.txt\0";
+    let fd = crate::kernel::syscall::dispatcher(
+        crate::kernel::syscall::SyscallNumber::Open as u64,
+        path.as_ptr() as u64,
+        0,
+        0
+    );
+    
+    if fd != u64::MAX {
+        kprintln!("[TASK] Open Success! FD={}", fd);
+        
+        let mut buf = [0u8; 32];
+        let read_len = crate::kernel::syscall::dispatcher(
+            crate::kernel::syscall::SyscallNumber::Read as u64,
+            fd,
+            buf.as_mut_ptr() as u64,
+            32
+        );
+        
+        if read_len != u64::MAX {
+             kprintln!("[TASK] Read Success! Len={}", read_len);
+             if let Ok(s) = core::str::from_utf8(&buf[0..read_len as usize]) {
+                 kprintln!("[TASK] Content: {:?}", s);
+             }
+        }
+        
+        crate::kernel::syscall::dispatcher(
+            crate::kernel::syscall::SyscallNumber::Close as u64,
+            fd, 0, 0
+        );
+    } else {
+        kprintln!("[TASK] Open Failed");
+    }
+    
+    // 3. Test Exit
+    kprintln!("[TASK] Exiting...");
+    crate::kernel::syscall::dispatcher(
+        crate::kernel::syscall::SyscallNumber::Exit as u64,
+        0, 0, 0
+    );
+    
+    // Should not reach here
+    kprintln!("[TASK] ERROR: Continued after exit!");
+    loop {
+        crate::kernel::syscall::dispatcher(
+            crate::kernel::syscall::SyscallNumber::Yield as u64,
+            0, 0, 0
+        );
     }
 }

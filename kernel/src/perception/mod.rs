@@ -13,7 +13,6 @@ pub mod audio;
 pub mod hud;
 
 use crate::drivers::hailo::HailoDriver;
-use crate::drivers::usb::xhci::DmaBuffer; // Reuse DmaBuffer for convenience
 use vision::{ObjectDetector, DetectedObject};
 use crate::kernel::memory::neural::NEURAL_ALLOCATOR;
 use crate::intent::ConceptID;

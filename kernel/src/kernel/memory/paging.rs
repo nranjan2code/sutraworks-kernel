@@ -295,6 +295,35 @@ impl VMM {
         
         Ok(())
     }
+
+    /// Check if a virtual address is mapped
+    pub fn is_mapped(&self, virt_addr: u64) -> bool {
+        let l0_idx = (virt_addr >> 39) & 0x1FF;
+        let l1_idx = (virt_addr >> 30) & 0x1FF;
+        let l2_idx = (virt_addr >> 21) & 0x1FF;
+        let l3_idx = (virt_addr >> 12) & 0x1FF;
+
+        unsafe {
+            let root = self.root_table.as_ref();
+            
+            let l1_entry = &root.entries[l0_idx as usize];
+            if !l1_entry.is_valid() { return false; }
+            let l1_table = &*(l1_entry.address() as *const PageTable);
+
+            let l2_entry = &l1_table.entries[l1_idx as usize];
+            if !l2_entry.is_valid() { return false; }
+            if !l2_entry.is_table() { return true; } // Block mapping (Huge Page)
+            let l2_table = &*(l2_entry.address() as *const PageTable);
+
+            let l3_entry = &l2_table.entries[l2_idx as usize];
+            if !l3_entry.is_valid() { return false; }
+            if !l3_entry.is_table() { return true; } // Block mapping
+            let l3_table = &*(l3_entry.address() as *const PageTable);
+
+            let entry = &l3_table.entries[l3_idx as usize];
+            entry.is_valid()
+        }
+    }
     
     /// Identity map a range of memory
     pub unsafe fn identity_map(&mut self, start: u64, end: u64, flags: EntryFlags) -> Result<(), &'static str> {
@@ -395,6 +424,16 @@ impl UserAddressSpace {
             p += 4096;
         }
         Ok(())
+    }
+
+    /// Check if a virtual address is mapped
+    pub fn is_mapped(&self, virt_addr: u64) -> bool {
+        self.vmm.is_mapped(virt_addr)
+    }
+
+    /// Unmap a virtual page
+    pub fn unmap_page(&mut self, virt_addr: u64) -> Result<(), &'static str> {
+        unsafe { self.vmm.unmap_page(virt_addr) }
     }
 }
 

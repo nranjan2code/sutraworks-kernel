@@ -211,6 +211,51 @@ pub struct UserAddressSpace {
 - **Context Switch**: When switching processes, the scheduler updates the `TTBR0_EL1` register to point to the new process's page table.
 - **Stack Guards**: Every stack (Kernel & User) is backed by real VMM pages and includes an **Unmapped Guard Page** at the bottom. Stack overflows trigger a Data Abort (Page Fault) instead of silent corruption.
 
+### Process Management
+
+The kernel treats processes as **Agents**.
+
+```rust
+pub struct Agent {
+    pub id: AgentId,
+    pub state: AgentState, // Ready, Running, Blocked, Sleeping
+    pub context: Context,  // Saved registers (x19-x30, SP, ELR, SPSR, TTBR0)
+    pub vmm: Option<UserAddressSpace>,
+    pub wake_time: u64,    // For sleeping agents
+}
+```
+
+**ELF Loading**:
+1. **Parse Header**: Validates Magic, Class (64-bit), Endianness, Machine (AArch64).
+2. **Map Segments**: Iterates `PT_LOAD` segments, allocates physical pages, copies data, and maps to User Address Space.
+3. **Allocate Stack**: Maps 16KB stack at `0x0000_FFFF_FFFF_0000` (Top of User Space).
+4. **Entry Point**: Sets `ELR_EL1` to ELF entry point.
+
+**Preemptive Scheduling**:
+- **Round-Robin**: Cycles through `Ready` agents.
+- **Time Slices**: 10ms quantum enforced by ARM Generic Timer.
+- **Tick**: `scheduler::tick()` called on IRQ. Checks `Sleeping` agents and wakes them if `now >= wake_time`.
+
+### System Call Interface
+
+User programs interact with the kernel via `svc #0`.
+
+**ABI**:
+- **x8**: System Call Number
+- **x0-x7**: Arguments
+- **x0**: Return Value
+
+| Syscall | Number | Arguments | Description |
+|---------|--------|-----------|-------------|
+| `EXIT` | 0 | `code` | Terminate process |
+| `YIELD` | 1 | - | Give up CPU time slice |
+| `PRINT` | 2 | `ptr`, `len` | Print string to console |
+| `SLEEP` | 3 | `ms` | Sleep for N milliseconds |
+| `OPEN` | 4 | `path`, `flags` | Open file |
+| `CLOSE` | 5 | `fd` | Close file descriptor |
+| `READ` | 6 | `fd`, `buf`, `len` | Read from file |
+| `WRITE` | 7 | `fd`, `buf`, `len` | Write to file |
+
 ---
 
 ## Perception Layer
@@ -863,9 +908,9 @@ tcp::send(socket, data)?;
 ```
 
 **Current Limitations** (Embedded Simplification):
-- No congestion control
-- No flow control (fixed window)
-- No retransmission (planned)
+- No congestion control (Planned for Sprint 10)
+- No flow control (Fixed window)
+- Basic retransmission structure (Logic pending)
 - Single-threaded state machine
 
 ### Example Usage
@@ -905,6 +950,29 @@ loop {
 - [ ] DNS client
 - [ ] DHCP client
 - [ ] Intent-based networking (semantic protocol)
+
+### Socket API
+
+The kernel exposes a BSD-style Socket API via system calls, allowing user programs to perform network I/O.
+
+**System Calls**:
+
+| Syscall | Arguments | Description |
+|---------|-----------|-------------|
+| `SOCKET` | `domain`, `type`, `protocol` | Create a new socket endpoint |
+| `BIND` | `fd`, `addr`, `len` | Bind socket to local address/port |
+| `CONNECT` | `fd`, `addr`, `len` | Connect to remote address |
+| `SEND` | `fd`, `buf`, `len` | Send data (mapped to `WRITE`) |
+| `RECV` | `fd`, `buf`, `len` | Receive data (mapped to `READ`) |
+
+**Integration**:
+Sockets are integrated into the VFS as `FileOps`. This means standard file descriptors work seamlessly:
+```rust
+let fd = sys_socket(AF_INET, SOCK_STREAM, 0);
+sys_connect(fd, &addr, 16);
+sys_write(fd, "Hello", 5); // Sends packet
+sys_close(fd); // Closes connection
+```
 
 ---
 

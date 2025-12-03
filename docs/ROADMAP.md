@@ -65,6 +65,7 @@ Expand hardware integration.
 - [x] **Networking**: Real Ethernet driver (RP1/PCIe) and TCP/IP stack.
 - [x] **Persistent Storage**: SDHCI driver for SD card read/write.
 - [x] **Multi-Core SMP**: 4-core scheduler with work stealing and affinity.
+- [x] **Userspace & Scheduling**: ELF Loader, Preemptive Scheduler, Syscalls.
 
 ### Phase 7: Cognitive Evolution (Current Focus)
 - [ ] **LLM Integration**: Small quantized LLM on CPU/NPU hybrid.

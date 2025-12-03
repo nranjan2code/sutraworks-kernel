@@ -261,19 +261,10 @@ impl ObjectDetector for EdgeDetector {
             let _ = objects.push(DetectedObject {
                 class_id: 2, // "Edge/Shape"
                 confidence: intensity.min(1.0),
-                x: center_x_norm * (width as f32), // Convert back to pixels for struct (or keep norm? struct says x/y f32, usually pixels)
-                // Wait, struct doc says x,y f32. Let's assume normalized 0..1 or pixels?
-                // ColorBlobDetector used: center_x as f32 / width ... + obj_width/2. 
-                // It stored normalized values in `features` but `x` in struct seems to be... 
-                // `center_x` in ColorBlob was `min_x / width + width/2`. So it's normalized 0..1.
-                // But `x` field in DetectedObject? 
-                // Let's look at ColorBlobDetector again.
-                // `x: center_x` where center_x is 0..1.
-                // So we should return normalized.
-                x: center_x_norm,
+                x: center_x_norm,  // Normalized coordinates [0.0, 1.0]
                 y: center_y_norm,
-                width: 0.0, // Unknown
-                height: 0.0, // Unknown
+                width: 0.0, // Unknown for edge detection
+                height: 0.0, // Unknown for edge detection
                 hypervector: hv,
             });
         }

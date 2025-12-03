@@ -12,6 +12,7 @@ pub mod ramdisk;
 pub mod pcie;
 pub mod rng;
 pub mod usb;
+pub mod sd;
 pub mod rp1;
 
 // Re-export commonly used items

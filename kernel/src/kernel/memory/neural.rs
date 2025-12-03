@@ -54,7 +54,7 @@ pub struct NeuralAllocator {
     total_items: usize,
     index: BTreeMap<ConceptID, IntentPtr>,
     hnsw: HnswIndex,
-    projection_matrix: Matrix,
+    projection_matrix: Option<Matrix>,
 }
 
 // SAFETY: NeuralAllocator is protected by SpinLock.
@@ -66,16 +66,23 @@ impl NeuralAllocator {
             head_page: None,
             current_page: None,
             total_items: 0,
-            total_items: 0,
             index: BTreeMap::new(),
             hnsw: HnswIndex::new(),
-            projection_matrix: Matrix::new_random(0xCAFEBABE), // Deterministic seed
+            projection_matrix: None, // Will be initialized on first use
+        }
+    }
+
+    /// Ensure projection matrix is initialized
+    fn ensure_matrix_init(&mut self) {
+        if self.projection_matrix.is_none() {
+            self.projection_matrix = Some(Matrix::new_random(0xCAFEBABE));
         }
     }
 
     /// Project feature vector to Hypervector
-    pub fn project(&self, features: &[f32]) -> Hypervector {
-        self.projection_matrix.project(features)
+    pub fn project(&mut self, features: &[f32]) -> Hypervector {
+        self.ensure_matrix_init();
+        self.projection_matrix.as_ref().unwrap().project(features)
     }
 
     /// Allocate memory with a concept ID tag and semantic hypervector

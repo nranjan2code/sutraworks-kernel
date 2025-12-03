@@ -110,6 +110,17 @@ impl HailoDriver {
     pub fn is_active(&self) -> bool {
         self.initialized
     }
+
+    /// Run object detection inference (temporary stub - will be fully implemented)
+    pub fn detect_objects(&self, _image_data: &[u8], _width: u32, _height: u32) -> Result<heapless::Vec<crate::perception::vision::DetectedObject, 16>, &'static str> {
+        if !self.initialized {
+            return Err("Hailo driver not initialized");
+        }
+
+        // TODO: Implement full HCP protocol, model loading, and inference
+        // This is a placeholder that returns empty results
+        Ok(heapless::Vec::new())
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -347,6 +347,14 @@ Text output on HDMI display:
 cprintln!("Intent executed: {}", intent.name);
 ```
 
+### ✅ Userspace & Scheduling ✨ COMPLETE!
+Full preemptive multitasking OS capabilities:
+- **ELF Loading**: Loads standard ELF64 binaries from SD card.
+- **Preemptive Scheduler**: Round-Robin scheduling with 10ms time slices.
+- **Process Isolation**: Full address space separation (Kernel=EL1, User=EL0).
+- **System Calls**: `yield`, `sleep`, `print`, `exit`, and File I/O.
+- **User Program**: `no_std` Rust userland support.
+
 ---
 
 ## Project Structure
@@ -428,6 +436,7 @@ intent-kernel/
 | **9. Storage** | ✅ ✨ | **SD Card Driver** (SDHCI, block I/O, SDHC/SDXC) |
 | **10. Networking** | ✅ ✨ | **TCP/IP Stack** (Ethernet, ARP, IPv4, ICMP, UDP, TCP) |
 | **11. Hardware** | ✅ ✨ | **Real Drivers**: PCIe Root Complex, RP1 Southbridge, Hailo-8 (PCIe) |
+| **12. Userspace** | ✅ ✨ | **ELF Loader**, Preemptive Scheduler, Syscalls, User Mode (EL0) |
 
 ### Test Coverage
 

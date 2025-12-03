@@ -273,8 +273,8 @@ pub extern "C" fn handle_sync_lower(frame: *mut ExceptionFrame) {
 
 #[no_mangle]
 pub extern "C" fn handle_irq_lower(_frame: *mut ExceptionFrame) {
-    drivers::interrupts::gic().acknowledge();
-    drivers::interrupts::gic().end_of_interrupt(0);
+    // Handle IRQ from Lower EL (EL0) same as EL1
+    handle_irq(_frame);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

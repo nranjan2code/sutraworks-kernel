@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (December 3, 2025) - 🚀 Userspace & Scheduling (Sprint 3)
+- **Userspace Process Loading**
+  - **ELF64 Loader**: Implemented `kernel/src/kernel/elf.rs` to parse and load ELF binaries.
+  - **Segment Mapping**: Maps `PT_LOAD` segments to User Address Space with correct permissions (R/W/X).
+  - **User Stack**: Allocates and maps 16KB user stack at `0x0000_FFFF_FFFF_0000`.
+  - **Process Creation**: `Agent::new_user_elf` creates fully isolated processes from binary data.
+- **Preemptive Scheduler**
+  - **Round-Robin**: Implemented fair scheduling for multiple READY agents.
+  - **Preemption**: Timer Interrupt (10ms) forces context switches via `scheduler::tick()`.
+  - **Process States**: Added `Sleeping` state and `wake_time` for efficient waiting.
+  - **Context Switching**: Saves/restores callee-saved registers and switches Page Tables (`TTBR0`).
+- **System Call Interface**
+  - **Syscall Dispatcher**: Handles `svc #0` exceptions and routes to kernel functions.
+  - **Implemented Syscalls**:
+    - `sys_exit` (0): Terminate process.
+    - `sys_yield` (1): Voluntarily give up CPU.
+    - `sys_print` (2): Output string to console (with pointer validation).
+    - `sys_sleep` (3): Sleep for N milliseconds.
+    - `sys_open`, `sys_close`, `sys_read`, `sys_write`: Basic file I/O.
+- **User Program**
+  - Created `user/init`: A `no_std` Rust binary that runs in User Mode.
+  - Custom `linker.ld` script for userspace memory layout (`0x400000`).
+  - Implemented syscall wrappers and a simple test loop.
+
 ### Added
 - **Real Hardware Drivers**: Implemented functional drivers for Raspberry Pi 5.
   - **PCIe Root Complex**: DesignWare-based driver with ECAM support and bus enumeration.

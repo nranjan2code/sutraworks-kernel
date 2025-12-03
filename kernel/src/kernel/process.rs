@@ -9,6 +9,8 @@ use core::sync::atomic::{AtomicU64, Ordering};
 use crate::kernel::memory::paging::UserAddressSpace;
 use crate::kernel::memory::{Stack, alloc_stack};
 use crate::kernel::capability::Capability;
+use crate::fs::vfs::ProcessFileTable;
+use crate::kernel::signal::SigAction;
 
 /// Unique Agent Identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -27,6 +29,7 @@ pub enum AgentState {
     Ready,
     Running,
     Blocked,
+    Sleeping,
     Terminated,
 }
 
@@ -62,6 +65,12 @@ pub struct Agent {
     pub vmm: Option<UserAddressSpace>,
     pub kernel_stack: Stack,
     pub user_stack: Option<Stack>, // User stack might be managed by user? For now kernel manages it.
+    pub file_table: ProcessFileTable,
+    pub wake_time: u64,
+    pub sig_actions: [SigAction; 32],
+    pub vma_manager: crate::kernel::memory::vma::VmaManager,
+    pub pending_signals: u32,
+    pub blocked_signals: u32,
 }
 
 impl Agent {
@@ -75,6 +84,12 @@ impl Agent {
             vmm: None,
             kernel_stack: alloc_stack(4).expect("Failed to alloc kernel stack"), // 16KB (4 pages)
             user_stack: None,
+            file_table: ProcessFileTable::new(),
+            wake_time: 0,
+            sig_actions: [SigAction::default(); 32],
+            vma_manager: crate::kernel::memory::vma::VmaManager::new(),
+            pending_signals: 0,
+            blocked_signals: 0,
         };
 
         let stack_top = agent.kernel_stack.top;
@@ -133,6 +148,12 @@ impl Agent {
             vmm: Some(space),
             kernel_stack,
             user_stack: Some(user_stack),
+            file_table: ProcessFileTable::new(),
+            wake_time: 0,
+            sig_actions: [SigAction::default(); 32],
+            vma_manager: crate::kernel::memory::vma::VmaManager::new(),
+            pending_signals: 0,
+            blocked_signals: 0,
         };
 
         // Kernel Stack Setup (for when we are in kernel mode handling this process)
@@ -155,6 +176,106 @@ impl Agent {
         agent.context.ttbr0 = agent.vmm.as_ref().unwrap().table_base();
 
         agent
+    }
+
+    /// Create a new user agent from ELF binary
+    pub fn new_user_elf(elf_data: &[u8]) -> Result<Self, &'static str> {
+        // 1. Parse ELF
+        let loader = crate::kernel::elf::ElfLoader::new(elf_data)?;
+        
+        // 2. Create Address Space
+        let mut space = UserAddressSpace::new().ok_or("Failed to create user address space")?;
+        
+        // 3. Load Segments
+        loader.load(&mut space)?;
+        
+        // 4. Allocate Stacks
+        let kernel_stack = alloc_stack(4).ok_or("Failed to alloc kernel stack")?;
+        let user_stack = alloc_stack(4).ok_or("Failed to alloc user stack")?;
+        
+        // 5. Map User Stack
+        // We map it at a fixed high address for the user?
+        // Or just identity map the allocated pages?
+        // Let's map it at 0x0000_FFFF_FFFF_F000 (Top of user space - 4KB)
+        // Stack grows down.
+        // User Stack Size = 16KB (4 pages)
+        // Top = 0x0000_FFFF_FFFF_F000
+        // Bottom = Top - 16KB = 0x0000_FFFF_FFFB_F000
+        
+        // Wait, our VMM map_user takes virt, phys, size.
+        // user_stack.ptr points to the physical pages (identity mapped in kernel).
+        // The first page is the guard page.
+        // user_stack.bottom is the start of usable memory.
+        
+        let ustack_phys_start = user_stack.bottom; // Physical address of bottom of stack
+        let ustack_size = (user_stack.top - user_stack.bottom) as usize;
+        
+        // Let's pick a virtual address for the stack top.
+        // 0x0000_0040_0000_0000 (256GB mark? No, let's keep it simple)
+        // 0x0000_FFFF_FFFF_0000 (Near top of 48-bit space)
+        let ustack_virt_top = 0x0000_FFFF_FFFF_0000;
+        let ustack_virt_bottom = ustack_virt_top - ustack_size as u64;
+        
+        space.map_user(ustack_virt_bottom, ustack_phys_start, ustack_size)?;
+        
+        // 6. Create Agent
+        let mut agent = Agent {
+            id: AgentId::new(),
+            state: AgentState::Ready,
+            context: Context::default(),
+            capabilities: Vec::new(),
+            vmm: Some(space),
+            kernel_stack,
+            user_stack: Some(user_stack),
+            file_table: ProcessFileTable::new(),
+            wake_time: 0,
+            sig_actions: [SigAction::default(); 32],
+            vma_manager: crate::kernel::memory::vma::VmaManager::new(),
+            pending_signals: 0,
+            blocked_signals: 0,
+        };
+
+        // Kernel Stack Setup
+        let kstack_top = agent.kernel_stack.top & !0xF;
+        agent.context.sp = kstack_top;
+
+        // User Stack Setup (Virtual Address)
+        let ustack_top_virt = ustack_virt_top & !0xF;
+
+        // Trampoline Setup
+        agent.context.lr = user_trampoline as *const () as u64;
+        agent.context.x19 = loader.entry_point(); // Entry point
+        agent.context.x20 = ustack_top_virt;      // User Stack (Virtual)
+        agent.context.x21 = 0;                    // Arg (argc/argv ptr?)
+
+        // Set TTBR0
+        agent.context.ttbr0 = agent.vmm.as_ref().unwrap().table_base();
+
+        // 7. Initialize VMAs
+        use crate::kernel::memory::vma::{VMA, VmaPerms, VmaFlags};
+        
+        // Stack VMA (RW)
+        let stack_vma = VMA::new(
+            ustack_virt_bottom,
+            ustack_size as u64,
+            VmaPerms::RW,
+            VmaFlags { private: true, anonymous: true, fixed: true }
+        );
+        let _ = agent.vma_manager.add_vma(stack_vma);
+        
+        // Code VMA (RX) - For now, just map the entry point page
+        // In a real ELF loader, we'd iterate segments.
+        // Here we just protect the entry page.
+        let entry_page = loader.entry_point() & !0xFFF;
+        let code_vma = VMA::new(
+            entry_page,
+            4096,
+            VmaPerms::RX,
+            VmaFlags { private: true, anonymous: false, fixed: true }
+        );
+        let _ = agent.vma_manager.add_vma(code_vma);
+
+        Ok(agent)
     }
 }
 

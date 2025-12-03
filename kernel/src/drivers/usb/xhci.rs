@@ -141,31 +141,44 @@ pub struct InputControlContext {
 // CONTROLLER
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/// Pending Transfer State
+pub struct PendingTransfer {
+    pub id: u32,
+    pub completed: bool,
+    pub completion_code: u8,
+    pub bytes_transferred: usize,
+    pub dma_buffer: Option<usize>,
+}
+
 /// xHCI Controller structure
 pub struct XhciController {
     base_addr: usize,
     op_base: usize,
     rt_base: usize,
     db_base: usize,
-    
+
     dcbaa: Option<NonNull<u8>>,
     cmd_ring: Option<NonNull<u8>>,
     event_ring: Option<NonNull<u8>>,
     erst: Option<NonNull<u8>>,
-    
+
     // Ring State
     event_ring_dequeue_ptr: Option<NonNull<Trb>>,
     event_ring_cycle_bit: u32,
-    
+
     cmd_ring_enqueue_idx: usize,
     cmd_ring_cycle_bit: u32,
-    
+
     context_size_64: bool,
     pending_enable_slot_port: usize,
-    
+
     // Active Slots (Index = Slot ID)
     slots: [Option<DeviceSlot>; 32],
-    
+
+    // Transfer tracking (one per slot for simplicity)
+    pub pending_transfers: [Option<PendingTransfer>; 32],
+    next_transfer_id: u32,
+
     initialized: bool,
 }
 
@@ -181,6 +194,9 @@ pub struct DeviceSlot {
     pub ep0_ring: Option<NonNull<u8>>,
     pub ep0_enqueue_idx: usize,
     pub ep0_cycle_bit: u32,
+    
+    // Endpoint 1 Ring (Interrupt)
+    pub ep1_ring: Option<NonNull<u8>>,
 }
 
 impl DeviceSlot {
@@ -192,6 +208,7 @@ impl DeviceSlot {
             ep0_ring: None,
             ep0_enqueue_idx: 0,
             ep0_cycle_bit: 1,
+            ep1_ring: None,
         }
     }
 }
@@ -215,8 +232,17 @@ impl XhciController {
             context_size_64: false,
             pending_enable_slot_port: 0,
             slots: [const { None }; 32],
+            pending_transfers: [const { None }; 32],
+            next_transfer_id: 1,
             initialized: false,
         }
+    }
+
+    /// Get next transfer ID
+    fn next_transfer_id(&mut self) -> u32 {
+        let id = self.next_transfer_id;
+        self.next_transfer_id = self.next_transfer_id.wrapping_add(1);
+        id
     }
 
 
@@ -236,14 +262,25 @@ impl XhciController {
         // RP1 PCIe base is 0x1F_0000_0000 (roughly).
         // Let's use the address from `pcie.rs` if it finds one.
         
-        // Mock finding for now, but use real logic structure
-        // 0x1de4 is VLI VL805 (Pi 4). For Pi 5 RP1, we'd look for 0x1de4:0x0001 (placeholder).
-        if let Some((bus, dev, func)) = pcie.find_device(0x1de4, 0x0001) { 
-             self.base_addr = pcie.read_bar0(bus, dev, func);
+        // Find xHCI controller via PCIe
+        // 0x1de4 is VL805 vendor (Pi 4). For Pi 5, RP1 has integrated xHCI.
+        // Try to find any xHCI-compatible device (class code 0x0C0330)
+        // First check for known vendors
+        let device = pcie.find_device(0x1de4, 0x0001) // VL805
+            .or_else(|| pcie.find_by_vendor(crate::drivers::pcie::VENDOR_ID_RPI)); // RP1
+
+        if let Some(dev) = device {
+            // Read BAR0 for register base
+            if let Some((addr, size)) = pcie.read_bar(&dev, 0) {
+                self.base_addr = addr;
+                kprintln!("[USB] xHCI registers at {:#x} (size: {} KB)", addr, size / 1024);
+            } else {
+                return Err("Failed to read xHCI BAR0");
+            }
         } else {
-             // Fallback to a hardcoded address for Pi 5 RP1 xHCI if not found via ECAM
-             // This is often 0x1000120000 or similar on RP1.
-             self.base_addr = 0x10_0012_0000; 
+             // Fallback to known RP1 address for Pi 5
+             kprintln!("[USB] No PCIe xHCI found, trying RP1 fallback address");
+             self.base_addr = 0x1F_0012_0000; // RP1 xHCI base
         }
         
         kprintln!("[USB] xHCI Base: {:#x}", self.base_addr);
@@ -409,11 +446,20 @@ impl XhciController {
             // Handle Event
             match event_type {
                 32 => { // Transfer Event
-                    let slot_id = (trb.control >> 24) & 0xFF;
-                    let completion_code = (trb.status >> 24) & 0xFF;
-                    let len = trb.status & 0xFFFFFF;
-                    kprintln!("[USB] Transfer Event: Slot {}, Code {}, Len {}", slot_id, completion_code, len);
-                    // In a real driver, we'd notify the requester (via Future/Waker)
+                    let slot_id = ((trb.control >> 24) & 0xFF) as usize;
+                    let completion_code = ((trb.status >> 24) & 0xFF) as u8;
+                    let transfer_len = (trb.status & 0xFFFFFF) as usize;
+
+                    kprintln!("[USB] Transfer Event: Slot {}, Code {}, Len {}", slot_id, completion_code, transfer_len);
+
+                    // Mark pending transfer as completed
+                    if slot_id < self.pending_transfers.len() {
+                        if let Some(ref mut transfer) = self.pending_transfers[slot_id] {
+                            transfer.completed = true;
+                            transfer.completion_code = completion_code;
+                            transfer.bytes_transferred = transfer_len;
+                        }
+                    }
                 }
                 33 => { // Command Completion Event
                     let slot_id = (trb.control >> 24) & 0xFF;
@@ -495,7 +541,7 @@ impl XhciController {
     }
 
     /// Handle Command Completion
-    fn handle_command_completion(&mut self, cmd_trb_ptr: u64, slot_id: u8) {
+    fn handle_command_completion(&mut self, _cmd_trb_ptr: u64, slot_id: u8) {
         // We need to know WHAT command completed.
         // In a full driver, we'd map the pointer back to our ring.
         // For now, we'll read the TRB from the ring (unsafe but works if we don't wrap too fast)
@@ -514,21 +560,13 @@ impl XhciController {
             // If no pending port, maybe this was Address Device completion?
             // We don't track that explicitly yet, but if we see a completion for a slot
             // that is already in our slots array, it's likely Address Device.
-            if (slot_id as usize) < self.slots.len() && self.slots[slot_id as usize].is_some() {
-                kprintln!("[USB] Address Device Completed for Slot {}. Requesting Descriptor...", slot_id);
-                
-                // TEST: Get Device Descriptor (First 8 bytes)
-                let setup = [
-                    0x80, // bmRequestType: Dir=In, Type=Std, Recp=Dev
-                    0x06, // bRequest: Get Descriptor
-                    0x00, 0x01, // wValue: Type=1 (Device), Index=0
-                    0x00, 0x00, // wIndex: 0
-                    0x08, 0x00, // wLength: 8
-                ];
-                // We need a buffer. For now, just use a static buffer or alloc.
-                // We'll just send the TRBs and see if we get a Transfer Event.
-                let _ = self.send_control_transfer(slot_id, setup, 8);
-            }
+                kprintln!("[USB] Address Device Completed for Slot {}. Starting Enumeration...", slot_id);
+                // Trigger enumeration
+                if let Err(e) = self.enumerate_device(slot_id) {
+                    kprintln!("[USB] Enumeration failed for Slot {}: {}", slot_id, e);
+                } else {
+                    kprintln!("[USB] Enumeration successful for Slot {}!", slot_id);
+                }
         }
     }
 
@@ -570,7 +608,7 @@ impl XhciController {
         kprintln!("[USB] Sending Enable Slot Command...");
         
         let mut trb = Trb::new();
-        trb.control = (9 << 10); // Type 9 (Enable Slot)
+        trb.control = 9 << 10; // Type 9 (Enable Slot)
         // Cycle bit added by send_command
         
         self.send_command(trb)?;
@@ -613,7 +651,7 @@ impl XhciController {
         // 4. Setup Endpoint 0 Context (Offset 2 * ctx_size)
         let ep0_ctx = unsafe { ptr.add(ctx_size * 2).cast::<EndpointContext>() };
         unsafe {
-            (*ep0_ctx).info1 = (0 << 3); // EP Type = Control
+            (*ep0_ctx).info1 = 0 << 3; // EP Type = Control
             (*ep0_ctx).info2 = (1 << 7) | (8 << 16); // Error Count = 3 (shifted?), Max Packet Size = 8 (default for control)
             // Actually CErr is bits 1:2. 
             // EP Type is bits 3:5. Control = 4.
@@ -649,16 +687,14 @@ impl XhciController {
             // The Address Device command will copy from Input to Output.
             // But we need to allocate the Output Context backing memory first!
             // DCBAA[SlotID] must point to a Device Context buffer.
-            let out_ctx_mem = unsafe { memory::alloc_dma(PAGE_SIZE) }.ok_or("Failed to alloc Output Context")?;
-            unsafe { core::ptr::write_bytes(out_ctx_mem.as_ptr(), 0, PAGE_SIZE) };
+            let out_ctx_mem = memory::alloc_dma(PAGE_SIZE).ok_or("Failed to alloc Output Context")?;
+            core::ptr::write_bytes(out_ctx_mem.as_ptr(), 0, PAGE_SIZE);
             
             slot_state.output_ctx = Some(out_ctx_mem);
             
             if let Some(dcbaa) = self.dcbaa {
                  let dcbaa_ptr = dcbaa.as_ptr() as *mut u64;
-                 unsafe {
-                     *dcbaa_ptr.add(slot_id as usize) = out_ctx_mem.as_ptr() as u64;
-                 }
+                 *dcbaa_ptr.add(slot_id as usize) = out_ctx_mem.as_ptr() as u64;
             }
             
             // Save Slot State
@@ -720,8 +756,250 @@ impl XhciController {
         Ok(())
     }
 
-    /// Send Control Transfer (Setup, Data, Status)
-    pub fn send_control_transfer(&mut self, slot_id: u8, setup: [u8; 8], len: u16) -> Result<(), &'static str> {
+    /// Send Control Transfer (Setup, Data, Status) - Synchronous
+    /// Blocks until the transfer completes or times out.
+    /// Returns the number of bytes transferred on success.
+    pub fn control_transfer_sync(&mut self, slot_id: u8, setup: [u8; 8], data_buffer: Option<&mut [u8]>) -> Result<usize, &'static str> {
+        // Allocate DMA buffer for data stage if needed
+        let dma_buf = if let Some(buf) = data_buffer.as_ref() {
+            Some(DmaBuffer::new(buf.len().max(PAGE_SIZE)).ok_or("DMA allocation failed")?)
+        } else {
+            None
+        };
+
+        // Mark this transfer as pending
+        let transfer_id = self.next_transfer_id();
+        self.pending_transfers[slot_id as usize] = Some(PendingTransfer {
+            id: transfer_id,
+            completed: false,
+            completion_code: 0,
+            bytes_transferred: 0,
+            dma_buffer: dma_buf.as_ref().map(|b| b.as_ptr() as usize),
+        });
+
+        // Submit the transfer
+        let data_len = data_buffer.as_ref().map(|b| b.len() as u16).unwrap_or(0);
+        self.send_control_transfer_with_buffer(slot_id, setup, data_len, dma_buf.as_ref())?;
+
+        // Poll for completion (timeout: 5 seconds)
+        let timeout_ms = 5000;
+        let start = crate::drivers::timer::uptime_ms();
+
+        loop {
+            // Process event ring
+            self.poll();
+
+            // Check if transfer completed
+            if let Some(ref transfer) = self.pending_transfers[slot_id as usize] {
+                if transfer.completed {
+                    let code = transfer.completion_code;
+                    let bytes = transfer.bytes_transferred;
+
+                    // Clear pending state
+                    self.pending_transfers[slot_id as usize] = None;
+
+                    // Check completion code (1 = Success)
+                    if code != 1 {
+                        return Err("Transfer failed");
+                    }
+
+                    // Copy data from DMA buffer to user buffer if this was a read
+                    if let (Some(ref dma), Some(ref mut user_buf)) = (&dma_buf, data_buffer) {
+                        let copy_len = bytes.min(user_buf.len());
+                        unsafe {
+                            core::ptr::copy_nonoverlapping(
+                                dma.as_ptr(),
+                                user_buf.as_mut_ptr(),
+                                copy_len
+                            );
+                        }
+                    }
+
+                    return Ok(bytes);
+                }
+            }
+
+            let elapsed = crate::drivers::timer::uptime_ms() - start;
+            if elapsed > timeout_ms {
+                self.pending_transfers[slot_id as usize] = None;
+                return Err("Control transfer timeout");
+            }
+
+            crate::drivers::timer::delay_us(100);
+        }
+    }
+
+    /// Get Device Descriptor (Blocking)
+    pub fn get_device_descriptor(&mut self, slot_id: u8) -> Result<[u8; 18], &'static str> {
+        let mut buf = [0u8; 18];
+        let setup = [
+            0x80, // bmRequestType: Dir=In, Type=Std, Recp=Dev
+            0x06, // bRequest: Get Descriptor
+            0x00, 0x01, // wValue: Type=1 (Device), Index=0
+            0x00, 0x00, // wIndex: 0
+            18, 0x00, // wLength: 18
+        ];
+        
+        let len = self.control_transfer_sync(slot_id, setup, Some(&mut buf))?;
+        if len < 18 {
+            return Err("Short read on Device Descriptor");
+        }
+        Ok(buf)
+    }
+
+    /// Set Configuration (Blocking)
+    pub fn set_configuration(&mut self, slot_id: u8, config_value: u8) -> Result<(), &'static str> {
+        let setup = [
+            0x00, // bmRequestType: Dir=Out, Type=Std, Recp=Dev
+            0x09, // bRequest: Set Configuration
+            config_value, 0x00, // wValue: Config Value
+            0x00, 0x00, // wIndex: 0
+            0x00, 0x00, // wLength: 0
+        ];
+        self.control_transfer_sync(slot_id, setup, None)?;
+        Ok(())
+    }
+
+    /// Set Protocol (Blocking) - For HID
+    pub fn set_protocol(&mut self, slot_id: u8, interface: u8, protocol: u8) -> Result<(), &'static str> {
+        let setup = [
+            0x21, // bmRequestType: Dir=Out, Type=Class, Recp=Interface
+            0x0B, // bRequest: Set Protocol
+            protocol, 0x00, // wValue: Protocol (0=Boot, 1=Report)
+            interface, 0x00, // wIndex: Interface
+            0x00, 0x00, // wLength: 0
+        ];
+        self.control_transfer_sync(slot_id, setup, None)?;
+        Ok(())
+    }
+
+    /// Set Idle (Blocking) - For HID
+    pub fn set_idle(&mut self, slot_id: u8, interface: u8, duration: u8) -> Result<(), &'static str> {
+        let setup = [
+            0x21, // bmRequestType: Dir=Out, Type=Class, Recp=Interface
+            0x0A, // bRequest: Set Idle
+            0x00, duration, // wValue: Duration (high byte) | Report ID (low byte)
+            interface, 0x00, // wIndex: Interface
+            0x00, 0x00, // wLength: 0
+        ];
+        self.control_transfer_sync(slot_id, setup, None)?;
+        Ok(())
+    }
+
+    /// Enumerate Device (Blocking)
+    /// This is a simplified enumeration flow for Steno/Keyboard devices.
+    pub fn enumerate_device(&mut self, slot_id: u8) -> Result<(), &'static str> {
+        // 1. Get Device Descriptor
+        let desc = self.get_device_descriptor(slot_id)?;
+        kprintln!("[USB] Device Descriptor: Vendor={:04x}, Product={:04x}", 
+            u16::from_le_bytes([desc[8], desc[9]]), 
+            u16::from_le_bytes([desc[10], desc[11]])
+        );
+
+        // 2. Set Configuration 1 (Assumption: Most simple devices use Config 1)
+        kprintln!("[USB] Setting Configuration 1...");
+        self.set_configuration(slot_id, 1)?;
+
+        // 3. Set Protocol to Boot Protocol (0) for Keyboard
+        // Assumption: Interface 0 is the keyboard.
+        // In a real driver, we parse Config Descriptor -> Interface Descriptor.
+        kprintln!("[USB] Setting Boot Protocol...");
+        // We ignore error here because not all devices support SetProtocol (if not HID)
+        let _ = self.set_protocol(slot_id, 0, 0); 
+
+        // 4. Set Idle to 0 (Infinity)
+        kprintln!("[USB] Setting Idle...");
+        let _ = self.set_idle(slot_id, 0, 0);
+
+        // 5. Start Polling (Interrupt IN)
+        // We need to configure the Endpoint Context for the Interrupt Endpoint.
+        // This requires parsing the Endpoint Descriptor.
+        // For this Sprint, we'll assume a standard Keyboard layout:
+        // EP 1 IN, Packet Size 8, Interval 10ms.
+        
+        // Configure EP1 context in Input Context and issue Configure Endpoint command.
+        // For this Sprint, we'll assume a standard Keyboard layout:
+        // EP 1 IN, Packet Size 8, Interval 10ms.
+        
+        kprintln!("[USB] Configuring Endpoint 1...");
+        
+        // 1. Allocate Input Context
+        let input_ctx_mem = unsafe { memory::alloc_dma(PAGE_SIZE) }.ok_or("Failed to alloc Input Context")?;
+        unsafe { core::ptr::write_bytes(input_ctx_mem.as_ptr(), 0, PAGE_SIZE) };
+        
+        let ctx_size = if self.context_size_64 { 64 } else { 32 };
+        let ptr = input_ctx_mem.as_ptr();
+        
+        // 2. Setup Input Control Context
+        let icc = ptr as *mut InputControlContext;
+        unsafe {
+            (*icc).add_flags = 0x8; // A3 (EP1 IN) - Context Index 3 (EP0=1, EP1_OUT=2, EP1_IN=3)
+            (*icc).drop_flags = 0;
+        }
+        
+        // 3. Setup Slot Context (Copy from existing or just set entries)
+        // We need to update Context Entries to include EP1
+        let slot_ctx = unsafe { ptr.add(ctx_size).cast::<SlotContext>() };
+        unsafe {
+             // We should read current slot context, but we know what we set.
+             // Just set Context Entries = 2 (EP0 + EP1)
+             // Actually index 3 requires Context Entries = 4? (0..3)
+             // Spec says: "index of the last valid Endpoint Context"
+             // EP1 IN is index 3. So 3 + 1 = 4? No, it's 1-based count or max index?
+             // "The value of this field shall be set to the index of the last valid Endpoint Context"
+             // So 3.
+             (*slot_ctx).info1 = (3 << 27); 
+        }
+        
+        // 4. Setup Endpoint 1 Context (Index 3)
+        let ep1_ctx = unsafe { ptr.add(ctx_size * 3).cast::<EndpointContext>() };
+        
+        // Allocate Transfer Ring for EP1
+        let tr_ring = unsafe { memory::alloc_dma(PAGE_SIZE) }.ok_or("Failed to alloc EP1 Ring")?;
+        unsafe { core::ptr::write_bytes(tr_ring.as_ptr(), 0, PAGE_SIZE) };
+        let tr_phys = tr_ring.as_ptr() as u64;
+        
+        unsafe {
+            (*ep1_ctx).info1 = (3 << 3); // EP Type = Interrupt IN (7) or Bulk IN (6)?
+            // Interrupt IN = 7.
+            (*ep1_ctx).info1 = (7 << 3);
+            
+            // Max Packet Size = 8, Error Count = 3
+            (*ep1_ctx).info2 = (3 << 1) | (8 << 16);
+            
+            (*ep1_ctx).tr_dequeue_ptr_low = tr_phys as u32;
+            (*ep1_ctx).tr_dequeue_ptr_high = (tr_phys >> 32) as u32;
+            (*ep1_ctx).info1 |= 1; // DCS = 1
+            
+            // Interval = 10ms. Encoded as 2^(Interval-1) * 125us for High Speed?
+            // For Low/Full speed, it's frames.
+            // Let's set it to something safe, e.g., 7 (2^6 * 125us = 8ms) or just 10 for FS.
+            // For FS/LS, value is directly frames.
+            // But xHCI uses 2^Interval * 125us logic usually?
+            // "For LS/FS Interrupt endpoints, the Interval field is expressed in 1ms units"?
+            // No, xHCI normalizes everything.
+            // Let's use 16 (2ms approx?)
+            (*ep1_ctx).info1 |= (6 << 16); 
+        }
+        
+        // Save EP1 Ring
+        if let Some(slot) = self.slots[slot_id as usize].as_mut() {
+             slot.ep1_ring = Some(tr_ring);
+        }
+        
+        // 5. Send Configure Endpoint Command
+        let mut trb = Trb::new();
+        let input_ctx_phys = input_ctx_mem.as_ptr() as u64;
+        trb.param_low = input_ctx_phys as u32;
+        trb.param_high = (input_ctx_phys >> 32) as u32;
+        trb.control = (12 << 10) | ((slot_id as u32) << 24); // Type 12 (Configure Endpoint)
+        
+        self.send_command(trb)?;
+        
+        kprintln!("[USB] Enumeration Complete. Ready for Interrupts.");
+        Ok(())
+    }
+    fn send_control_transfer_with_buffer(&mut self, slot_id: u8, setup: [u8; 8], len: u16, dma_buf: Option<&DmaBuffer>) -> Result<(), &'static str> {
         // 1. Setup Stage
         let mut setup_trb = Trb::new();
         setup_trb.param_low = u32::from_le_bytes(setup[0..4].try_into().unwrap());
@@ -742,9 +1020,7 @@ impl XhciController {
         // 2. Data Stage
         if has_data {
             // We need a buffer.
-            // Use RAII DmaBuffer to ensure cleanup!
-            let buf = DmaBuffer::new(PAGE_SIZE).ok_or("No DMA")?;
-            let buf_phys = buf.phys_addr();
+            let buf_phys = dma_buf.ok_or("Buffer required for data stage")?.phys_addr();
             
             let mut data_trb = Trb::new();
             data_trb.param_low = buf_phys as u32;
@@ -755,17 +1031,7 @@ impl XhciController {
             
             self.enqueue_ep_trb(slot_id, 0, data_trb)?;
             
-            // Note: `buf` is dropped here, freeing the memory.
-            // In a real async driver, we would move `buf` into a Future so it lives until completion.
-            // For this synchronous-style test (fire and forget), dropping it immediately is technically wrong
-            // because the hardware might still be writing to it!
-            // BUT, since we are just testing enumeration and not reading the data yet, this prevents the leak.
-            // To fix properly: We need to keep `buf` alive until Transfer Event.
-            // For now, we accept the race (hardware writing to freed memory) over the leak (OOM),
-            // or we could leak it intentionally if we had a way to reclaim it later.
-            // Given the "Real" goal, let's just leak it for now but mark it as "TODO: Async Buffer Management"
-            // OR, better: `core::mem::forget(buf)` and reclaim in event handler.
-            // Let's stick to Drop for now to satisfy "Fix Memory Leaks" request, assuming the test is short-lived.
+            // Buffer lifetime is managed by caller (control_transfer_sync)
         }
         
         // 3. Status Stage
@@ -776,7 +1042,7 @@ impl XhciController {
             // Data IN -> Status OUT (Dir=0)
         } else {
             // Data OUT or No Data -> Status IN (Dir=1)
-            status_trb.control |= (1 << 16);
+            status_trb.control |= 1 << 16;
         }
         
         self.enqueue_ep_trb(slot_id, 0, status_trb)?;

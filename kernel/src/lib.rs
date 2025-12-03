@@ -25,6 +25,7 @@ pub mod steno;      // Stenographic input - strokes are the semantic primitive
 pub mod english;    // English I/O layer - natural language interface to steno-native kernel
 pub mod perception;
 pub mod fs;
+pub mod net;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TESTING FRAMEWORK
