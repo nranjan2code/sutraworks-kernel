@@ -61,12 +61,12 @@ Expand hardware integration.
 - [x] **Audio Perception**: Zero Crossing Rate (ZCR) + Energy feature extraction.
 - [x] **Acoustic Intents**: Speech/Noise classification and neural memory storage.
 
-### Phase 7: Connectivity & Expansion
-- [ ] **Networking**: Ethernet driver (via RP1/PCIe) for remote intent processing.
-- [ ] **SD Card Write**: FAT32 driver to persist RamDisk state.
-- [ ] **Multi-Core SMP**: Run Perception and Intent Engine on separate cores.
+### Phase 6: Connectivity & Expansion ✅
+- [x] **Networking**: Real Ethernet driver (RP1/PCIe) and TCP/IP stack.
+- [x] **Persistent Storage**: SDHCI driver for SD card read/write.
+- [x] **Multi-Core SMP**: 4-core scheduler with work stealing and affinity.
 
-### Phase 8: Cognitive Evolution
+### Phase 7: Cognitive Evolution (Current Focus)
 - [ ] **LLM Integration**: Small quantized LLM on CPU/NPU hybrid.
 - [x] **Voice Interface**: Audio I/O for spoken intents (Basic perception implemented).
 - [ ] **Dictionary Learning**: Track stroke frequency, suggest optimizations.

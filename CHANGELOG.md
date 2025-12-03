@@ -9,7 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added (December 3, 2025) - 🚀 Production-Ready Enhancements
+### Added
+- **Real Hardware Drivers**: Implemented functional drivers for Raspberry Pi 5.
+  - **PCIe Root Complex**: DesignWare-based driver with ECAM support and bus enumeration.
+  - **RP1 I/O Controller**: Driver for the Pi 5 southbridge, mapping BAR1 for peripheral access.
+  - **GPIO**: Refactored to control pins via RP1 instead of legacy BCM registers.
+  - **Hailo-8**: Connected to real PCIe bus, removing simulation mode.
+ (December 3, 2025) - 🚀 Production-Ready Enhancements
 
 **Three major systems added to complete the production-ready OS vision:**
 

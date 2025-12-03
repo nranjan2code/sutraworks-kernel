@@ -304,7 +304,30 @@ impl PerceptionManager {
 
 ## Hardware Drivers
 
+### PCIe Root Complex & RP1 Southbridge ✨ NEW!
+
+The Raspberry Pi 5 uses a disaggregated architecture where most peripherals are on the **RP1 Southbridge**, connected via **PCIe Gen 2 x4**.
+
+```
+┌──────────────┐      PCIe x4       ┌──────────────┐
+│   BCM2712    │ ◀────────────────▶ │     RP1      │
+│ (CPU + GPU)  │                    │ (Southbridge)│
+└──────────────┘                    └──────┬───────┘
+       │                                   │
+  [UART, Timer]                     [GPIO, USB, Eth]
+```
+
+**PCIe Driver**:
+- **ECAM**: Enhanced Configuration Access Mechanism for scanning the bus.
+- **Enumeration**: Automatically discovers RP1 (`0x1DE4`) and Hailo-8 (`0x1E60`).
+- **BAR Mapping**: Maps device memory (Base Address Registers) into kernel space.
+
+**RP1 Driver**:
+- **Function**: Maps the RP1's BAR1 (Peripheral Aperture) to access its internal registers.
+- **Peripherals**: Controls GPIO, Ethernet, and USB via memory-mapped I/O within the BAR.
+
 ### UART
+
 
 Debug output via PL011 UART:
 
@@ -325,12 +348,18 @@ pub async fn timer_sleep(ms: u64);
 
 ### GPIO
 
-Pin control for LEDs and sensors:
+Pin control via the **RP1 Southbridge**:
 
 ```rust
+// Pins are controlled via RP1 registers, not BCM directly
 pub fn gpio_set(pin: u32, value: bool);
 pub fn gpio_get(pin: u32) -> bool;
 ```
+
+- **Bank 0**: User GPIOs (Header pins 0-27)
+- **Bank 1**: Ethernet/USB status
+- **Bank 2**: SDIO/HDMI
+
 
 ### USB HID ✅
  

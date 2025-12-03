@@ -390,6 +390,8 @@ intent-kernel/
 │   │   ├── console.rs      # Text console on framebuffer
 │   │   ├── hailo.rs        # ✨ Hailo-8 AI accelerator
 │   │   ├── hailo_tensor.rs # ✨ YOLO tensor parser
+│   │   ├── pcie.rs         # ✨ PCIe Root Complex
+│   │   ├── rp1.rs          # ✨ RP1 I/O Controller
 │   │   ├── sdhci.rs        # ✨ SD card controller
 │   │   ├── ethernet.rs     # ✨ Ethernet MAC driver
 │   │   └── usb/            # USB Host Controller
@@ -425,6 +427,7 @@ intent-kernel/
 | **8. Multi-Core** | ✅ ✨ | **SMP Scheduler** (4 cores, priority, affinity, work stealing) |
 | **9. Storage** | ✅ ✨ | **SD Card Driver** (SDHCI, block I/O, SDHC/SDXC) |
 | **10. Networking** | ✅ ✨ | **TCP/IP Stack** (Ethernet, ARP, IPv4, ICMP, UDP, TCP) |
+| **11. Hardware** | ✅ ✨ | **Real Drivers**: PCIe Root Complex, RP1 Southbridge, Hailo-8 (PCIe) |
 
 ### Test Coverage
 

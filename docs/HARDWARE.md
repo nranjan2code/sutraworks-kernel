@@ -53,13 +53,36 @@ Technical reference for Raspberry Pi 5 hardware as used by Intent Kernel.
                  │ (grows upward)          │
                  │                         │
 0x0001_0000_0000 ├─────────────────────────┤
-                 │ Peripherals             │ 128MB
-0x0001_0800_0000 ├─────────────────────────┤
-                 │ PCIe, etc.              │
+                 │ Peripherals (BCM)       │ 128MB
+0x0001_0010_0000 ├─────────────────────────┤
+                 │ PCIe ECAM (Config)      │
+0x0001_0011_0000 ├─────────────────────────┤
+                 │ PCIe Registers          │
+0x001F_0000_0000 ├─────────────────────────┤
+                 │ PCIe BAR Windows        │
+                 │ (RP1, Hailo mapped here)│
                  └─────────────────────────┘
 ```
 
+## RP1 Southbridge
+
+Most user I/O on Raspberry Pi 5 is handled by the **RP1** chip, connected via PCIe.
+
+### RP1 Address Space (BAR1)
+
+Offsets within the RP1 BAR1 window:
+
+| Offset | Description |
+|--------|-------------|
+| `0x00d0_0000` | GPIO (RIO) |
+| `0x00f0_0000` | PADS (Bank 0) |
+| `0x00f0_4000` | PADS (Bank 1) |
+| `0x00f0_8000` | PADS (Bank 2) |
+| `0x0010_0000` | Ethernet MAC |
+| `0x0020_0000` | USB xHCI |
+
 ## GPIO
+
 
 ### GPIO Pin Header (40-pin)
 
@@ -101,26 +124,21 @@ Each GPIO pin can be configured for one of 8 functions:
 | 0b110 | Alt2 |
 | 0b111 | Alt3 |
 
-### GPIO Registers (BCM2712)
+### GPIO Registers (RP1)
+
+The RP1 uses a "Registered I/O" (RIO) interface for GPIO control, plus separate PADS registers for pull-up/down.
+
+**RIO Registers (Offset `0x00d0_0000`):**
 
 | Offset | Name | Description |
 |--------|------|-------------|
-| 0x00 | GPFSEL0 | Function select for GPIO 0-9 |
-| 0x04 | GPFSEL1 | Function select for GPIO 10-19 |
-| 0x08 | GPFSEL2 | Function select for GPIO 20-29 |
-| 0x0C | GPFSEL3 | Function select for GPIO 30-39 |
-| 0x10 | GPFSEL4 | Function select for GPIO 40-49 |
-| 0x14 | GPFSEL5 | Function select for GPIO 50-57 |
-| 0x1C | GPSET0 | Output set for GPIO 0-31 |
-| 0x20 | GPSET1 | Output set for GPIO 32-57 |
-| 0x28 | GPCLR0 | Output clear for GPIO 0-31 |
-| 0x2C | GPCLR1 | Output clear for GPIO 32-57 |
-| 0x34 | GPLEV0 | Pin level for GPIO 0-31 |
-| 0x38 | GPLEV1 | Pin level for GPIO 32-57 |
-| 0xE4 | PUP_PDN0 | Pull-up/down for GPIO 0-15 |
-| 0xE8 | PUP_PDN1 | Pull-up/down for GPIO 16-31 |
-| 0xEC | PUP_PDN2 | Pull-up/down for GPIO 32-47 |
-| 0xF0 | PUP_PDN3 | Pull-up/down for GPIO 48-57 |
+| `0x00` | OUT | Output Value |
+| `0x04` | OE | Output Enable |
+| `0x08` | IN | Input Value |
+
+**PADS Registers (Offset `0x00f0_0000`):**
+- Controls drive strength, slew rate, and pull-up/down.
+
 
 ### Special GPIO Pins
 

@@ -12,6 +12,7 @@ pub mod ramdisk;
 pub mod pcie;
 pub mod rng;
 pub mod usb;
+pub mod rp1;
 
 // Re-export commonly used items
 pub use uart::Uart;

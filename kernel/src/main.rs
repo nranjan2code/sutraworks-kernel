@@ -60,7 +60,15 @@ pub extern "C" fn kernel_main() -> ! {
     let heap_avail = kernel::memory::heap_available();
     kprintln!("       Heap: {} MB available", heap_avail / (1024 * 1024));
     
-    // Initialize GPIO
+    // Initialize PCIe (Root Complex)
+    kprintln!("[INIT] PCIe Subsystem...");
+    drivers::pcie::init();
+
+    // Initialize RP1 (I/O Controller)
+    kprintln!("[INIT] RP1 I/O Controller...");
+    drivers::rp1::init();
+
+    // Initialize GPIO (via RP1)
     kprintln!("[INIT] GPIO...");
     drivers::gpio::init();
     
