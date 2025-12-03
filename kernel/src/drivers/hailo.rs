@@ -14,7 +14,10 @@
 use crate::kprintln;
 use crate::arch::{self, SpinLock};
 use crate::kernel::memory::{self, PAGE_SIZE};
+use crate::perception::vision::DetectedObject;
 use core::ptr::NonNull;
+
+pub mod tensor;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // REGISTERS (Estimated/Standardized)
@@ -286,14 +289,77 @@ impl HailoDriver {
             crate::drivers::timer::delay_us(10);
             timeout -= 1;
         }
-        
+
         // If we are in "Mock/Detached" mode (no real hardware), we simulate success
         // so the upper layers can continue logic verification.
         if !self.present {
             return Ok(());
         }
-        
+
         Err("Inference Timeout")
+    }
+
+    /// Run inference on an image and return parsed detected objects
+    ///
+    /// This is the high-level API that combines:
+    /// 1. DMA transfer (host → device)
+    /// 2. Inference execution
+    /// 3. DMA transfer (device → host)
+    /// 4. Tensor parsing (YOLO format → DetectedObjects)
+    ///
+    /// # Arguments
+    /// * `image_data` - RGB888 image buffer
+    /// * `width` - Image width
+    /// * `height` - Image height
+    ///
+    /// # Returns
+    /// Vector of detected objects with hypervectors
+    pub fn detect_objects(&mut self, image_data: &[u8], width: u32, height: u32) -> Result<heapless::Vec<DetectedObject, 16>, &'static str> {
+        if !self.initialized {
+            return Err("Driver not initialized");
+        }
+
+        // Expected input size: width * height * 3 (RGB)
+        let input_size = (width * height * 3) as usize;
+        if image_data.len() != input_size {
+            return Err("Invalid image buffer size");
+        }
+
+        // Allocate DMA buffers
+        let input_buf_mem = unsafe { memory::alloc_dma(input_size) }.ok_or("Input DMA alloc failed")?;
+        let output_buf_mem = unsafe { memory::alloc_dma(8192) }.ok_or("Output DMA alloc failed")?;  // 8KB for YOLO output
+
+        // Copy image data to input buffer
+        unsafe {
+            core::ptr::copy_nonoverlapping(
+                image_data.as_ptr(),
+                input_buf_mem.as_ptr(),
+                input_size
+            );
+        }
+
+        // Submit inference job
+        let input_phys = input_buf_mem.as_ptr() as u64;
+        let output_phys = output_buf_mem.as_ptr() as u64;
+
+        self.send_inference_job(input_phys, input_size as u32, output_phys, 8192)?;
+
+        // Parse output tensor
+        let output_slice = unsafe {
+            core::slice::from_raw_parts(output_buf_mem.as_ptr(), 8192)
+        };
+
+        let parser = tensor::YoloOutputParser::new();
+        let objects = parser.parse(output_slice, 8192);
+
+        // DMA buffers are automatically freed when dropped (via RAII if implemented)
+        // For now, we manually free them
+        unsafe {
+            memory::free_dma(input_buf_mem, input_size);
+            memory::free_dma(output_buf_mem, 8192);
+        }
+
+        Ok(objects)
     }
 }
 
