@@ -131,10 +131,9 @@ pub extern "C" fn kernel_main() -> ! {
     kprintln!("[INIT] Semantic Intent Engine...");
     intent::init();
     
-    // Initialize Stenographic Input Engine
-    kprintln!("[INIT] Stenographic Input Engine...");
+    // Initialize Input Engine (Steno - fastest path)
+    kprintln!("[INIT] Input Engine (Steno Path)...");
     steno::init();
-    kprintln!("       23 keys. 150 years of compression. Now in silicon.");
 
     // Demo Neural Memory (HDC Edition)
     kprintln!("[INIT] Neural Memory Demo (HDC)...");
@@ -506,7 +505,7 @@ fn print_banner() {
     kprintln!("║   ██║  ██╗███████╗██║  ██║██║ ╚████║███████╗███████╗              ║");
     kprintln!("║   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝              ║");
     kprintln!("║                                                                   ║");
-    kprintln!("║        The Bridge Between Human Intent and Silicon     v0.2      ║");
+    kprintln!("║      A Perceptual Computing Platform               v0.2      ║");
     kprintln!("║                                                                   ║");
     kprintln!("║   Hardware: Raspberry Pi 5 (BCM2712)                              ║");
     kprintln!("║   CPU:      ARM Cortex-A76 x4 @ 2.4GHz                            ║");

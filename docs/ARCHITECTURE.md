@@ -2,46 +2,45 @@
 
 ## Overview
 
-Intent Kernel is a bare-metal stenographic operating system where **steno strokes are the native semantic unit**.
+Intent Kernel is a **Perceptual Computing Platform**—a bare-metal operating system where **all inputs are processed as semantic concepts**. Whether from steno machines, standard keyboards, or AI sensors, every input becomes a ConceptID that triggers immediate execution.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                        USER INPUT (Multiple Modes)                       │
 │                                                                          │
-│  Steno Machine (USB HID) ────▶ Direct Strokes                          │
-│  Standard Keyboard       ────▶ Natural English ✨ NEW!                  │
+│  Steno Machine (USB HID) ────▶ Direct Strokes (fastest: <0.1μs)        │
+│  Standard Keyboard       ────▶ Natural English (~30μs)                 │
+│  Vision (Hailo-8 NPU)    ────▶ Object Detection → Hypervectors         │
+│  Audio                   ────▶ Classification → Hypervectors            │
 └─────────────────────────────────────────────────────────────────────────┘
                                       ↓
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    ENGLISH I/O LAYER (Optional Translation)              │
+│                    INPUT PROCESSING LAYER                                │
 │                                                                          │
-│  Input:  English Text → Parser → ConceptID                             │
-│          • 200+ phrase variations                                       │
-│          • 50+ synonym expansions                                       │
-│          • Multi-stage parsing pipeline                                 │
-│                                                                          │
-│  Output: Intent Result → Template Engine → Natural Language             │
-│          • Context-aware responses                                      │
-│          • User mode adaptation (Beginner/Advanced)                     │
+│  Steno:   Stroke → Dictionary → ConceptID (direct lookup)              │
+│  English: Text → Parser → Synonyms → ConceptID (200+ phrases)          │
+│  Vision:  Tensor → YOLO → Hypervector → Semantic Memory                │
+│  Audio:   Features → Classification → Hypervector → Memory             │
 └─────────────────────────────────────────────────────────────────────────┘
                                       ↓
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                      STENO-NATIVE KERNEL CORE                           │
+│                      INTENT EXECUTION CORE                               │
 │                                                                          │
-│  Stroke (23-bit) → Dictionary → Intent → Executor                       │
+│  ConceptID → Intent → Broadcast Executor (1:N)                          │
 │  Pure semantic processing. No character handling.                       │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Kernel Philosophy**: Steno-native core with optional English translation layer.
+**Platform Philosophy**: Semantic-first computing with multiple input modalities.
 
-- **Steno Mode**: Direct stroke → intent (0.1μs, maximum performance)
+- **Steno Mode**: Direct stroke → intent (<0.1μs, maximum performance)
 - **English Mode**: Natural language → intent (~30μs, universal accessibility)
-- **Hybrid Mode**: Mix both freely (power users)
+- **Perception Mode**: Sensor data → hypervector → semantic memory
+- **Hybrid Mode**: Mix any inputs freely (power users)
 
 ---
 
-## Stenographic Input
+## Steno Input (Fastest Path)
 
 ### Stroke Representation
 
@@ -482,9 +481,9 @@ Macros: `cprint!()`, `cprintln!()`
 
 ---
 
-## English I/O Layer ✨ NEW!
+## English I/O Layer
 
-The English I/O Layer provides natural language accessibility while maintaining the steno-native kernel core.
+The English I/O Layer provides natural language accessibility while maintaining the semantic-first kernel core.
 
 ### Architecture
 

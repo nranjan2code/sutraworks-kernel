@@ -5,34 +5,36 @@
 <h1 align="center">Intent Kernel</h1>
 
 <p align="center">
-  <strong>The world's first stenographic operating system</strong><br>
-  <em>Where strokes become intents, and intents become action.</em>
+  <strong>A Perceptual Computing Platform</strong><br>
+  <em>Where inputs become intents, and intents become action.</em>
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> •
-  <a href="#why-steno">Why Steno?</a> •
+  <a href="#input-methods">Input Methods</a> •
   <a href="#architecture">Architecture</a> •
   <a href="#documentation">Docs</a> •
   <a href="#status">Status</a>
 </p>
 
+
 ---
 
 ## The Vision
 
-What if your computer understood you at 200+ words per minute?
+What if your computer understood you **instantly**—through any input modality?
 
-**Intent Kernel** is a bare-metal operating system for Raspberry Pi 5 that speaks stenography natively. No characters. No parsing. No shell commands. Just pure **stroke → intent → action**.
+**Intent Kernel** is a bare-metal operating system for Raspberry Pi 5 that processes inputs as semantic concepts. Whether you use a steno machine (fastest), a standard keyboard (most accessible), or sensors (vision, audio), every input becomes an **intent** that executes immediately.
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│ Steno Machine│────▶│   Stroke     │────▶│  Dictionary  │────▶│   Executor   │
-│              │     │   (23-bit)   │     │              │     │              │
+│   Any Input  │────▶│  Semantic    │────▶│  Dictionary  │────▶│   Executor   │
+│ Steno/Keys/  │     │   Pattern    │     │ (ConceptID)  │     │  (Broadcast) │
+│ Vision/Audio │     │              │     │              │     │              │
 └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
 ```
 
-One stroke. One concept. Instant execution.
+One input. One concept. Instant execution.
 
 ---
 
@@ -66,42 +68,60 @@ make test-integration
 
 ---
 
-## Why Steno?
+## Input Methods
 
-Stenography is 150-year-old technology that **still** outperforms every input method invented since:
+Intent Kernel supports **multiple input modalities**, all converging to the same semantic intent system:
 
-| Method | Speed | Accuracy |
-|--------|-------|----------|
-| Typing | 40-80 WPM | High |
-| Voice | 100-150 WPM | Medium |
-| **Steno** | **200-300 WPM** | **Very High** |
+### Steno Mode (Fastest Path)
 
-A stenographer doesn't type "show system status" — they press **one chord** that means exactly that. The Intent Kernel takes this further: that chord maps directly to a semantic concept, skipping all text processing entirely.
+Stenography is the **fastest human input method ever invented**:
 
-### Traditional OS
-```
-Keyboard → Characters → Shell → Parser → Tokens → Command Lookup → Execute
-```
+| Method | Speed | Latency |
+|--------|-------|---------|
+| Typing | 40-80 WPM | ~50ms |
+| Voice | 100-150 WPM | ~200ms |
+| **Steno** | **200-300 WPM** | **<0.1μs** |
 
-### Intent Kernel (Steno Mode)
-```
-Steno Machine → Stroke → Intent → Execute
-```
+A stenographer doesn't type "show system status" — they press **one chord** that maps directly to a semantic concept, skipping all text processing.
 
-### Intent Kernel (English Mode) ✨ NEW!
+### English Mode (Most Accessible) ✨
+
+**You do NOT need to know stenography.** The kernel includes a production-grade English Natural Language Interface:
+
 ```
 Keyboard → English Text → Natural Language Parser → Intent → Execute
-                              ↓
-                    (200+ phrases, 50+ synonyms)
+                               ↓
+                     (200+ phrases, 50+ synonyms)
 ```
 
-**Faster. Cleaner. More powerful. Now accessible to everyone.**
+**Example Commands:**
+```
+"help"              → Shows system help
+"show me status"    → Displays system status  
+"what time is it?"  → Shows current time
+"open notes"        → Opens notes application
+```
 
-Users can type **natural English commands** like "show me system status" or "can you help?". The kernel includes a production-grade English I/O layer that understands 200+ phrase variations, expands synonyms, and generates natural language responses—all while maintaining the steno-native core architecture internally.
+### Perception Mode (AI-Powered)
+
+Vision and audio inputs are processed through the Hailo-8 NPU and converted to hypervectors:
+
+```
+Camera → Hailo-8 NPU → YOLO Detection → Hypervector → Semantic Memory
+Mic    → Audio Features → Classification → Hypervector → Semantic Memory
+```
+
+### Comparison
+
+| Input Method | Latency | Learning Curve | Best For |
+|--------------|---------|----------------|----------|
+| **Steno Machine** | <0.1μs | High (months) | Power users, professionals |
+| **English Keyboard** | ~30μs | None | Everyone |
+| **Vision/Audio** | ~50ms | None | AI perception, context |
+
+**All inputs produce the same result: a ConceptID that triggers intent execution.**
 
 ---
-
-## Architecture
 
 ## Architecture
 
@@ -230,10 +250,10 @@ if !has_capability(CapabilityType::System) {
 ```
 
 ### ✅ Heads-Up Display (HUD)
-Real-time visualization of the stenographic stream and intent execution log.
-- **Steno Tape**: Scrolling log of raw strokes (RTFCRE).
+Real-time visualization of the input stream and intent execution log.
+- **Input Tape**: Scrolling log of inputs (steno strokes or English commands).
 - **Intent Stream**: Visual log of recognized semantic actions.
-- **Status Bar**: Real-time WPM and stroke statistics.
+- **Status Bar**: Real-time WPM and input statistics.
 
 ### ✅ Natural Language Interface ✨ NEW!
 Production-grade English I/O layer for universal accessibility:
@@ -492,8 +512,8 @@ No libc. No C dependencies. Minimal crates. Everything from scratch in safe, idi
 ### 4. Forward Only
 We build the future. No backward compatibility with character-based systems.
 
-### 5. Universal Accessibility ✨ NEW!
-Steno-native kernel with natural language translation layer. Everyone can use English; power users can use raw strokes.
+### 5. Universal Accessibility
+Semantic-first kernel with multiple input paths. Everyone can use English; power users can unlock maximum speed with steno.
 
 ---
 

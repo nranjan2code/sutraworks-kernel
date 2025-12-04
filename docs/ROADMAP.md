@@ -12,7 +12,7 @@
 - [x] Kernel/userspace separation (EL0/EL1, TTBR0/TTBR1)
 - [x] System call interface (SVC handler)
 
-### Phase 2: Stenographic Engine ✅
+### Phase 2: Input Engine ✅
 - [x] **Stroke Processing**: 23-bit stroke patterns, RTFCRE notation.
 - [x] **Dictionary**: Stroke→Intent mapping, multi-stroke sequences.
 - [x] **Multi-Stroke Briefs**: Real prefix matching, 500ms timeout, 20+ multi-stroke entries.

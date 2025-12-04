@@ -380,7 +380,7 @@ kernel/src/english/  (~1,700 lines)
 └── context.rs       - Conversation state
 ```
 
-**This transforms Intent Kernel from a specialist tool to a universal platform accessible to billions of users!**
+**This transforms Intent Kernel from a specialist tool to a universal platform accessible to everyone!**
 
 ### Added (December 2, 2025) - Security & Realism
 - **Security Hardening (Critical)**
@@ -399,7 +399,7 @@ kernel/src/english/  (~1,700 lines)
   - Added `process_english()` for English text input
   - Reverse dictionary lookup (`lookup_by_name`)
   - Users can type English commands OR steno strokes
-  - English is converted to strokes internally (kernel stays steno-native)
+  - English is converted to ConceptIDs internally (semantic-first)
 
 - **Framebuffer Console**
   - New `drivers::console` module

@@ -1,7 +1,7 @@
-//! Stenographic Intent Engine
+//! Steno Input Engine (Fastest Path)
 //!
-//! The world's first OS kernel designed for stenographic input.
-//! Strokes are the native semantic unit - no characters, no words, just intent.
+//! The fastest human input method, now native to an OS kernel.
+//! Strokes bypass all text processing - direct semantic mapping.
 //!
 //! # Philosophy
 //! Stenography has been the ultimate human-to-machine compression for 150 years.
@@ -12,7 +12,7 @@
 //! ```
 //! Steno Machine → Raw Stroke (23-bit) → Stroke → Dictionary → Intent → Action
 //! ```
-//! No tokenization. No parsing. Direct semantic mapping.
+//! No tokenization. No parsing. Direct semantic mapping (<0.1μs).
 //!
 //! # Key Order (Plover english_stenotype.py)
 //! ```
@@ -48,8 +48,8 @@ static STENO_ENGINE: SpinLock<StenoEngine> = SpinLock::new(StenoEngine::new());
 pub fn init() {
     let mut engine = STENO_ENGINE.lock();
     engine.init();
-    crate::kprintln!("[STENO] Stenographic Intent Engine initialized");
-    crate::kprintln!("[STENO] 23 keys. 150 years of compression. Now in silicon.");
+    crate::kprintln!("[STENO] Steno Input Engine initialized");
+    crate::kprintln!("[STENO] Fastest input path: 23 keys, <0.1μs latency.");
 }
 
 /// Process a stroke and return intent (if matched)

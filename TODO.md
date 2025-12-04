@@ -1,6 +1,7 @@
-# Intent Kernel - TODO
+# Intent Kernel TODO
 
-A bare-metal stenographic operating system for Raspberry Pi 5.
+A Perceptual Computing Platform for Raspberry Pi 5.
+Bare-metal OS where any input (steno, keyboard, vision, audio) becomes semantic intent.
 
 ## Architecture
 
@@ -32,7 +33,7 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 
 ---
 
-## Phase 2: Stenographic Engine ✅
+## Phase 2: Input Engine ✅
 
 ### Stroke Processing
 - [x] `Stroke` struct (23-bit pattern)
@@ -106,7 +107,7 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 - [x] Output in English via console
 
 ### Architecture
-- [x] English → Stroke → Intent (internally steno-native)
+- [x] English → ConceptID → Intent (semantic-first)
 - [x] No character parsing—direct dictionary lookup
 - [x] User types "help", kernel finds `PH-FPL`, executes HELP intent
 

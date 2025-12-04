@@ -1,13 +1,13 @@
-//! Intent Module - Stroke-Native Semantic Intent
+//! Intent Module - Semantic Intent Execution
 //!
-//! This is a stenographic kernel. Intents come from strokes, not words.
-//! The old word-tokenization system has been removed.
+//! Intents are semantic concepts that trigger actions.
+//! Inputs from any source (steno, English, sensors) map to ConceptIDs.
 //!
 //! # Architecture
 //! ```
-//! Stroke (23-bit) → Dictionary → Intent → Executor
+//! Any Input → ConceptID → Intent → Executor (Broadcast 1:N)
 //! ```
-//! Direct. No parsing. No tokenization.
+//! Direct semantic execution. No character-level processing.
 
 use crate::kernel::capability::{
     Capability, CapabilityType, Permissions, 

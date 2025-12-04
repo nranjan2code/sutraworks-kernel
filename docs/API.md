@@ -1671,7 +1671,7 @@ if let Some(intent) = steno::process_english("help") {
 4. Return the resulting intent
 
 This allows non-steno users to interact with the kernel while maintaining
-the steno-native architecture internally.
+the semantic-first architecture internally.
 
 ---
 

@@ -2,9 +2,9 @@
 
 ## Overview
 
-The English I/O Layer is a production-grade natural language interface to the steno-native Intent Kernel. It allows **billions of users** to interact with the system using natural English, while the kernel remains internally stenographic.
+The English I/O Layer is a production-grade natural language interface to Intent Kernel. It allows **everyone** to interact with the system using natural English commands, while internally the kernel processes inputs as semantic concepts.
 
-**Key Insight**: Steno stays internal. English is the user-facing translation layer.
+**Key Insight**: Steno is the fastest input path, but English provides universal accessibility.
 
 ## Architecture
 
@@ -25,10 +25,10 @@ The English I/O Layer is a production-grade natural language interface to the st
 └────────────────────────────────────────────────────────────┘
                             ↕
 ┌────────────────────────────────────────────────────────────┐
-│                 STENO-NATIVE KERNEL                         │
+│                 SEMANTIC INTENT CORE                        │
 │              (Unchanged - Pure Intent)                      │
 │                                                             │
-│  Stroke (23-bit) → Dictionary → Intent → Execute           │
+│  ConceptID → Intent → Execute                               │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -422,7 +422,7 @@ fn test_end_to_end() {
 
 ## Design Principles
 
-1. **Steno-Native Core**: Kernel stays pure. English is a translation layer.
+1. **Semantic-First Core**: Kernel processes concepts directly. English is a translation layer.
 2. **Zero Performance Impact**: <30μs overhead is negligible.
 3. **Graceful Degradation**: Falls back to steno if English fails.
 4. **Progressive Disclosure**: Beginner → Intermediate → Advanced modes.
@@ -430,9 +430,9 @@ fn test_end_to_end() {
 
 ## Conclusion
 
-The English I/O Layer transforms Intent Kernel from a **specialist tool** (steno-only) to a **universal platform** (billions of users).
+The English I/O Layer makes Intent Kernel **accessible to everyone**, not just stenographers.
 
-**Key Achievement**: Maintained steno-native architecture while adding natural language accessibility.
+**Key Achievement**: Maintained semantic-first architecture while adding natural language accessibility.
 
 This is production-ready code with:
 - ✓ Comprehensive phrase coverage (200+)
@@ -443,4 +443,4 @@ This is production-ready code with:
 - ✓ Fully tested (unit + integration)
 - ✓ Well documented
 
-**The world can now use Intent Kernel in English, while the kernel thinks in strokes.**
+**Anyone can now use Intent Kernel in English, while power users can unlock maximum speed with steno.**
