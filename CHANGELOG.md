@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (December 4, 2025) - 🧠 Hailo-8 Driver Core (Sprint 7)
+- **HCP Protocol Implementation**
+  - Implemented **Hailo Control Protocol (HCP)** structures (`HcpHeader`, `HcpCommand`, `HcpResponse`).
+  - Created circular **Command and Response Queues** for asynchronous communication.
+  - Implemented **Firmware Handshake** and **Device Reset** logic.
+- **DMA Engine**
+  - Implemented **Scatter-Gather DMA** using `DmaDescriptor` rings.
+  - Mapped **BAR2** for Doorbell register access.
+  - Implemented `start_dma` (Doorbell) and `wait_dma` (Interrupt polling).
+- **Model Management**
+  - Implemented **HEF File Parser** (`HefHeader`).
+  - Added `load_model` to read models from filesystem.
+  - Implemented `send_model_data` to transfer model binaries via DMA.
+  - Added `configure_device` to send CONFIG commands via HCP.
+- **Inference Pipeline**
+  - Implemented `detect_objects` for end-to-end inference.
+  - Integrated `YoloOutputParser` for YOLOv5s tensor decoding.
+  - Implemented full DMA flow: Input Image -> Device -> Output Tensor.
+
 ### Added (December 4, 2025) - 💾 SDHCI Write + DMA (Sprint 6)
 - **SD Card Write Support**
   - Implemented `CMD24` (Single Block Write) and `CMD25` (Multi Block Write).

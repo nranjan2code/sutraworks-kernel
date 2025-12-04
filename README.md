@@ -437,7 +437,7 @@ intent-kernel/
 | **8. Multi-Core** | ✅ ✨ | **SMP Scheduler** (4 cores, priority, affinity, work stealing) |
 | **9** | Storage | ✅ ✨ | **SD Card Driver** (SDHCI, block I/O, SDHC/SDXC, **DMA**, **Write Support**) |
 | **10** | Networking | ✅ ✨ | **TCP/IP Stack** (Ethernet, ARP, IPv4, ICMP, UDP, TCP) |
-| **11. Hardware** | ✅ ✨ | **Real Drivers**: PCIe Root Complex, RP1 Southbridge, Hailo-8 (PCIe) |
+| **11. Hardware** | ✅ ✨ | **Real Drivers**: PCIe Root Complex, RP1 Southbridge, **Hailo-8 (HCP, DMA, Inference)** |
 | **12. Userspace** | ✅ ✨ | **ELF Loader**, Preemptive Scheduler, Syscalls, User Mode (EL0) |
 
 ### Test Coverage

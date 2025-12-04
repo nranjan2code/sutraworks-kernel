@@ -8,6 +8,7 @@ pub mod mailbox;
 pub mod framebuffer;
 pub mod console;
 pub mod hailo;
+pub mod hailo_tensor;
 pub mod ramdisk;
 pub mod pcie;
 pub mod rng;

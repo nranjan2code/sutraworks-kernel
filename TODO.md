@@ -90,8 +90,9 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 - [x] System status display
 
 ### AI Acceleration ✅
-- [x] Hailo-8L PCIe driver
-- [x] Model loading from ramdisk
+- [x] Hailo-8L PCIe driver (HCP + DMA)
+- [x] Model loading from filesystem (HEF Parser)
+- [x] Inference Pipeline (YOLO Tensor Parsing)
 - [ ] Intent augmentation (context-aware) - Planned
 
 ---
@@ -158,6 +159,11 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 - [x] Process isolationing via stroke
 - [ ] Inter-process messaging
 - [ ] Power management
+
+### Phase 8: Error Recovery (Current)
+- [ ] Driver Watchdogs (USB, SD, Net, Hailo)
+- [ ] Graceful Degradation (CPU Fallback)
+- [ ] System Resilience
 
 ---
 

@@ -435,7 +435,33 @@ Supported devices:
 - Uni (Plover HID Protocol)
 - Any HID-compliant steno machine
 
-### Framebuffer Console ✅
+### Hailo-8 AI Accelerator ✅
+ 
+ The kernel includes a native driver for the Hailo-8 NPU, communicating via PCIe and the **Hailo Control Protocol (HCP)**.
+ 
+ ```rust
+ pub struct HailoDriver {
+     bar0_addr: usize, // Control Registers
+     bar2_addr: usize, // Doorbell/DMA Registers
+     cmd_queue: CommandQueue,
+     dma_channels: [DmaChannel; 2],
+ }
+ ```
+ 
+ **Features**:
+ - **HCP Protocol**: Implements `HcpCommand` and `HcpResponse` for firmware communication.
+ - **DMA Engine**: Scatter-Gather DMA using `DmaDescriptor` rings.
+   - **Channel 0**: Host-to-Device (Model weights, Input tensors).
+   - **Channel 1**: Device-to-Host (Output tensors, Debug logs).
+ - **Model Management**:
+   - **HEF Parsing**: Parses Hailo Executable Format headers.
+   - **Model Loading**: Transfers model binaries to the device via DMA.
+   - **Configuration**: Sends `CONFIG` commands to set up the NPU.
+ - **Inference Pipeline**:
+   - **`detect_objects`**: End-to-end flow (Input -> DMA -> Inference -> DMA -> Output).
+   - **Tensor Parsing**: Decodes YOLOv5s output tensors into `DetectedObject`s with NMS.
+ 
+ ### Framebuffer Console ✅
 
 Text output on HDMI display:
 

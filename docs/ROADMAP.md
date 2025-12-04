@@ -54,10 +54,8 @@
 - [x] **Stack Safety**: VMM-backed stacks with Guard Pages.
 - [x] **Visual Intents**: Vision-to-Memory bridge using Hypervectors.
 
-### Phase 6: Sensors & Connectivity (Current Focus)
-Expand hardware integration.
-
-- [ ] **Camera Driver**: MIPI CSI-2 / ISP for real image capture.
+### Phase 6: Sensors & Connectivity ✅
+- [x] **Hailo-8 Driver**: Full HCP protocol, DMA engine, and YOLO tensor parsing.
 - [x] **Audio Perception**: Zero Crossing Rate (ZCR) + Energy feature extraction.
 - [x] **Acoustic Intents**: Speech/Noise classification and neural memory storage.
 
@@ -67,11 +65,11 @@ Expand hardware integration.
 - [x] **Multi-Core SMP**: 4-core scheduler with work stealing and affinity.
 - [x] **Userspace & Scheduling**: ELF Loader, Preemptive Scheduler, Syscalls.
 
-### Phase 7: Cognitive Evolution (Current Focus)
-- [ ] **LLM Integration**: Small quantized LLM on CPU/NPU hybrid.
-- [x] **Voice Interface**: Audio I/O for spoken intents (Basic perception implemented).
-- [ ] **Dictionary Learning**: Track stroke frequency, suggest optimizations.
-- [ ] **Predictive Strokes**: Suggest next stroke based on context.
+### Phase 7: Error Recovery & Resilience (Current Focus)
+- [ ] **Driver Watchdogs**: Reset mechanisms for USB, SD, Network, Hailo.
+- [ ] **Graceful Degradation**: CPU fallback for AI, Serial fallback for display.
+- [ ] **System Resilience**: Network re-init, Filesystem error recovery.
+- [ ] **LLM Integration**: Small quantized LLM on CPU/NPU hybrid (Future).
 
 ## Test Coverage
 

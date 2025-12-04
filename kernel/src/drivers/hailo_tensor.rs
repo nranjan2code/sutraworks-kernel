@@ -3,7 +3,7 @@
 //! Parses raw output tensors from Hailo-8 inference jobs into DetectedObject structures.
 //! Supports YOLO-style output format (bounding boxes + class probabilities).
 
-use crate::perception::vision::{DetectedObject, VisualHypervector, RandomProjection};
+use crate::perception::vision::{DetectedObject, RandomProjection};
 
 /// YOLO Output Tensor Layout
 ///

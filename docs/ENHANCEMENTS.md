@@ -629,16 +629,14 @@ loop {
 ## What's Next (Future Work)
 
 ### Short-Term (Next Sprint)
-- [ ] Interrupt-driven async I/O (replace polling)
-- [ ] DMA for SD card transfers
-- [ ] TCP retransmission and flow control
-- [ ] File system on top of SD card (FAT32)
+- [ ] **Driver Watchdogs**: Reset mechanisms for hardware drivers.
+- [ ] **Graceful Degradation**: Fallback paths for hardware failures.
+- [ ] **TCP Retransmission**: Robust network handling.
 
 ### Medium-Term (Next Quarter)
-- [ ] Hailo-8 model loading from SD card
-- [ ] Ethernet driver IRQ handling
-- [ ] Multi-core perception pipeline
-- [ ] Network intent handlers (semantic networking)
+- [ ] **Camera Driver**: MIPI CSI-2 support.
+- [ ] **Ethernet Driver IRQ**: Replace polling with interrupts.
+- [ ] **Network Intents**: Semantic networking handlers.
 
 ### Long-Term (6-12 Months)
 - [ ] Distributed stenography (multi-machine sync)
