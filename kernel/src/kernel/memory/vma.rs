@@ -3,7 +3,6 @@
 //! Tracks memory regions for user processes to enforce permissions and security.
 
 use alloc::vec::Vec;
-use crate::kprintln;
 
 /// Memory Permissions
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -159,13 +158,12 @@ impl VmaManager {
     }
     
     /// Unmap memory (munmap)
-    pub fn munmap(&mut self, start: u64, len: u64) -> bool {
+    pub fn munmap(&mut self, start: u64, len: u64) -> Option<VMA> {
         // TODO: Handle partial unmaps and splitting
         // For now, only support exact matches
         if let Some(idx) = self.vmas.iter().position(|v| v.start == start && v.end == start + len) {
-            self.vmas.remove(idx);
-            return true;
+            return Some(self.vmas.remove(idx));
         }
-        false
+        None
     }
 }

@@ -328,6 +328,8 @@ Production-grade 4-core scheduler with advanced features:
 SD Card driver for permanent data:
 - **SDHCI Driver**: Full initialization sequence for EMMC2
 - **Block I/O**: 512-byte sector read/write
+- **DMA Support**: ADMA2 scatter-gather DMA for high-performance I/O
+- **Write Support**: Full write capability with bounce buffering
 - **SDHC/SDXC**: High-capacity card support
 - **Use Cases**: Save dictionaries, neural memory, session logs
 
@@ -433,8 +435,8 @@ intent-kernel/
 | **6. Sensors** | ✅ | **Hailo-8 Tensor Parsing**, Audio Perception (ZCR/Energy), Vision |
 | **7. Security** | ✅ | VMM Isolation (TTBR0 Switching, Kernel Protection) |
 | **8. Multi-Core** | ✅ ✨ | **SMP Scheduler** (4 cores, priority, affinity, work stealing) |
-| **9. Storage** | ✅ ✨ | **SD Card Driver** (SDHCI, block I/O, SDHC/SDXC) |
-| **10. Networking** | ✅ ✨ | **TCP/IP Stack** (Ethernet, ARP, IPv4, ICMP, UDP, TCP) |
+| **9** | Storage | ✅ ✨ | **SD Card Driver** (SDHCI, block I/O, SDHC/SDXC, **DMA**, **Write Support**) |
+| **10** | Networking | ✅ ✨ | **TCP/IP Stack** (Ethernet, ARP, IPv4, ICMP, UDP, TCP) |
 | **11. Hardware** | ✅ ✨ | **Real Drivers**: PCIe Root Complex, RP1 Southbridge, Hailo-8 (PCIe) |
 | **12. Userspace** | ✅ ✨ | **ELF Loader**, Preemptive Scheduler, Syscalls, User Mode (EL0) |
 

@@ -433,15 +433,22 @@ fn sys_pipe(pipefd_ptr: u64) -> u64 {
     match res {
         Some(Ok((r, w))) => {
             // Write FDs to user memory
-            // TODO: Validate pointer!
-            let _ptr = pipefd_ptr as *mut i32;
-            // unsafe {
-            //    *ptr = r as i32;
-            //    *ptr.add(1) = w as i32;
-            // }
-            // For now, just print them
-            crate::kprintln!("Pipe created: read={}, write={}", r, w);
-            0
+            // Write FDs to user memory
+            let ptr = pipefd_ptr as *mut i32;
+            
+            // Validate pointer
+            // We need to check if we can write 8 bytes (2 x i32)
+            if crate::kernel::memory::validate_write_ptr(ptr as *mut u8, 8).is_ok() {
+                unsafe {
+                   *ptr = r as i32;
+                   *ptr.add(1) = w as i32;
+                }
+                crate::kprintln!("Pipe created: read={}, write={}", r, w);
+                0
+            } else {
+                crate::kprintln!("Pipe created but failed to write to user memory");
+                u64::MAX
+            }
         },
         _ => u64::MAX
     }
@@ -513,22 +520,30 @@ fn sys_munmap(addr: u64, len: u64) -> u64 {
     let mut scheduler = SCHEDULER.lock();
     let success = scheduler.with_current_agent(|agent| {
         // 1. Remove VMA
-        if agent.vma_manager.munmap(addr, len) {
+        if let Some(vma) = agent.vma_manager.munmap(addr, len) {
             // 2. Unmap pages
             if let Some(vmm) = &mut agent.vmm {
-                // TODO: We need to know if we should free the physical pages.
-                // For anonymous memory, yes.
-                // For now, we just unmap from page table.
-                // Ideally VmaManager should tell us which pages to free.
-                // This is a simplification.
-                let _ = vmm.unmap_page(addr); // Only unmaps one page? Loop needed.
-                
                 let align = 4096;
                 let size = (len + align - 1) & !(align - 1);
                 let mut curr = addr;
                 let end = addr + size;
+                
                 while curr < end {
-                    let _ = vmm.unmap_page(curr);
+                    // Unmap from page table
+                    if let Ok(Some(phys)) = vmm.unmap_page(curr) {
+                        // If anonymous, free the physical page
+                        if vma.flags.anonymous {
+                            unsafe {
+                                // Convert physical address to NonNull pointer
+                                // We assume direct mapping or we reconstruct the pointer
+                                // alloc_pages returns NonNull<u8>
+                                // We need to reconstruct it.
+                                if let Some(ptr) = core::ptr::NonNull::new(phys as *mut u8) {
+                                    crate::kernel::memory::free_pages(ptr, 1);
+                                }
+                            }
+                        }
+                    }
                     curr += 4096;
                 }
             }
@@ -541,7 +556,7 @@ fn sys_munmap(addr: u64, len: u64) -> u64 {
     if success { 0 } else { u64::MAX }
 }
 
-fn sys_socket(domain: u64, type_: u64, protocol: u64) -> u64 {
+fn sys_socket(domain: u64, type_: u64, _protocol: u64) -> u64 {
     // domain: 2 = AF_INET
     // type: 1 = SOCK_STREAM, 2 = SOCK_DGRAM
     // protocol: 0 = IPPROTO_IP

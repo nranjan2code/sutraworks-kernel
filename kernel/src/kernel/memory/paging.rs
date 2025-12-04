@@ -262,8 +262,8 @@ impl VMM {
         Ok(())
     }
 
-    /// Unmap a virtual page
-    pub unsafe fn unmap_page(&mut self, virt_addr: u64) -> Result<(), &'static str> {
+    /// Unmap a virtual page and return the physical address if it was mapped
+    pub unsafe fn unmap_page(&mut self, virt_addr: u64) -> Result<Option<u64>, &'static str> {
         if virt_addr & 0xFFF != 0 {
             return Err("Address must be page aligned");
         }
@@ -277,23 +277,24 @@ impl VMM {
 
         // Traverse, but don't allocate
         let l1_entry = &mut root.entries[l0_idx as usize];
-        if !l1_entry.is_valid() { return Ok(()); } // Already unmapped
+        if !l1_entry.is_valid() { return Ok(None); } // Already unmapped
         let l1_table = &mut *(l1_entry.address() as *mut PageTable);
 
         let l2_entry = &mut l1_table.entries[l1_idx as usize];
-        if !l2_entry.is_valid() { return Ok(()); }
+        if !l2_entry.is_valid() { return Ok(None); }
         let l2_table = &mut *(l2_entry.address() as *mut PageTable);
 
         let l3_entry = &mut l2_table.entries[l2_idx as usize];
-        if !l3_entry.is_valid() { return Ok(()); }
+        if !l3_entry.is_valid() { return Ok(None); }
         let l3_table = &mut *(l3_entry.address() as *mut PageTable);
 
         let entry = &mut l3_table.entries[l3_idx as usize];
+        let phys = entry.address();
         *entry = PageTableEntry::new(); // Clear it
 
         // TODO: Free tables if empty?
         
-        Ok(())
+        Ok(Some(phys))
     }
 
     /// Check if a virtual address is mapped
@@ -432,7 +433,7 @@ impl UserAddressSpace {
     }
 
     /// Unmap a virtual page
-    pub fn unmap_page(&mut self, virt_addr: u64) -> Result<(), &'static str> {
+    pub fn unmap_page(&mut self, virt_addr: u64) -> Result<Option<u64>, &'static str> {
         unsafe { self.vmm.unmap_page(virt_addr) }
     }
 }

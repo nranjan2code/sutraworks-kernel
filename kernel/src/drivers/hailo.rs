@@ -16,9 +16,9 @@ use crate::drivers::pcie::{self, PcieDevice, VENDOR_ID_HAILO};
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const HAILO_CONTROL: usize = 0x00;
-const HAILO_STATUS: usize = 0x04;
-const HAILO_IRQ_STATUS: usize = 0x10;
-const HAILO_IRQ_MASK: usize = 0x14;
+const _HAILO_STATUS: usize = 0x04;
+const _HAILO_IRQ_STATUS: usize = 0x10;
+const _HAILO_IRQ_MASK: usize = 0x14;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DRIVER

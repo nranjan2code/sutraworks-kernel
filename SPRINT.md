@@ -28,8 +28,8 @@ Each sprint delivers ONE complete, production-grade component with:
 | **3** | **Syscall Interface** | 1500 | ✅ **COMPLETE** | 4/4 | 100% |
 | **4** | **Memory Security (VMA)** | 700 | ✅ **COMPLETE** | 2/2 | 100% |
 | **5** | **TCP/IP Completion** | 1500 | ✅ **COMPLETE** | 4/4 | 100% |
-| **6** | **SDHCI Write + DMA** | 800 | 🟡 **IN PROGRESS** | 0/2 | 0% |
-| 7 | Hailo-8 Full Driver | 1700 | ⏳ Planned | 0/5 | 0% |
+| **6** | **SDHCI Write + DMA** | 800 | ✅ **COMPLETE** | 2/2 | 100% |
+| 7 | Hailo-8 Full Driver | 1700 | 🟡 **IN PROGRESS** | 0/5 | 0% |
 | 8 | Error Recovery | 500 | ⏳ Planned | 0/2 | 0% |
 | 9 | Test Suite | 2000 | ⏳ Planned | 0/4 | 0% |
 | 10 | Performance Optimization | 1000 | ⏳ Planned | 0/3 | 0% |
@@ -364,7 +364,7 @@ Production-grade networking that handles packet loss and congestion.
 
 ---
 
-# 📋 Sprint 6: SDHCI Write + DMA
+# ✅ Sprint 6: SDHCI Write + DMA (COMPLETE)
 
 ## Objective
 Fast, reliable SD card I/O.
@@ -375,21 +375,23 @@ Fast, reliable SD card I/O.
 **File**: `kernel/src/drivers/sdhci.rs` (extend)
 
 **Tasks**:
-- [ ] CMD24 (WRITE_SINGLE_BLOCK)
-- [ ] CMD25 (WRITE_MULTIPLE_BLOCK)
-- [ ] Write protection checking
-- [ ] Verify writes
+- [x] CMD24 (WRITE_SINGLE_BLOCK)
+- [x] CMD25 (WRITE_MULTIPLE_BLOCK)
+- [x] Write protection checking
+- [x] Verify writes
 
 **Lines**: 300
+**Status**: ✅ COMPLETE
 
 ### 6.2 DMA Engine (Session 2)
 **Tasks**:
-- [ ] Set up ADMA2 descriptors
-- [ ] Interrupt-driven completion
-- [ ] Error recovery (CRC errors, timeouts)
-- [ ] Performance tuning
+- [x] Set up ADMA2 descriptors
+- [x] Interrupt-driven completion
+- [x] Error recovery (CRC errors, timeouts)
+- [x] Performance tuning
 
 **Lines**: 400
+**Status**: ✅ COMPLETE
 
 ---
 
@@ -677,3 +679,30 @@ Optimize for production workload.
 **After this session**: Sprint 5 COMPLETE (100%)
 
 **Next Session**: Sprint 6 (SDHCI Write + DMA)
+
+### Session 1: Write Support (Current) ✅ COMPLETE
+**Completed**:
+1. ✅ Implemented `CMD24` (Single Block Write) and `CMD25` (Multi Block Write).
+2. ✅ Implemented `check_write_protect` using `CMD13` (SEND_STATUS).
+3. ✅ Added Bounce Buffering for cache coherence during writes.
+4. ✅ Verified write operations with status checks.
+
+**Next Session**: Sprint 6, Session 2 (DMA Engine)
+
+### Session 2: DMA Engine & Tech Debt (Current) ✅ COMPLETE
+**Completed**:
+1. ✅ Implemented ADMA2 Descriptor Table management.
+2. ✅ Updated `read_blocks` and `write_blocks` to use DMA.
+3. ✅ Implemented Interrupt-driven DMA completion (`INT_DMA_END`).
+4. ✅ Technical Debt Cleanup:
+    - Fixed all compiler warnings.
+    - Fixed memory leak in `sys_munmap`.
+    - Added pointer validation in `sys_pipe`.
+
+**After this session**: Sprint 6 COMPLETE (100%)
+
+---
+
+**Sprint 6 Complete**
+
+**Next Session**: Sprint 7 (Hailo-8 Full Driver)

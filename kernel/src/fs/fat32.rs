@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use alloc::string::String;
 use alloc::sync::Arc;
 use crate::arch::SpinLock;
-use crate::fs::vfs::{self, FileOps, Filesystem, DirEntry, FileStat, SeekFrom, BlockDevice};
+use crate::fs::vfs::{FileOps, Filesystem, DirEntry, BlockDevice, FileStat, SeekFrom};
 use crate::kprintln;
 
 // ═══════════════════════════════════════════════════════════════════════════════

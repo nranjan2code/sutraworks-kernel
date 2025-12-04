@@ -948,7 +948,7 @@ impl XhciController {
              // EP1 IN is index 3. So 3 + 1 = 4? No, it's 1-based count or max index?
              // "The value of this field shall be set to the index of the last valid Endpoint Context"
              // So 3.
-             (*slot_ctx).info1 = (3 << 27); 
+             (*slot_ctx).info1 = 3 << 27; 
         }
         
         // 4. Setup Endpoint 1 Context (Index 3)
@@ -960,9 +960,9 @@ impl XhciController {
         let tr_phys = tr_ring.as_ptr() as u64;
         
         unsafe {
-            (*ep1_ctx).info1 = (3 << 3); // EP Type = Interrupt IN (7) or Bulk IN (6)?
+            (*ep1_ctx).info1 = 3 << 3; // EP Type = Interrupt IN (7) or Bulk IN (6)?
             // Interrupt IN = 7.
-            (*ep1_ctx).info1 = (7 << 3);
+            (*ep1_ctx).info1 = 7 << 3;
             
             // Max Packet Size = 8, Error Count = 3
             (*ep1_ctx).info2 = (3 << 1) | (8 << 16);
@@ -979,7 +979,7 @@ impl XhciController {
             // "For LS/FS Interrupt endpoints, the Interval field is expressed in 1ms units"?
             // No, xHCI normalizes everything.
             // Let's use 16 (2ms approx?)
-            (*ep1_ctx).info1 |= (6 << 16); 
+            (*ep1_ctx).info1 |= 6 << 16; 
         }
         
         // Save EP1 Ring

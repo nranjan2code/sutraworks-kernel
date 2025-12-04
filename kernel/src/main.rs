@@ -11,7 +11,6 @@
 // Use the library
 use intent_kernel::*;
 
-use intent_kernel::*;
 extern crate alloc;
 use alloc::sync::Arc;
 use core::panic::PanicInfo;
@@ -257,13 +256,6 @@ pub extern "C" fn kernel_main() -> ! {
     kprintln!("\n[KERNEL] Spawning Syscall Test Task...");
     crate::kernel::scheduler::SCHEDULER.lock().spawn_simple(syscall_test_task);
     
-    // Start Scheduler (This will not return)
-    kprintln!("[KERNEL] Starting Scheduler...");
-    loop {
-        crate::kernel::scheduler::tick();
-        // Simulate timer interrupt
-        for _ in 0..100000 { core::hint::spin_loop(); }
-    }
 
     // Initialize PCIe
     drivers::pcie::init();
@@ -283,7 +275,7 @@ pub extern "C" fn kernel_main() -> ! {
     kprintln!("[INIT] Loading /init.elf...");
     {
         // Read init.elf
-        let mut vfs = fs::VFS.lock();
+        let vfs = fs::VFS.lock();
         if let Ok(file) = vfs.open("/sd/init.elf", 0) {
             let mut file = file.lock();
             let size = file.stat().map(|s| s.size).unwrap_or(0);

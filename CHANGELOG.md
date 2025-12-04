@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (December 4, 2025) - 💾 SDHCI Write + DMA (Sprint 6)
+- **SD Card Write Support**
+  - Implemented `CMD24` (Single Block Write) and `CMD25` (Multi Block Write).
+  - Added `check_write_protect` using `CMD13` (SEND_STATUS).
+  - Implemented **Bounce Buffering** for writes to ensure cache coherence and physical contiguity.
+- **DMA Engine (ADMA2)**
+  - Implemented **ADMA2 Descriptor Table** management for scatter-gather DMA.
+  - Updated `read_blocks` and `write_blocks` to offload data transfer to the SDHCI controller.
+  - Implemented **Interrupt-Driven Completion** (`INT_DMA_END`) to free CPU during transfers.
+  - Added error recovery for CRC errors and timeouts.
+- **Technical Debt Cleanup**
+  - **Zero Compiler Warnings**: Fixed all unused variables, imports, and constants.
+  - **Memory Leak Fix**: `sys_munmap` now properly frees physical pages for anonymous memory.
+  - **Security**: Added pointer validation to `sys_pipe` and `sys_socket`.
+  - **Code Cleanup**: Removed duplicate imports and unreachable code in `main.rs`.
+
 ### Added (December 3, 2025) - 🚀 Userspace & Scheduling (Sprint 3)
 - **Userspace Process Loading**
   - **ELF64 Loader**: Implemented `kernel/src/kernel/elf.rs` to parse and load ELF binaries.

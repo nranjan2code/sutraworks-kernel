@@ -11,38 +11,39 @@ use crate::kprintln;
 // REGISTERS (EMMC2)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const EMMC2_BASE: usize = 0x100000000 + 0x00_340000; // RP1 Base + Offset? No, EMMC2 is on BCM2712 main bus.
+const _EMMC2_BASE: usize = 0x100000000 + 0x00_340000; // RP1 EMMC2 Base
 // BCM2712 EMMC2 Base Address: 0x100110000 (from Linux Device Tree)
 // Wait, BCM2712 has multiple SD controllers. SD1 is usually for SD card.
 // Let's assume standard SDHCI registers.
 
-const SDHCI_ARG2: usize = 0x000;
+// Registers
+const _SDHCI_ARG2: usize = 0x000;
 const SDHCI_BLOCK_SIZE: usize = 0x004;
 const SDHCI_BLOCK_COUNT: usize = 0x006;
 const SDHCI_ARG1: usize = 0x008;
 const SDHCI_TRANSFER_MODE: usize = 0x00C;
 const SDHCI_COMMAND: usize = 0x00E;
 const SDHCI_RESPONSE_0: usize = 0x010;
-const SDHCI_RESPONSE_1: usize = 0x014;
-const SDHCI_RESPONSE_2: usize = 0x018;
-const SDHCI_RESPONSE_3: usize = 0x01C;
+const _SDHCI_RESPONSE_1: usize = 0x014;
+const _SDHCI_RESPONSE_2: usize = 0x018;
+const _SDHCI_RESPONSE_3: usize = 0x01C;
 const SDHCI_DATA: usize = 0x020;
 const SDHCI_PRESENT_STATE: usize = 0x024;
-const SDHCI_HOST_CONTROL: usize = 0x028;
-const SDHCI_POWER_CONTROL: usize = 0x029;
-const SDHCI_BLOCK_GAP_CONTROL: usize = 0x02A;
-const SDHCI_WAKE_UP_CONTROL: usize = 0x02B;
+const _SDHCI_HOST_CONTROL: usize = 0x028;
+const _SDHCI_POWER_CONTROL: usize = 0x029;
+const _SDHCI_BLOCK_GAP_CONTROL: usize = 0x02A;
+const _SDHCI_WAKE_UP_CONTROL: usize = 0x02B;
 const SDHCI_CLOCK_CONTROL: usize = 0x02C;
-const SDHCI_TIMEOUT_CONTROL: usize = 0x02E;
+const _SDHCI_TIMEOUT_CONTROL: usize = 0x02E;
 const SDHCI_SOFTWARE_RESET: usize = 0x02F;
 const SDHCI_INT_STATUS: usize = 0x030;
 const SDHCI_INT_ENABLE: usize = 0x034;
 const SDHCI_SIGNAL_ENABLE: usize = 0x038;
-const SDHCI_ACMD12_ERR: usize = 0x03C;
-const SDHCI_HOST_CONTROL2: usize = 0x03E;
-const SDHCI_CAPABILITIES: usize = 0x040;
-const SDHCI_CAPABILITIES_1: usize = 0x044;
-const SDHCI_MAX_CURRENT: usize = 0x048;
+const _SDHCI_ACMD12_ERR: usize = 0x03C;
+const _SDHCI_HOST_CONTROL2: usize = 0x03E;
+const _SDHCI_CAPABILITIES: usize = 0x040;
+const _SDHCI_CAPABILITIES_1: usize = 0x044;
+const _SDHCI_MAX_CURRENT: usize = 0x048;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMMANDS

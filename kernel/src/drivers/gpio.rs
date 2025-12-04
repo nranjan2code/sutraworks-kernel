@@ -25,7 +25,7 @@ const RIO_OE: usize = 0x04;
 const RIO_IN: usize = 0x08;
 
 // PADS Base (for Pull-up/down)
-const PADS_BANK0: usize = 0x00f0_0000;
+const _PADS_BANK0: usize = 0x00f0_0000;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES

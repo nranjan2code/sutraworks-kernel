@@ -41,6 +41,7 @@ pub const PERIPHERAL_BASE: usize = 0x0900_0000;
 pub const LEGACY_PERIPHERAL_BASE: usize = 0xFE00_0000;
 
 // Peripheral offsets from base
+pub const _PADS_BANK0: usize = 0x00f0_0000;
 pub const GPIO_OFFSET: usize = 0x0020_0000;
 
 #[cfg(not(test))]
@@ -50,6 +51,9 @@ pub const UART0_OFFSET: usize = 0x0020_1000;      // PL011 UART on Pi 5
 pub const UART0_OFFSET: usize = 0x0000_0000;      // PL011 UART on virt machine
 
 pub const AUX_OFFSET: usize = 0x0021_5000;        // Mini UART, SPI1, SPI2
+pub const _HAILO_STATUS: usize = 0x04;
+const _HAILO_IRQ_STATUS: usize = 0x10;
+const _HAILO_IRQ_MASK: usize = 0x14;
 pub const TIMER_OFFSET: usize = 0x0000_3000;      // System timer
 pub const IRQ_OFFSET: usize = 0x0000_B200;        // Interrupt controller
 pub const MBOX_OFFSET: usize = 0x0000_B880;       // Mailbox

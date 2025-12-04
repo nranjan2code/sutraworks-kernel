@@ -48,7 +48,7 @@ pub struct PcieDevice {
 
 pub struct PcieController {
     ecam_base: usize,
-    reg_base: usize,
+    _reg_base: usize,
     devices: [Option<PcieDevice>; 32], // Cache of found devices
     device_count: usize,
 }
@@ -57,7 +57,7 @@ impl PcieController {
     pub const fn new() -> Self {
         Self {
             ecam_base: PCIE_ECAM_BASE,
-            reg_base: PCIE_REG_BASE,
+            _reg_base: PCIE_REG_BASE,
             devices: [None; 32],
             device_count: 0,
         }

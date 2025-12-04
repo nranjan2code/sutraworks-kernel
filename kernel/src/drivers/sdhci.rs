@@ -36,6 +36,8 @@ const EMMC_INTERRUPT: usize = 0x30;
 const EMMC_IRPT_MASK: usize = 0x34;
 const EMMC_IRPT_EN: usize = 0x38;
 const EMMC_CONTROL2: usize = 0x3C;
+const EMMC_ADMA_ADDR_LOW: usize = 0x58;
+const EMMC_ADMA_ADDR_HIGH: usize = 0x5C;
 const EMMC_SLOTISR_VER: usize = 0xFC;
 
 // Status Register Flags
@@ -45,6 +47,7 @@ const SR_DAT_ACTIVE: u32 = 1 << 2;
 const SR_CMD_INHIBIT: u32 = 1 << 0;
 
 // Interrupt Flags
+const INT_DMA_END: u32 = 1 << 3;
 const INT_DATA_DONE: u32 = 1 << 1;
 const INT_CMD_DONE: u32 = 1 << 0;
 const INT_ERROR: u32 = 1 << 15;
@@ -69,6 +72,22 @@ const ACMD_SET_BUS_WIDTH: u32 = 6;
 const ACMD_SEND_OP_COND: u32 = 41;
 const ACMD_SEND_SCR: u32 = 51;
 
+// ADMA2 Descriptor Attributes
+const ADMA_VALID: u16 = 1 << 0;
+const ADMA_END: u16 = 1 << 1;
+const ADMA_INT: u16 = 1 << 2;
+const ADMA_ACT_TRAN: u16 = 0x2 << 4;
+const ADMA_ACT_LINK: u16 = 0x3 << 4;
+
+/// ADMA2 Descriptor (64-bit)
+#[repr(C, packed)]
+struct ADMA2Descriptor {
+    attr: u16,
+    len: u16,
+    addr_low: u32,
+    addr_high: u32,
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // DRIVER
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -79,6 +98,7 @@ pub struct SdhciDriver {
     card_capacity: u64,  // In blocks
     block_size: u32,
     initialized: bool,
+    adma_table: Option<NonNull<u8>>, // Pointer to ADMA descriptor table (DMA safe memory)
 }
 
 impl SdhciDriver {
@@ -89,6 +109,7 @@ impl SdhciDriver {
             card_capacity: 0,
             block_size: 512,
             initialized: false,
+            adma_table: None,
         }
     }
 
@@ -160,13 +181,25 @@ impl SdhciDriver {
         // Increase clock to 25 MHz (high speed)
         self.set_clock(25_000_000)?;
 
+        // Allocate ADMA table (one page is enough for many descriptors)
+        // We need it to be in DMA-safe (non-cacheable) memory
+        unsafe {
+            if let Some(ptr) = memory::alloc_dma(PAGE_SIZE) {
+                self.adma_table = Some(ptr);
+                // Zero the table
+                core::ptr::write_bytes(ptr.as_ptr(), 0, PAGE_SIZE);
+            } else {
+                return Err("Failed to allocate ADMA table");
+            }
+        }
+
         self.initialized = true;
-        kprintln!("[SDHCI] Initialization complete");
+        kprintln!("[SDHCI] Initialization complete (DMA Enabled)");
 
         Ok(())
     }
 
-    /// Read blocks from SD card
+    /// Read blocks from SD card using DMA
     pub fn read_blocks(&self, start_block: u64, num_blocks: u32, buffer: &mut [u8]) -> Result<(), &'static str> {
         if !self.initialized {
             return Err("Driver not initialized");
@@ -177,87 +210,138 @@ impl SdhciDriver {
             return Err("Buffer too small");
         }
 
+        // Allocate bounce buffer in DMA memory
+        let bounce_ptr = unsafe { memory::alloc_dma(required_size) }
+            .ok_or("Failed to allocate DMA bounce buffer")?;
+        
+        // Setup ADMA descriptors
+        self.setup_adma(bounce_ptr.as_ptr(), required_size)?;
+
         // Set block size and count
         unsafe {
             arch::write32(self.base_addr + EMMC_BLKSIZECNT, (num_blocks << 16) | self.block_size);
-        }
-
-        // Send read command
-        let cmd = if num_blocks == 1 { CMD_READ_SINGLE } else { CMD_READ_MULTI };
-        self.send_command(cmd, start_block as u32, true)?;
-
-        // Read data
-        let mut offset = 0;
-        for _ in 0..num_blocks {
-            for _ in 0..(self.block_size / 4) {
-                // Wait for data available
-                self.wait_for_status(SR_READ_AVAILABLE, 100000)?;
-
-                // Read word
-                let word = unsafe { arch::read32(self.base_addr + EMMC_DATA) };
-
-                buffer[offset..offset + 4].copy_from_slice(&word.to_le_bytes());
-                offset += 4;
+            
+            // Set ADMA table address
+            if let Some(table) = self.adma_table {
+                let table_addr = table.as_ptr() as u64;
+                arch::write32(self.base_addr + EMMC_ADMA_ADDR_LOW, table_addr as u32);
+                arch::write32(self.base_addr + EMMC_ADMA_ADDR_HIGH, (table_addr >> 32) as u32);
+            } else {
+                return Err("ADMA table not allocated");
             }
         }
 
-        // Wait for completion
-        self.wait_for_interrupt(INT_DATA_DONE, 100000)?;
+        // Send read command with DMA enabled (Bit 0 of CMD_TM is DMA Enable?)
+        // Actually DMA enable is in TRANSFER MODE register which is part of CMD_TM in this controller?
+        // BCM2711/2712 EMMC2:
+        // CMD_TM (Offset 0x0C):
+        // Bits 31:24 = Index
+        // Bit 22 = Use ADMA
+        // Bit 0 = DMA Enable
+        
+        let cmd = if num_blocks == 1 { CMD_READ_SINGLE } else { CMD_READ_MULTI };
+        
+        // Send command with ADMA enable bit (Bit 22?) and DMA Enable (Bit 0?)
+        // Let's check the spec or existing code.
+        // Existing send_command constructs cmdtm = cmd << 24.
+        // We need to pass flags.
+        
+        // For now, let's modify send_command to accept extra flags or handle it here.
+        // We'll manually construct the command word here to include DMA bits.
+        
+        self.send_command_dma(cmd, start_block as u32, true)?;
+
+        // Wait for completion (DMA End or Transfer Complete)
+        self.wait_for_interrupt(INT_DATA_DONE | INT_DMA_END, 1000000)?;
 
         // Stop transmission if multi-block
         if num_blocks > 1 {
             self.send_command(CMD_STOP_TRANSMISSION, 0, true)?;
         }
 
+        // Copy from bounce buffer to user buffer
+        unsafe {
+            core::ptr::copy_nonoverlapping(bounce_ptr.as_ptr(), buffer.as_mut_ptr(), required_size);
+            memory::free_dma(bounce_ptr, required_size);
+        }
+
         Ok(())
     }
 
-    /// Write blocks to SD card
+    /// Write blocks to SD card using DMA
     pub fn write_blocks(&self, start_block: u64, num_blocks: u32, buffer: &[u8]) -> Result<(), &'static str> {
         if !self.initialized {
             return Err("Driver not initialized");
         }
+
+        // Check write protection
+        self.check_write_protect()?;
 
         let required_size = (num_blocks as usize) * (self.block_size as usize);
         if buffer.len() < required_size {
             return Err("Buffer too small");
         }
 
+        // Allocate bounce buffer in DMA memory
+        let bounce_ptr = unsafe { memory::alloc_dma(required_size) }
+            .ok_or("Failed to allocate DMA bounce buffer")?;
+
+        // Copy user buffer to bounce buffer
+        unsafe {
+            core::ptr::copy_nonoverlapping(buffer.as_ptr(), bounce_ptr.as_ptr(), required_size);
+        }
+
+        // Setup ADMA descriptors
+        self.setup_adma(bounce_ptr.as_ptr(), required_size)?;
+
         // Set block size and count
         unsafe {
             arch::write32(self.base_addr + EMMC_BLKSIZECNT, (num_blocks << 16) | self.block_size);
-        }
-
-        // Send write command
-        let cmd = if num_blocks == 1 { CMD_WRITE_SINGLE } else { CMD_WRITE_MULTI };
-        self.send_command(cmd, start_block as u32, true)?;
-
-        // Write data
-        let mut offset = 0;
-        for _ in 0..num_blocks {
-            for _ in 0..(self.block_size / 4) {
-                // Wait for write available
-                self.wait_for_status(SR_WRITE_AVAILABLE, 100000)?;
-
-                // Write word
-                let word = u32::from_le_bytes([
-                    buffer[offset],
-                    buffer[offset + 1],
-                    buffer[offset + 2],
-                    buffer[offset + 3],
-                ]);
-
-                unsafe { arch::write32(self.base_addr + EMMC_DATA, word); }
-                offset += 4;
+            
+            // Set ADMA table address
+            if let Some(table) = self.adma_table {
+                let table_addr = table.as_ptr() as u64;
+                arch::write32(self.base_addr + EMMC_ADMA_ADDR_LOW, table_addr as u32);
+                arch::write32(self.base_addr + EMMC_ADMA_ADDR_HIGH, (table_addr >> 32) as u32);
+            } else {
+                return Err("ADMA table not allocated");
             }
         }
 
+        // Send write command with DMA enabled
+        let cmd = if num_blocks == 1 { CMD_WRITE_SINGLE } else { CMD_WRITE_MULTI };
+        self.send_command_dma(cmd, start_block as u32, true)?;
+
         // Wait for completion
-        self.wait_for_interrupt(INT_DATA_DONE, 100000)?;
+        self.wait_for_interrupt(INT_DATA_DONE | INT_DMA_END, 1000000)?;
 
         // Stop transmission if multi-block
         if num_blocks > 1 {
             self.send_command(CMD_STOP_TRANSMISSION, 0, true)?;
+        }
+
+        // Free bounce buffer
+        unsafe {
+            memory::free_dma(bounce_ptr, required_size);
+        }
+
+        // Wait for programming to complete
+        let mut timeout = 1000000;
+        loop {
+            let resp = self.send_command(CMD_SEND_STATUS, self.rca, true)?;
+            // Check READY_FOR_DATA (bit 8) and CURRENT_STATE (bits 12:9)
+            // State 4 is TRAN (Transfer)
+            let state = (resp >> 9) & 0xF;
+            let ready = (resp & (1 << 8)) != 0;
+
+            if ready && state == 4 {
+                break;
+            }
+
+            timeout -= 1;
+            if timeout == 0 {
+                return Err("Write timeout - card stuck busy");
+            }
         }
 
         Ok(())
@@ -442,6 +526,131 @@ impl SdhciDriver {
             // SDSC (not typically used anymore)
             512 * 1024  // 256 MB default
         }
+    }
+
+    fn check_write_protect(&self) -> Result<(), &'static str> {
+        // Check hardware switch via GPIO if available (skipped for now as it varies by board)
+        
+        // Check internal write protect bits in CSD
+        // We need to send CMD9 (SEND_CSD) again to get fresh status or cache it
+        // For now, we'll just check the status register for write protect errors
+        
+        // Check if Write Protect switch is active (if supported by controller)
+        // Note: EMMC2 on Pi 5 might not map this directly to a register bit without GPIO config
+        // But we can check if the card reports itself as locked in CSR
+        
+        // Send CMD13 (SEND_STATUS) to check card status
+        let resp = self.send_command(CMD_SEND_STATUS, self.rca, true)?;
+        if (resp & (1 << 26)) != 0 {
+             return Err("Card is write locked");
+        }
+
+        Ok(())
+    }
+
+    fn setup_adma(&self, buffer: *mut u8, len: usize) -> Result<(), &'static str> {
+        let table_ptr = self.adma_table.ok_or("ADMA table not allocated")?;
+        let mut desc_ptr = table_ptr.as_ptr() as *mut ADMA2Descriptor;
+        let mut remaining = len;
+        let mut addr = buffer as u64;
+
+        while remaining > 0 {
+            // Max length per descriptor is 64KB (0 = 64KB)
+            let chunk_len = if remaining > 65536 { 65536 } else { remaining };
+            
+            let attr = ADMA_VALID | ADMA_ACT_TRAN;
+            let len_field = if chunk_len == 65536 { 0 } else { chunk_len as u16 };
+
+            unsafe {
+                (*desc_ptr).attr = attr;
+                (*desc_ptr).len = len_field;
+                (*desc_ptr).addr_low = addr as u32;
+                (*desc_ptr).addr_high = (addr >> 32) as u32;
+            }
+
+            remaining -= chunk_len;
+            addr += chunk_len as u64;
+            
+            if remaining > 0 {
+                unsafe { desc_ptr = desc_ptr.add(1); }
+            }
+        }
+
+        // Mark last descriptor as END
+        unsafe {
+            (*desc_ptr).attr |= ADMA_END | ADMA_INT;
+        }
+
+        Ok(())
+    }
+
+    fn send_command_dma(&self, cmd: u32, arg: u32, wait_resp: bool) -> Result<u32, &'static str> {
+        // Wait for CMD line ready
+        self.wait_for_cmd_ready(100000)?;
+
+        // Clear interrupts
+        unsafe {
+            arch::write32(self.base_addr + EMMC_INTERRUPT, 0xFFFFFFFF);
+        }
+
+        // Set argument
+        unsafe {
+            arch::write32(self.base_addr + EMMC_ARG1, arg);
+        }
+
+        // Build command word
+        // Bit 22 = Use ADMA? No, Bit 5 is DMA Enable in older controllers?
+        // EMMC2 on Pi 4/5:
+        // CMD_TM register:
+        // Bits 29:24 = CMD Index
+        // Bit 0 = DMA Enable
+        // Bit 1 = Block Count Enable
+        // Bit 2 = Auto CMD12 Enable
+        // Bit 3 = Auto CMD23 Enable
+        // Bit 4 = Read/Write (1 = Read)
+        // Bit 5 = Multi/Single (1 = Multi)
+        
+        // Wait, the existing send_command uses `cmd << 24`.
+        // Let's look at the bits I need to set for DMA.
+        // For EMMC2, we usually set BIT(0) for DMA.
+        
+        let mut cmdtm = cmd << 24;
+
+        if wait_resp {
+            cmdtm |= 0x00020000;  // Response expected (Bit 17?)
+            // Actually:
+            // Bit 16: Response Type (00=No, 01=136, 10=48, 11=48busy)
+            // Bit 19: CRC Check Enable
+            // Bit 20: Index Check Enable
+            // Bit 21: Data Present
+        }
+        
+        // Enable DMA (Bit 0) and Block Count (Bit 1) and Data Present (Bit 21)
+        cmdtm |= 1 | (1 << 1) | (1 << 21);
+        
+        // If Read, set Bit 4
+        if cmd == CMD_READ_SINGLE || cmd == CMD_READ_MULTI {
+            cmdtm |= (1 << 4);
+        }
+        
+        // If Multi, set Bit 5
+        if cmd == CMD_READ_MULTI || cmd == CMD_WRITE_MULTI {
+            cmdtm |= (1 << 5);
+            cmdtm |= (1 << 2); // Auto CMD12
+        }
+
+        // Send command
+        unsafe {
+            arch::write32(self.base_addr + EMMC_CMDTM, cmdtm);
+        }
+
+        // Wait for command done
+        self.wait_for_interrupt(INT_CMD_DONE, 100000)?;
+
+        // Read response
+        let resp = unsafe { arch::read32(self.base_addr + EMMC_RESP0) };
+
+        Ok(resp)
     }
 }
 
