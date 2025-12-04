@@ -9,6 +9,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (December 4, 2025) - 🌐 TCP Congestion Control & Retransmission (Sprint 5 Enhancement)
+- **Connection Tracking (`TcpConnection`)**
+  - Full TCP state machine (Listen, SynSent, Established, FinWait1/2, CloseWait, Closing, LastAck, TimeWait)
+  - Global `TCB_TABLE` for concurrent connection management (SpinLock-protected)
+  - Sequence number tracking (SND.UNA, SND.NXT, RCV.NXT)
+  - Connection 4-tuple identification (src/dst IP + port)
+- **Retransmission with RTT-Based RTO (Jacobson/Karels Algorithm)**
+  - `RetransmitQueue` for unacknowledged segments (max 16 per connection)
+  - Smoothed RTT (`SRTT = 7/8 * SRTT + 1/8 * R`)
+  - RTT Variance (`RTTVAR = 3/4 * RTTVAR + 1/4 * |SRTT - R|`)
+  - RTO clamped to [200ms, 60s]
+  - Timer-based retransmission via `tcp_tick()` scheduler hook
+- **Congestion Control (RFC 5681)**
+  - **Slow Start**: Exponential cwnd growth until ssthresh
+  - **Congestion Avoidance**: Linear cwnd growth (cwnd += MSS²/cwnd)
+  - **Fast Retransmit**: Immediate retransmit on 3 duplicate ACKs
+  - **Fast Recovery**: ssthresh = cwnd/2, cwnd = ssthresh + 3*MSS
+- **Network Module Enhancements**
+  - `NetConfig`: Global network configuration (IP, netmask, gateway, MAC)
+  - `checksum()`: RFC 1071 Internet checksum (used by IP, ICMP, UDP, TCP)
+  - `send_ip_packet()`: Unified IP packet transmission
+  - ARP Cache: 16-entry IP→MAC resolution with `resolve()` and `cache_insert()`
+  - `interface::send_frame()`: Raw Ethernet frame transmission stub
+- **Technical Debt Eliminated**
+  - Fixed all compiler warnings across the codebase (0 warnings)
+  - Removed unreachable code in `xhci.rs`
+  - Cleaned up unused imports and variables
+
+**Files Modified**: `tcp.rs` (~750 lines), `mod.rs`, `ipv4.rs`, `arp.rs`, `icmp.rs`, `udp.rs`, `interface.rs`
+
+### Added (December 4, 2025) - 🔢 TCP Checksum & Unit Tests (Sprint 5.6-5.7)
+- **TCP Checksum Implementation (RFC 793)**
+  - `tcp_checksum(src_ip, dst_ip, tcp_segment)`: Computes checksum with 12-byte pseudo-header
+  - `verify_tcp_checksum()`: Validates received segments
+  - `TcpSegment::to_bytes_with_checksum()`: Serializes with computed checksum
+- **Scheduler Integration**
+  - `tcp_tick()` now called every 100ms from scheduler tick
+  - Automatic retransmission checking for all active connections
+- **17 TCP Unit Tests**
+  - Flags: `test_tcp_flags`, `test_tcp_flags_bits`
+  - Parsing: `test_segment_parse_*`, `test_segment_roundtrip`
+  - Checksum: `test_tcp_checksum_basic`, `test_tcp_checksum_verify`
+  - RTT: `test_rtt_initial_measurement`, `test_rtt_subsequent_measurements`, `test_rto_clamping`
+  - Congestion: `test_slow_start_initial`, `test_congestion_*`, `test_fast_retransmit_threshold`
+  - State: `test_state_initial`, `test_connection_identity`
+  - Queue: `test_retransmit_queue_*`
+  - Sequence: `test_seq_after` (wraparound handling)
+
+**Files Modified**: `tcp.rs` (+350 lines), `scheduler.rs`
+
+### Fixed (December 4, 2025) - 🔧 Host Test Runner Memory Allocation
+- **Root Cause**: Kernel's `#[global_allocator]` was active during host tests
+  - `KernelAllocator` requires bare-metal initialization (linker symbols)
+  - Tests run on macOS host which lacks kernel heap regions
+- **Solution**: Added `#[cfg(not(test))]` to `#[global_allocator]`
+  - Host tests now use standard library allocator
+  - Kernel still uses custom `KernelAllocator` in production
+- **Result**: All 18 TCP tests now pass on host
+
+**Files Modified**: `kernel/src/kernel/memory/mod.rs`
+
 ### Added (December 4, 2025) - 🧪 Integration Tests (Sprint 9)
 - **Integration Test Suite**
   - Implemented `kernel/tests/integration_tests.rs` with custom `_start` and test runner.

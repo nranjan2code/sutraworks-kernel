@@ -6,7 +6,6 @@ use alloc::vec::Vec;
 use alloc::sync::Arc;
 use crate::arch::SpinLock;
 use crate::fs::vfs::BlockDevice;
-use crate::kprintln;
 
 /// Cache Entry
 #[derive(Clone)]

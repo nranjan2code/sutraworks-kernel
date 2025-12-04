@@ -706,7 +706,7 @@ fn sys_connect(fd: u64, addr_ptr: u64, addr_len: u64) -> u64 {
 }
 
 fn sys_getpid() -> u64 {
-    let mut scheduler = SCHEDULER.lock();
+    let scheduler = SCHEDULER.lock();
     scheduler.current_pid().unwrap_or(u64::MAX)
 }
 

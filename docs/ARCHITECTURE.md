@@ -762,9 +762,9 @@ sdhci::write_blocks(2048, log_blocks, &log)?;
 
 ---
 
-## Networking Stack ✨ NEW!
+## Networking Stack ✨ COMPLETE!
 
-The Intent Kernel now includes a complete TCP/IP stack (~1,125 LOC) for network connectivity.
+The Intent Kernel now includes a production-ready TCP/IP stack (~1,700 LOC) with full congestion control.
 
 ### Protocol Stack
 
@@ -897,7 +897,34 @@ pub fn send_packet(dst_ip, src_port, dst_port, payload)
 - Checksum optional (IPv4)
 - Max payload: 1472 bytes
 
-### TCP (Simplified)
+### TCP (Production-Ready)
+
+**Connection Block (TCB)**:
+
+```rust
+pub struct TcpConnection {
+    // Connection identity (4-tuple)
+    local_addr: Ipv4Addr, local_port: u16,
+    remote_addr: Ipv4Addr, remote_port: u16,
+    
+    // State machine (11 states)
+    state: TcpState,
+    
+    // Sequence numbers
+    send_unacked: u32, send_next: u32, recv_next: u32,
+    
+    // Congestion control (RFC 5681)
+    cwnd: u32, ssthresh: u32,
+    congestion_state: CongestionState,
+    
+    // RTT estimation (Jacobson/Karels)
+    srtt: u64, rttvar: u64, rto: u64,
+    
+    // Retransmission
+    retransmit_queue: RetransmitQueue,
+    dup_ack_count: u8,
+}
+```
 
 **Connection State Machine**:
 
@@ -923,6 +950,31 @@ Client                          Server (Intent Kernel)
   │          ESTABLISHED              │
 ```
 
+**Retransmission (Jacobson/Karels Algorithm)**:
+
+| Variable | Formula |
+|----------|---------|
+| SRTT | `7/8 * SRTT + 1/8 * R` (smoothed RTT) |
+| RTTVAR | `3/4 * RTTVAR + 1/4 * |SRTT - R|` (variance) |
+| RTO | `SRTT + 4 * RTTVAR` (clamped to [200ms, 60s]) |
+
+**Congestion Control (RFC 5681)**:
+
+| Phase | Trigger | CWND Update |
+|-------|---------|-------------|
+| Slow Start | cwnd < ssthresh | cwnd += MSS per ACK |
+| Congestion Avoidance | cwnd ≥ ssthresh | cwnd += MSS²/cwnd per ACK |
+| Fast Retransmit | 3 dup ACKs | Immediate retransmit |
+| Fast Recovery | After fast retransmit | ssthresh = cwnd/2, cwnd = ssthresh + 3*MSS |
+
+**TCP Checksum (RFC 793)**:
+
+```rust
+/// Compute checksum over pseudo-header + TCP segment
+pub fn tcp_checksum(src_ip: Ipv4Addr, dst_ip: Ipv4Addr, tcp_segment: &[u8]) -> u16
+pub fn verify_tcp_checksum(src_ip: Ipv4Addr, dst_ip: Ipv4Addr, tcp_segment: &[u8]) -> bool
+```
+
 **API**:
 
 ```rust
@@ -933,11 +985,20 @@ tcp::listen(80)?;
 tcp::send(socket, data)?;
 ```
 
-**Current Limitations** (Embedded Simplification):
-- No congestion control (Planned for Sprint 10)
-- No flow control (Fixed window)
-- Basic retransmission structure (Logic pending)
-- Single-threaded state machine
+**Scheduler Integration**:
+
+```rust
+// tcp_tick() called every 100ms from scheduler
+crate::net::tcp_tick();
+```
+
+**Unit Tests (18 total)**:
+- Flags, parsing, checksum verification
+- RTT estimation (Jacobson/Karels algorithm)
+- Congestion control state transitions
+- Connection identity matching
+- Retransmit queue operations
+- Sequence number wraparound handling
 
 ### Example Usage
 
@@ -970,7 +1031,9 @@ loop {
 
 ### Future Enhancements
 
-- [ ] TCP retransmission and flow control
+- [x] TCP retransmission and flow control ✅ COMPLETE
+- [x] TCP congestion control (RFC 5681) ✅ COMPLETE
+- [x] TCP checksum with pseudo-header ✅ COMPLETE
 - [ ] IPv6 support
 - [ ] TLS/SSL for secure connections
 - [ ] DNS client

@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 use core::convert::TryInto;
 use crate::net::ethernet::MacAddress;
 use crate::net::ip::Ipv4Addr;
+use crate::arch::SpinLock;
 
 /// ARP Operation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -88,4 +89,122 @@ impl ArpPacket {
         
         bytes
     }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ARP CACHE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Maximum ARP cache entries
+const MAX_ARP_ENTRIES: usize = 16;
+
+/// ARP cache entry
+#[derive(Debug, Clone, Copy)]
+struct ArpEntry {
+    ip: Ipv4Addr,
+    mac: MacAddress,
+    // TODO: Add timestamp for expiration
+}
+
+/// ARP cache
+struct ArpCache {
+    entries: [Option<ArpEntry>; MAX_ARP_ENTRIES],
+    count: usize,
+}
+
+impl ArpCache {
+    const fn new() -> Self {
+        Self {
+            entries: [None; MAX_ARP_ENTRIES],
+            count: 0,
+        }
+    }
+    
+    fn lookup(&self, ip: Ipv4Addr) -> Option<MacAddress> {
+        for entry in &self.entries {
+            if let Some(e) = entry {
+                if e.ip == ip {
+                    return Some(e.mac);
+                }
+            }
+        }
+        None
+    }
+    
+    fn insert(&mut self, ip: Ipv4Addr, mac: MacAddress) {
+        // Check if already exists
+        for entry in &mut self.entries {
+            if let Some(e) = entry {
+                if e.ip == ip {
+                    e.mac = mac;
+                    return;
+                }
+            }
+        }
+        
+        // Find empty slot
+        for entry in &mut self.entries {
+            if entry.is_none() {
+                *entry = Some(ArpEntry { ip, mac });
+                self.count += 1;
+                return;
+            }
+        }
+        
+        // Cache full, replace first entry
+        self.entries[0] = Some(ArpEntry { ip, mac });
+    }
+}
+
+/// Global ARP cache
+static ARP_CACHE: SpinLock<ArpCache> = SpinLock::new(ArpCache::new());
+
+/// Resolve an IP address to a MAC address
+///
+/// Returns cached MAC if available, otherwise returns None.
+/// A full implementation would send an ARP request and wait.
+pub fn resolve(ip: Ipv4Addr) -> Option<MacAddress> {
+    ARP_CACHE.lock().lookup(ip)
+}
+
+/// Add an entry to the ARP cache
+pub fn cache_insert(ip: Ipv4Addr, mac: MacAddress) {
+    ARP_CACHE.lock().insert(ip, mac);
+}
+
+/// Handle incoming ARP packet
+pub fn handle_packet(data: &[u8]) -> Result<(), &'static str> {
+    let packet = ArpPacket::parse(data)?;
+    
+    // Cache the sender's MAC (we learned something!)
+    cache_insert(packet.sender_proto_addr, packet.sender_hw_addr);
+    
+    match packet.operation {
+        ArpOperation::Request => {
+            // Check if this request is for our IP
+            let cfg = crate::net::config();
+            if packet.target_proto_addr == cfg.ip_addr {
+                // Send ARP reply
+                let reply = ArpPacket {
+                    hardware_type: 1,
+                    protocol_type: 0x0800,
+                    hw_addr_len: 6,
+                    proto_addr_len: 4,
+                    operation: ArpOperation::Reply,
+                    sender_hw_addr: cfg.mac_addr,
+                    sender_proto_addr: cfg.ip_addr,
+                    target_hw_addr: packet.sender_hw_addr,
+                    target_proto_addr: packet.sender_proto_addr,
+                };
+                
+                let _ = crate::net::interface::send_arp_reply(&reply);
+            }
+        }
+        ArpOperation::Reply => {
+            // Already cached above
+        }
+        _ => {}
+    }
+    
+    Ok(())
 }

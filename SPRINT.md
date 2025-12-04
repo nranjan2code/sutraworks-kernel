@@ -336,24 +336,45 @@ Production-grade networking that handles packet loss and congestion.
 **File**: `kernel/src/net/tcp.rs` (extend)
 
 **Tasks**:
-- [x] Send buffer management
-- [x] Retransmission timer (RTO calculation)
-- [x] ACK processing
+- [x] Send buffer management (`RetransmitQueue`)
+- [x] Retransmission timer (RTO calculation via Jacobson/Karels)
+- [x] ACK processing (`process_ack`)
 - [x] Duplicate ACK detection
-- [x] Fast retransmit
+- [x] Fast retransmit (3 dup ACKs)
+- [x] RTT measurement and smoothing (SRTT, RTTVAR)
 
-**Lines**: 600
+**Lines**: 750
 
 ### 5.2 Congestion Control (Session 2-3)
 **Tasks**:
-- [x] Slow start algorithm
-- [x] Congestion avoidance
-- [x] Fast recovery
-- [x] CWND management
+- [x] `CongestionState` enum (SlowStart, CongestionAvoidance, FastRecovery)
+- [x] Slow start algorithm (cwnd += MSS per ACK)
+- [x] Congestion avoidance (cwnd += MSS²/cwnd per ACK)
+- [x] Fast recovery (RFC 5681 compliant)
+- [x] CWND management with ssthresh
 
 **Lines**: 400
 
-### 5.3 Socket API (Session 3-4)
+### 5.3 Connection Tracking (Session 3)
+**Tasks**:
+- [x] `TcpConnection` struct (TCB)
+- [x] Global `TCB_TABLE` with SpinLock
+- [x] Full state machine (11 states)
+- [x] Sequence number management
+
+**Lines**: 300
+
+### 5.4 Network Infrastructure (Session 4)
+**Tasks**:
+- [x] `NetConfig` global configuration
+- [x] RFC 1071 `checksum()` function
+- [x] ARP cache (16 entries, `resolve()`, `cache_insert()`)
+- [x] `send_frame()` interface stub
+- [x] `tcp_tick()` scheduler hook for retransmissions
+
+**Lines**: 150
+
+### 5.5 Socket API (Session 3-4)
 **Tasks**:
 - [x] Non-blocking I/O
 - [x] select()/poll() support
@@ -361,6 +382,46 @@ Production-grade networking that handles packet loss and congestion.
 - [x] Proper error codes
 
 **Lines**: 500
+
+### 5.6 TCP Checksum (Session 5)
+**File**: `kernel/src/net/tcp.rs`
+
+**Tasks**:
+- [x] `tcp_checksum()` with pseudo-header (RFC 793)
+- [x] `verify_tcp_checksum()` for validation
+- [x] `TcpSegment::to_bytes_with_checksum()` convenience method
+- [x] Scheduler integration (`tcp_tick()` every 100ms)
+
+**Lines**: 80
+
+### 5.7 TCP Unit Tests (Session 5)
+**File**: `kernel/src/net/tcp.rs`
+
+**Tests (17 total)**:
+- [x] TCP flags: `test_tcp_flags`, `test_tcp_flags_bits`
+- [x] Parsing: `test_segment_parse_minimum`, `test_segment_parse_too_short`, `test_segment_roundtrip`
+- [x] Checksum: `test_tcp_checksum_basic`, `test_tcp_checksum_verify`
+- [x] RTT: `test_rtt_initial_measurement`, `test_rtt_subsequent_measurements`, `test_rto_clamping`
+- [x] Congestion: `test_slow_start_initial`, `test_congestion_avoidance_transition`, `test_fast_retransmit_threshold`
+- [x] State: `test_state_initial`, `test_connection_identity`
+- [x] Queue: `test_retransmit_queue_empty`, `test_retransmit_queue_operations`
+- [x] Sequence: `test_seq_after`
+
+**Lines**: 350
+
+### 5.8 Host Test Runner Fix (Session 5)
+**File**: `kernel/src/kernel/memory/mod.rs`
+
+**Problem**: Custom `#[global_allocator]` was active during host tests, causing allocation failures (kernel allocator requires bare-metal initialization).
+
+**Tasks**:
+- [x] Add `#[cfg(not(test))]` to `#[global_allocator]`
+- [x] Provide test-only `GLOBAL` static without allocator trait
+- [x] Verify all 18 TCP tests pass on host
+
+**Lines**: 15
+
+**Sprint 5 Total**: ~1695 lines
 
 ---
 

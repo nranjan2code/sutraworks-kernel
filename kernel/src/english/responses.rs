@@ -5,7 +5,7 @@
 use alloc::format;
 use alloc::string::String;
 
-use crate::intent::{Intent, IntentData};
+use crate::intent::Intent;
 use crate::steno::dictionary::concepts;
 use crate::steno::EngineStats;
 
@@ -347,6 +347,7 @@ impl Default for ResponseGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::intent::IntentData;
 
     #[test]
     fn test_format_duration() {

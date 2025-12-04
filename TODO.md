@@ -160,10 +160,32 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
 - [ ] Inter-process messaging
 - [ ] Power management
 
-### Phase 8: Error Recovery (Current)
-- [ ] Driver Watchdogs (USB, SD, Net, Hailo)
-- [ ] Graceful Degradation (CPU Fallback)
-- [ ] System Resilience
+### Phase 8: Error Recovery ✅ (Complete)
+- [x] Driver Watchdogs (USB, SD, Net, Hailo)
+- [x] Graceful Degradation (CPU Fallback)
+- [x] System Resilience
+
+### Phase 8.5: TCP Robustness ✅ (Complete)
+- [x] TCP Connection Tracking (`TcpConnection`, `TCB_TABLE`)
+- [x] Retransmission with RTT-based RTO (Jacobson/Karels algorithm)
+- [x] Congestion Control (RFC 5681: Slow Start, Congestion Avoidance, Fast Recovery)
+- [x] Fast Retransmit (3 duplicate ACKs)
+- [x] ARP Cache (16-entry, `resolve()`, `cache_insert()`)
+- [x] Network Configuration (`NetConfig`)
+- [x] RFC 1071 Checksum (`checksum()`)
+- [x] `tcp_tick()` scheduler integration (every 100ms)
+- [x] **TCP Checksum (RFC 793)**
+  - [x] `tcp_checksum()` with pseudo-header
+  - [x] `verify_tcp_checksum()` 
+  - [x] `TcpSegment::to_bytes_with_checksum()`
+- [x] **17 TCP Unit Tests**
+  - [x] Flags, parsing, checksum tests
+  - [x] RTT estimation tests (Jacobson/Karels)
+  - [x] Congestion control state tests
+  - [x] Connection identity, retransmit queue, sequence wraparound tests
+- [x] **Host Test Runner Fix**
+  - [x] Add `#[cfg(not(test))]` to `#[global_allocator]`
+  - [x] All 18 TCP tests now pass on host
 
 ---
 

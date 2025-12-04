@@ -212,6 +212,15 @@ pub fn tick() {
     // Re-arm timer for next tick (10ms = 10,000us)
     crate::drivers::timer::set_timer_interrupt(10_000);
 
+    // Track tick count for periodic tasks
+    static TICK_COUNT: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
+    let ticks = TICK_COUNT.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+
+    // TCP retransmission check every 100ms (10 ticks)
+    if ticks % 10 == 0 {
+        crate::net::tcp_tick();
+    }
+
     let mut scheduler = SCHEDULER.lock();
     
     // 1. Wake up sleeping agents
@@ -268,7 +277,7 @@ mod tests {
         // Initial state: [T1, T2, T3]
         
         // Schedule 1: Should pick T1
-        let (prev, next) = scheduler.schedule().expect("Should schedule T1");
+        let (_prev, _next) = scheduler.schedule().expect("Should schedule T1");
         // In real run, we'd check pointers, but here we check internal state if possible
         // or just rely on the fact it didn't panic and returned something.
         

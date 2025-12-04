@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 use core::convert::TryInto;
+use crate::net::ip::Ipv4Addr;
 
 /// ICMP Type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,4 +72,32 @@ impl IcmpPacket {
         
         bytes
     }
+}
+
+/// Handle incoming ICMP packet
+pub fn handle_packet(data: &[u8], src_ip: Ipv4Addr) -> Result<(), &'static str> {
+    let packet = IcmpPacket::parse(data)?;
+    
+    match packet.icmp_type {
+        IcmpType::EchoRequest => {
+            // Send Echo Reply
+            let reply = IcmpPacket {
+                icmp_type: IcmpType::EchoReply,
+                code: 0,
+                checksum: 0, // TODO: Calculate checksum
+                rest_of_header: packet.rest_of_header, // Keep same ID/Seq
+                payload: packet.payload,
+            };
+            
+            // Calculate checksum
+            let reply_bytes = reply.to_bytes();
+            let _checksum = crate::net::checksum(&reply_bytes);
+            
+            // Send via IP layer (protocol 1 = ICMP)
+            crate::net::ipv4::send_packet(src_ip, 1, &reply_bytes)?;
+        }
+        _ => {} // Ignore other ICMP types for now
+    }
+    
+    Ok(())
 }

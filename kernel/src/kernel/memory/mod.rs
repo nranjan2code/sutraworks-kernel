@@ -564,7 +564,20 @@ unsafe impl GlobalAlloc for KernelAllocator {
     }
 }
 
+// Global allocator - only active in kernel mode, not during host tests
+// Tests use the standard library allocator which works on the host
+#[cfg(not(test))]
 #[global_allocator]
+static GLOBAL: KernelAllocator = KernelAllocator::new();
+
+// For non-test contexts, expose GLOBAL
+#[cfg(not(test))]
+pub fn global_allocator() -> &'static KernelAllocator {
+    &GLOBAL
+}
+
+// For test contexts, provide a mock that does nothing
+#[cfg(test)]
 static GLOBAL: KernelAllocator = KernelAllocator::new();
 
 // ═══════════════════════════════════════════════════════════════════════════════

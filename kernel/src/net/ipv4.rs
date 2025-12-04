@@ -2,8 +2,8 @@
 //!
 //! Handles IP packet routing and forwarding.
 
-use super::{Ipv4Addr, checksum, config};
-use crate::drivers::ethernet::{MacAddr, send_frame};
+use super::{config, checksum};
+use super::ip::Ipv4Addr;
 use super::arp;
 use super::icmp;
 
@@ -111,5 +111,5 @@ pub fn send_packet(dst_ip: Ipv4Addr, protocol: u8, payload: &[u8]) -> Result<(),
     packet[34..34 + payload.len()].copy_from_slice(payload);
 
     // Send Ethernet frame
-    send_frame(&packet[..14 + total_len])
+    super::interface::send_frame(&packet[..14 + total_len])
 }

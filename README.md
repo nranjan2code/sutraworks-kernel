@@ -49,7 +49,7 @@ make kernel
 # Run in QEMU (for testing)
 make run
 
-# Run 122 unit tests
+# Run 90 unit tests (host)
 make test-unit
 
 # Run integration tests (QEMU)
@@ -337,13 +337,18 @@ SD Card driver for permanent data:
 - **Use Cases**: Save dictionaries, neural memory, session logs
 
 ### ✅ Networking Stack ✨ COMPLETE!
-Full TCP/IP implementation (~1,125 LOC):
+Full TCP/IP implementation with production-grade reliability (~1,700 LOC):
 - **Ethernet**: DMA ring buffers, zero-copy TX/RX
-- **ARP**: Address resolution with caching
-- **IPv4**: Routing, checksum verification
+- **ARP**: Address resolution with 16-entry cache
+- **IPv4**: Routing, RFC 1071 checksum verification
 - **ICMP**: Ping (echo request/reply)
 - **UDP**: Connectionless transport
-- **TCP**: Simplified connection-oriented (3-way handshake, data transfer)
+- **TCP**: Full RFC-compliant implementation
+  - Connection tracking (`TcpConnection`, 11-state machine)
+  - Retransmission with RTT-based RTO (Jacobson/Karels algorithm)
+  - Congestion control (RFC 5681: Slow Start, Congestion Avoidance, Fast Recovery)
+  - TCP checksum with pseudo-header (RFC 793)
+  - 17 unit tests covering all components
 
 ### ✅ Framebuffer Console
 Text output on HDMI display:
@@ -418,7 +423,7 @@ intent-kernel/
 │           ├── mod.rs      # Memory subsystem
 │           ├── neural.rs   # HDC memory
 │           └── hnsw.rs     # HNSW index
-├── tests/host/             # 122 unit tests
+├── tests/host/             # 90 unit tests
 ├── docs/                   # Documentation
 └── boot/                   # ARM64 bootloader
 ```

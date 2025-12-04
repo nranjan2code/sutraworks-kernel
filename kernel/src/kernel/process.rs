@@ -397,7 +397,7 @@ impl Agent {
         // For this prototype, we'll use a fixed size buffer on the heap (Vec).
         // Limit: 1MB for now.
         
-        let mut file = crate::fs::VFS.lock().open(path, crate::fs::O_RDONLY).map_err(|_| "File not found")?;
+        let file = crate::fs::VFS.lock().open(path, crate::fs::O_RDONLY).map_err(|_| "File not found")?;
         let mut file_lock = file.lock();
         let size = file_lock.seek(crate::fs::SeekFrom::End(0)).map_err(|_| "Seek failed")? as usize;
         file_lock.seek(crate::fs::SeekFrom::Start(0)).map_err(|_| "Seek failed")?;

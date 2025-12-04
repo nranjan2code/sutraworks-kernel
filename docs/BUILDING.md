@@ -254,8 +254,14 @@ cargo +nightly build
 ### Run Unit Tests
 
 ```bash
-# Run unit tests in QEMU (virt machine with semihosting)
-make test-unit
+# Run host tests (90 tests, runs on your machine)
+cd kernel && cargo test --lib
+
+# Specific test module
+cargo test --lib net::tcp
+
+# Run integration tests in QEMU
+make test-integration
 
 # Output: Tests complete in <10 seconds
 ```
@@ -263,26 +269,38 @@ make test-unit
 ### Test Architecture
 
 The testing infrastructure uses:
-- **QEMU virt machine**: Proper semihosting support (unlike raspi4b)
-- **Semihosting exit**: Clean QEMU termination via ARM semihosting protocol
-- **10-second timeout**: Prevents runaway tests from heating up your laptop
-- **Custom test framework**: `#![custom_test_frameworks]` for bare-metal
+- **Host tests**: Run on your development machine using `cargo test --lib`
+- **QEMU integration tests**: Full kernel boot tests in emulator
+- **Custom allocator bypass**: `#[cfg(not(test))]` on `#[global_allocator]` allows host tests to use standard library allocator
+- **Custom test framework**: `#![custom_test_frameworks]` for bare-metal QEMU tests
 
-### Current Tests (14 total)
+### Current Tests (90 total)
 
 | Module | Tests | Description |
 |--------|-------|-------------|
-| Memory | 4 | Heap stats, regions, allocator |
-| Capability | 4 | Minting, validation, permissions |
-| Intent | 6 | Hashing, embeddings, similarity |
+| Hailo Tensor | 2 | NMS, tensor parsing |
+| English Parser | 20+ | Context, phrases, synonyms, responses |
+| FS/Pipe | 2 | Empty, read/write operations |
+| Intent Handlers | 5 | Registration, dispatch, priority |
+| Intent Queue | 4 | Priority, deadline, push/pop |
+| Memory/Paging | 2 | Entry flags, address |
+| Scheduler | 2 | Empty, round-robin |
+| TCP | 18 | Flags, parsing, checksum, RTT, congestion, state |
+
+### Host Test Fix
+
+The kernel's custom `KernelAllocator` requires bare-metal initialization. For host tests:
+- Added `#[cfg(not(test))]` to `#[global_allocator]`
+- Tests now use standard library allocator
+- All 18 TCP tests pass on host
 
 ### Limitations
 
-Full unit tests require Pi 5 hardware initialization (UART, memory addresses) which doesn't work on QEMU's `virt` machine. Options:
+Full kernel tests require the complete boot sequence. Options:
 
-1. **Host-based tests** (Recommended): Separate test crate with std support
-2. **Hardware tests**: Run on actual Raspberry Pi 5
-3. **CI/CD**: GitHub Actions for automated testing
+1. **Host tests** (Default): `cargo test --lib` (most code)
+2. **QEMU tests**: `make test-integration` (boot sequence)
+3. **Hardware tests**: Run on actual Raspberry Pi 5
 
 ## Development Workflow
 

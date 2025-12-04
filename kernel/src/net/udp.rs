@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 use core::convert::TryInto;
+use crate::net::ip::Ipv4Addr;
 
 /// UDP Packet
 #[derive(Debug, Clone)]
@@ -49,4 +50,14 @@ impl UdpPacket {
         
         bytes
     }
+}
+
+/// Handle incoming UDP packet
+pub fn handle_packet(data: &[u8], _src_ip: Ipv4Addr) -> Result<(), &'static str> {
+    let _packet = UdpPacket::parse(data)?;
+    
+    // TODO: Dispatch to registered UDP listeners by port
+    // For now, just successfully parse and ignore
+    
+    Ok(())
 }

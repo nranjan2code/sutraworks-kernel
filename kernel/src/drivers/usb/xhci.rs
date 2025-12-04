@@ -832,51 +832,6 @@ impl XhciController {
             // Poll events
             self.poll();
         }
-
-        loop {
-            // Process event ring
-            self.poll();
-
-            // Check if transfer completed
-            if let Some(ref transfer) = self.pending_transfers[slot_id as usize] {
-                if transfer.completed {
-                    let code = transfer.completion_code;
-                    let bytes = transfer.bytes_transferred;
-
-                    // Clear pending state
-                    self.pending_transfers[slot_id as usize] = None;
-
-                    // Check completion code (1 = Success)
-                    if code != 1 {
-                        return Err("Transfer failed");
-                    }
-
-                    // Copy data from DMA buffer to user buffer if this was a read
-                    if let (Some(ref dma), Some(ref mut user_buf)) = (&dma_buf, data_buffer) {
-                        let copy_len = bytes.min(user_buf.len());
-                        unsafe {
-                            core::ptr::copy_nonoverlapping(
-                                dma.as_ptr(),
-                                user_buf.as_mut_ptr(),
-                                copy_len
-                            );
-                        }
-                    }
-
-                    return Ok(bytes);
-                }
-            }
-
-            let elapsed = crate::drivers::timer::uptime_ms() - start;
-            if elapsed > timeout_ms {
-                self.pending_transfers[slot_id as usize] = None;
-                kprintln!("[USB] Control transfer timed out after {}ms", timeout_ms);
-                let _ = self.reset_controller();
-                return Err("Control transfer timeout (Controller Reset)");
-            }
-
-            crate::drivers::timer::delay_us(100);
-        }
     }
 
     /// Get Device Descriptor (Blocking)
