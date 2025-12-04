@@ -15,6 +15,7 @@ pub mod scheduler;
 pub mod syscall;
 pub mod elf;
 pub mod signal;
+pub mod recovery;
 
 // Re-export key types
 pub use memory::{PAGE_SIZE, stats as memory_stats};

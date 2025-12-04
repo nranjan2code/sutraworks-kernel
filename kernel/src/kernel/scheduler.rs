@@ -21,15 +21,17 @@ impl IntentScheduler {
     }
 
     /// Spawn a new kernel agent (simple, no embedding)
-    pub fn spawn_simple(&mut self, entry: fn()) {
-        let agent = Agent::new_kernel_simple(entry);
+    pub fn spawn_simple(&mut self, entry: fn()) -> Result<(), &'static str> {
+        let agent = Agent::new_kernel_simple(entry)?;
         self.agents.push_back(Box::new(agent));
+        Ok(())
     }
 
     /// Spawn a new user agent (simple, no embedding)
-    pub fn spawn_user_simple(&mut self, entry: fn(), arg: u64) {
-        let agent = Agent::new_user_simple(entry, arg);
+    pub fn spawn_user_simple(&mut self, entry: fn(), arg: u64) -> Result<(), &'static str> {
+        let agent = Agent::new_user_simple(entry, arg)?;
         self.agents.push_back(Box::new(agent));
+        Ok(())
     }
 
     /// Spawn a new user agent from ELF binary
@@ -190,9 +192,10 @@ mod tests {
         let mut scheduler = IntentScheduler::new();
         
         // Add 3 tasks
-        scheduler.spawn_simple(dummy_task); // Task 1
-        scheduler.spawn_simple(dummy_task); // Task 2
-        scheduler.spawn_simple(dummy_task); // Task 3
+        // Add 3 tasks
+        scheduler.spawn_simple(dummy_task).unwrap(); // Task 1
+        scheduler.spawn_simple(dummy_task).unwrap(); // Task 2
+        scheduler.spawn_simple(dummy_task).unwrap(); // Task 3
         
         // Initial state: [T1, T2, T3]
         

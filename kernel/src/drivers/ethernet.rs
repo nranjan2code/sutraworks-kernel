@@ -244,6 +244,12 @@ impl EthernetDriver {
             return Err("Not initialized");
         }
 
+        // Check for fatal errors before sending
+        if let Err(e) = self.check_and_recover() {
+            kprintln!("[ETH] Recovery failed: {}", e);
+            return Err("Ethernet hardware error");
+        }
+
         if data.len() > ETH_FRAME_SIZE {
             return Err("Frame too large");
         }
@@ -281,6 +287,12 @@ impl EthernetDriver {
     pub fn recv_frame(&mut self, buffer: &mut [u8]) -> Result<usize, &'static str> {
         if !self.initialized {
             return Err("Not initialized");
+        }
+
+        // Check for fatal errors
+        if let Err(e) = self.check_and_recover() {
+            kprintln!("[ETH] Recovery failed: {}", e);
+            return Err("Ethernet hardware error");
         }
 
         // Get current RX descriptor
@@ -354,6 +366,58 @@ impl EthernetDriver {
 
     pub fn get_mac_address(&self) -> MacAddr {
         self.mac_addr
+    }
+
+    fn check_and_recover(&mut self) -> Result<(), &'static str> {
+        let status = unsafe { arch::read32(self.base_addr + ETH_DMA_STATUS) };
+        
+        // Fatal Bus Error (Bit 13)
+        if (status & (1 << 13)) != 0 {
+            kprintln!("[ETH] Fatal Bus Error detected (Status: {:#x}). Resetting...", status);
+            return self.reinit();
+        }
+        
+        // Process Stopped (TX=Bit 1, RX=Bit 8)
+        // Only reset if stopped unexpectedly (we expect it to run)
+        if (status & ((1 << 1) | (1 << 8))) != 0 {
+             kprintln!("[ETH] DMA Process Stopped (Status: {:#x}). Restarting...", status);
+             return self.reinit();
+        }
+        
+        Ok(())
+    }
+
+    pub fn reinit(&mut self) -> Result<(), &'static str> {
+        kprintln!("[ETH] Re-initializing Ethernet Driver...");
+        self.initialized = false;
+        // Note: This leaks old ring buffers if we don't free them.
+        // For Sprint 8, we prioritize recovery over memory efficiency in this rare case.
+        // Free old resources before re-initializing
+        self.free_resources();
+        let mac = self.mac_addr;
+        self.init(mac)
+    }
+
+    fn free_resources(&mut self) {
+        // Free TX Ring
+        if let Some(ptr) = self.tx_desc_ring.take() {
+            unsafe { memory::free_dma(ptr.cast(), PAGE_SIZE) };
+        }
+        for i in 0..RING_SIZE {
+            if let Some(ptr) = self.tx_buffers[i].take() {
+                unsafe { memory::free_dma(ptr.cast(), core::mem::size_of::<EthernetFrame>()) };
+            }
+        }
+
+        // Free RX Ring
+        if let Some(ptr) = self.rx_desc_ring.take() {
+            unsafe { memory::free_dma(ptr.cast(), PAGE_SIZE) };
+        }
+        for i in 0..RING_SIZE {
+            if let Some(ptr) = self.rx_buffers[i].take() {
+                unsafe { memory::free_dma(ptr.cast(), core::mem::size_of::<EthernetFrame>()) };
+            }
+        }
     }
 }
 

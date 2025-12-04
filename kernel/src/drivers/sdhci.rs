@@ -199,8 +199,26 @@ impl SdhciDriver {
         Ok(())
     }
 
-    /// Read blocks from SD card using DMA
+    /// Read blocks from SD card using DMA (with retry)
     pub fn read_blocks(&self, start_block: u64, num_blocks: u32, buffer: &mut [u8]) -> Result<(), &'static str> {
+        let mut retries = 3;
+        loop {
+            match self.read_blocks_internal(start_block, num_blocks, buffer) {
+                Ok(_) => return Ok(()),
+                Err(e) => {
+                    if retries > 0 && (e == "CRC Error" || e == "Timeout Error") {
+                        kprintln!("[SDHCI] Read error: {}. Retrying... ({} left)", e, retries);
+                        retries -= 1;
+                        // Optional: Reset command line or dat line?
+                        continue;
+                    }
+                    return Err(e);
+                }
+            }
+        }
+    }
+
+    fn read_blocks_internal(&self, start_block: u64, num_blocks: u32, buffer: &mut [u8]) -> Result<(), &'static str> {
         if !self.initialized {
             return Err("Driver not initialized");
         }
@@ -231,24 +249,8 @@ impl SdhciDriver {
             }
         }
 
-        // Send read command with DMA enabled (Bit 0 of CMD_TM is DMA Enable?)
-        // Actually DMA enable is in TRANSFER MODE register which is part of CMD_TM in this controller?
-        // BCM2711/2712 EMMC2:
-        // CMD_TM (Offset 0x0C):
-        // Bits 31:24 = Index
-        // Bit 22 = Use ADMA
-        // Bit 0 = DMA Enable
-        
+        // Send read command with DMA enabled
         let cmd = if num_blocks == 1 { CMD_READ_SINGLE } else { CMD_READ_MULTI };
-        
-        // Send command with ADMA enable bit (Bit 22?) and DMA Enable (Bit 0?)
-        // Let's check the spec or existing code.
-        // Existing send_command constructs cmdtm = cmd << 24.
-        // We need to pass flags.
-        
-        // For now, let's modify send_command to accept extra flags or handle it here.
-        // We'll manually construct the command word here to include DMA bits.
-        
         self.send_command_dma(cmd, start_block as u32, true)?;
 
         // Wait for completion (DMA End or Transfer Complete)
@@ -268,8 +270,25 @@ impl SdhciDriver {
         Ok(())
     }
 
-    /// Write blocks to SD card using DMA
+    /// Write blocks to SD card using DMA (with retry)
     pub fn write_blocks(&self, start_block: u64, num_blocks: u32, buffer: &[u8]) -> Result<(), &'static str> {
+        let mut retries = 3;
+        loop {
+            match self.write_blocks_internal(start_block, num_blocks, buffer) {
+                Ok(_) => return Ok(()),
+                Err(e) => {
+                    if retries > 0 && (e == "CRC Error" || e == "Timeout Error") {
+                        kprintln!("[SDHCI] Write error: {}. Retrying... ({} left)", e, retries);
+                        retries -= 1;
+                        continue;
+                    }
+                    return Err(e);
+                }
+            }
+        }
+    }
+
+    fn write_blocks_internal(&self, start_block: u64, num_blocks: u32, buffer: &[u8]) -> Result<(), &'static str> {
         if !self.initialized {
             return Err("Driver not initialized");
         }
@@ -491,6 +510,13 @@ impl SdhciDriver {
 
             // Check for error
             if (irpt & INT_ERROR) != 0 {
+                // Check specific errors
+                if (irpt & ((1 << 17) | (1 << 21))) != 0 {
+                     return Err("CRC Error");
+                }
+                if (irpt & ((1 << 16) | (1 << 20))) != 0 {
+                     return Err("Timeout Error");
+                }
                 return Err("SD card error");
             }
 

@@ -274,6 +274,7 @@ impl SdCardDriver {
 
 impl BlockDevice for SdCardDriver {
     fn read_sector(&self, sector: u32, buf: &mut [u8]) -> Result<(), &'static str> {
+        if !self.initialized { return Err("SD Card not initialized"); }
         if buf.len() < 512 { return Err("Buffer too small"); }
         
         // 1. Set Block Size/Count

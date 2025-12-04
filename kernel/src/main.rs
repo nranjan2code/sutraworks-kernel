@@ -254,7 +254,8 @@ pub extern "C" fn kernel_main() -> ! {
     // SYSCALL TEST
     // ═══════════════════════════════════════════════════════════════════════════════
     kprintln!("\n[KERNEL] Spawning Syscall Test Task...");
-    crate::kernel::scheduler::SCHEDULER.lock().spawn_simple(syscall_test_task);
+    kprintln!("\n[KERNEL] Spawning Syscall Test Task...");
+    let _ = crate::kernel::scheduler::SCHEDULER.lock().spawn_simple(syscall_test_task);
     
 
     // Initialize PCIe
@@ -268,7 +269,8 @@ pub extern "C" fn kernel_main() -> ! {
     kprintln!("[INIT] Scheduler...");
 
     // Spawn Async Executor Agent (The "Main" Thread)
-    kernel::scheduler::SCHEDULER.lock().spawn_simple(async_executor_agent);
+    // Spawn Async Executor Agent (The "Main" Thread)
+    let _ = kernel::scheduler::SCHEDULER.lock().spawn_simple(async_executor_agent);
     kprintln!("       Spawned Async Executor Agent");
 
     // Spawn User Task (EL0 Process) from init.elf
@@ -305,8 +307,9 @@ pub extern "C" fn kernel_main() -> ! {
             }
         } else {
             kprintln!("       Failed to open /init.elf");
+            kprintln!("       Failed to open /init.elf");
             // Fallback to internal test
-            kernel::scheduler::SCHEDULER.lock().spawn_user_simple(user_task, 0);
+            let _ = kernel::scheduler::SCHEDULER.lock().spawn_user_simple(user_task, 0);
             kprintln!("       Spawned Fallback User Task (EL0)");
         }
     }

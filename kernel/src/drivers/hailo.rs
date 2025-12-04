@@ -371,8 +371,22 @@ impl HailoDriver {
 
         self.setup_dma_transfer(0, &dma_buffer)?;
         self.start_dma(0)?;
-        self.wait_dma(0)?;
+        
+        if let Err(e) = self.wait_dma(0) {
+            kprintln!("[HAILO] Model send failed: {}. Reloading firmware...", e);
+            let _ = self.reload_firmware();
+            return Err("Model load failed (Firmware Reloaded)");
+        }
 
+        Ok(())
+    }
+
+    pub fn reload_firmware(&mut self) -> Result<(), &'static str> {
+        kprintln!("[HAILO] Watchdog triggered: Reloading firmware...");
+        self.reset()?;
+        self.handshake()?;
+        self.state = HailoState::Ready;
+        kprintln!("[HAILO] Firmware reloaded. Model needs to be re-loaded.");
         Ok(())
     }
 }
@@ -532,8 +546,17 @@ impl HailoDriver {
         // self.write_db(TRIGGER_REG, 1);
 
         // 5. Wait for Completion
-        self.wait_dma(0)?; // Wait for input to be consumed
-        self.wait_dma(1)?; // Wait for output to be ready
+        // 5. Wait for Completion
+        if let Err(_e) = self.wait_dma(0) {
+             kprintln!("[HAILO] DMA 0 Timeout during inference. Reloading firmware...");
+             let _ = self.reload_firmware();
+             return Err("Inference failed (Firmware Reloaded)");
+        }
+        if let Err(_e) = self.wait_dma(1) {
+             kprintln!("[HAILO] DMA 1 Timeout during inference. Reloading firmware...");
+             let _ = self.reload_firmware();
+             return Err("Inference failed (Firmware Reloaded)");
+        }
 
         // 6. Parse Output Tensor
         let parser = YoloOutputParser::new();

@@ -108,18 +108,25 @@ impl fmt::Write for Console {
     }
 }
 
-/// Print to the console
+/// Print to the console (or serial fallback)
 pub fn print(args: fmt::Arguments) {
     if let Some(console) = CONSOLE.lock().as_mut() {
         let _ = fmt::Write::write_fmt(console, args);
+    } else {
+        // Fallback to Serial
+        crate::drivers::uart::print(args);
     }
 }
 
-/// Print line to the console
+/// Print line to the console (or serial fallback)
 pub fn println(args: fmt::Arguments) {
     if let Some(console) = CONSOLE.lock().as_mut() {
         let _ = fmt::Write::write_fmt(console, args);
         console.write_str("\n");
+    } else {
+        // Fallback to Serial
+        crate::drivers::uart::print(args);
+        crate::drivers::uart::print(format_args!("\n"));
     }
 }
 

@@ -393,7 +393,20 @@ impl XhciController {
         Ok(())
     }
     
-    fn reset(&self) -> Result<(), &'static str> {
+    pub fn reset_controller(&mut self) -> Result<(), &'static str> {
+        kprintln!("[USB] Watchdog triggered: Resetting XHCI Controller...");
+        self.reset()?;
+        
+        // Clear internal state
+        self.initialized = false;
+        self.slots = [const { None }; 32];
+        self.pending_transfers = [const { None }; 32];
+        
+        // Re-initialize
+        self.init()
+    }
+
+    fn reset(&mut self) -> Result<(), &'static str> {
         unsafe {
             let cmd = arch::read32(self.op_base + OP_USBCMD);
             arch::write32(self.op_base + OP_USBCMD, cmd | USBCMD_RESET);
@@ -822,7 +835,9 @@ impl XhciController {
             let elapsed = crate::drivers::timer::uptime_ms() - start;
             if elapsed > timeout_ms {
                 self.pending_transfers[slot_id as usize] = None;
-                return Err("Control transfer timeout");
+                kprintln!("[USB] Control transfer timed out after {}ms", timeout_ms);
+                let _ = self.reset_controller();
+                return Err("Control transfer timeout (Controller Reset)");
             }
 
             crate::drivers::timer::delay_us(100);

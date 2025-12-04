@@ -75,14 +75,16 @@ pub struct Agent {
 
 impl Agent {
     /// Create a new kernel agent (simple)
-    pub fn new_kernel_simple(entry: fn()) -> Self {
+    pub fn new_kernel_simple(entry: fn()) -> Result<Self, &'static str> {
+        let kernel_stack = alloc_stack(4).ok_or("Failed to alloc kernel stack")?; // 16KB (4 pages)
+        
         let mut agent = Agent {
             id: AgentId::new(),
             state: AgentState::Ready,
             context: Context::default(),
             capabilities: Vec::new(),
             vmm: None,
-            kernel_stack: alloc_stack(4).expect("Failed to alloc kernel stack"), // 16KB (4 pages)
+            kernel_stack,
             user_stack: None,
             file_table: ProcessFileTable::new(),
             wake_time: 0,
@@ -101,19 +103,19 @@ impl Agent {
         agent.context.lr = entry as u64;
         agent.context.ttbr0 = 0; // Kernel threads share TTBR1, TTBR0 is unused/zeroed
 
-        agent
+        Ok(agent)
     }
 
     /// Create a new user agent (simple)
-    pub fn new_user_simple(entry: fn(), arg: u64) -> Self {
+    pub fn new_user_simple(entry: fn(), arg: u64) -> Result<Self, &'static str> {
         // 1. Create Address Space
-        let mut space = UserAddressSpace::new().expect("Failed to create user address space");
+        let mut space = UserAddressSpace::new().ok_or("Failed to create user address space")?;
         
         // 2. Allocate Stacks (Kernel & User)
         // Kernel stack: 16KB (4 pages)
-        let kernel_stack = alloc_stack(4).expect("Failed to alloc kernel stack");
+        let kernel_stack = alloc_stack(4).ok_or("Failed to alloc kernel stack")?;
         // User stack: 16KB (4 pages)
-        let user_stack = alloc_stack(4).expect("Failed to alloc user stack");
+        let user_stack = alloc_stack(4).ok_or("Failed to alloc user stack")?;
         
         // 3. Map User Stack into Address Space
         // We identity map it for now, but with User Permissions
@@ -129,7 +131,7 @@ impl Agent {
         let ustack_start = user_stack.bottom;
         let ustack_size = (user_stack.top - user_stack.bottom) as usize;
         
-        space.map_user(ustack_start, ustack_start, ustack_size).expect("Failed to map user stack");
+        space.map_user(ustack_start, ustack_start, ustack_size).map_err(|_| "Failed to map user stack")?;
         
         // 4. Map User Code (The entry point)
         // We assume the entry point is in the kernel binary, so it's already mapped as EL1.
@@ -138,7 +140,7 @@ impl Agent {
         // For this "Simple" prototype, we'll just map the page containing the function.
         let entry_phys = entry as u64;
         let entry_page = entry_phys & !0xFFF;
-        space.map_user(entry_page, entry_page, 4096).expect("Failed to map user code");
+        space.map_user(entry_page, entry_page, 4096).map_err(|_| "Failed to map user code")?;
 
         let mut agent = Agent {
             id: AgentId::new(),
@@ -175,7 +177,7 @@ impl Agent {
         // Set TTBR0 to the new User Table
         agent.context.ttbr0 = agent.vmm.as_ref().unwrap().table_base();
 
-        agent
+        Ok(agent)
     }
 
     /// Create a new user agent from ELF binary
