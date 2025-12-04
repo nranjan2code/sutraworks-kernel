@@ -88,9 +88,9 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 #[inline(always)]
 pub fn raw_uart(c: u8) {
     unsafe {
-        #[cfg(test)]
+        #[cfg(any(test, feature = "qemu"))]
         core::ptr::write_volatile(0x0900_0000 as *mut u32, c as u32);
-        #[cfg(not(test))]
+        #[cfg(not(any(test, feature = "qemu")))]
         core::ptr::write_volatile(0x1_0020_1000 as *mut u32, c as u32);
     }
 }

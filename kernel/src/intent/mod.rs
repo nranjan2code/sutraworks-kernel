@@ -36,6 +36,25 @@ impl ConceptID {
     
     /// Unknown/unrecognized concept
     pub const UNKNOWN: ConceptID = ConceptID(0xFFFF_FFFF_FFFF_FFFF);
+
+    /// Create from string (FNV-1a hash)
+    pub const fn from_str(s: &str) -> Self {
+        let mut hash: u64 = 0xcbf29ce484222325;
+        let bytes = s.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            hash ^= bytes[i] as u64;
+            hash = hash.wrapping_mul(0x100000001b3);
+            i += 1;
+        }
+        ConceptID(hash)
+    }
+}
+
+impl From<&str> for ConceptID {
+    fn from(s: &str) -> Self {
+        Self::from_str(s)
+    }
 }
 
 /// Intent data payload

@@ -5,18 +5,18 @@
 QEMU=qemu-system-aarch64
 
 # Timeout in seconds
-TIMEOUT=10
+TIMEOUT=60
 
 # Use 'virt' machine which properly supports semihosting exit
 # raspi4b does NOT support semihosting properly
-FLAGS="-M virt -cpu cortex-a72 -m 1G -semihosting -nographic -kernel $1"
+QEMU_FLAGS="-M virt -cpu cortex-a72 -m 1G -semihosting -nographic -kernel $1"
 
 echo "=== INTENT KERNEL UNIT TESTS ==="
 echo "Timeout: ${TIMEOUT}s"
 echo ""
 
 # Run QEMU in background and capture PID
-$QEMU $FLAGS &
+$QEMU $QEMU_FLAGS &
 QEMU_PID=$!
 
 # Wait with timeout

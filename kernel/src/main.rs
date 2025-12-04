@@ -8,12 +8,19 @@
 #![no_std]
 #![no_main]
 
+#![feature(custom_test_frameworks)]
+#![test_runner(crate::test_runner)]
+#![reexport_test_harness_main = "test_main"]
+
 // Use the library
 use intent_kernel::*;
 
 extern crate alloc;
 use alloc::sync::Arc;
 use core::panic::PanicInfo;
+
+#[cfg(test)]
+use intent_kernel::{exit_qemu, QemuExitCode};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // KERNEL ENTRY POINT
@@ -22,6 +29,9 @@ use core::panic::PanicInfo;
 /// Main kernel entry - called from boot.s after hardware initialization
 #[no_mangle]
 pub extern "C" fn kernel_main() -> ! {
+    #[cfg(test)]
+    test_main();
+
     // Phase 1: Early initialization (serial for debugging)
     drivers::uart::early_init();
     
@@ -516,6 +526,29 @@ fn print_banner() {
 // PANIC HANDLER
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// TEST RUNNER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[cfg(test)]
+pub fn test_runner(tests: &[&dyn Fn()]) {
+    kprintln!("Running {} tests", tests.len());
+    for test in tests {
+        test();
+    }
+    exit_qemu(QemuExitCode::Success);
+}
+
+#[cfg(test)]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    kprintln!("[failed]\n");
+    kprintln!("Error: {}\n", info);
+    exit_qemu(QemuExitCode::Failed);
+    loop {}
+}
+
+#[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     // Disable interrupts to prevent further issues

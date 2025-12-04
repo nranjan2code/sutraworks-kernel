@@ -191,6 +191,7 @@ impl BuddyAllocator {
     
     /// Allocate a block
     pub unsafe fn allocate(&mut self, size: usize) -> Option<NonNull<u8>> {
+        crate::kprintln!("[MEM] Buddy Allocate: {}", size);
         let order = self.order_for_size(size);
         
         // Find a free block (may need to split larger blocks)
@@ -203,6 +204,7 @@ impl BuddyAllocator {
         }
         
         if current_order > MAX_ORDER {
+            crate::kprintln!("[MEM] Buddy OOM");
             return None;  // Out of memory
         }
         
@@ -436,12 +438,13 @@ impl KernelAllocator {
         let randomized_start = heap_start + offset;
         let randomized_size = total_size - offset;
         
-        crate::kprintln!("[MEM] Polymorphic Heap: Base={:#x} (Offset={:#x})", randomized_start, offset);
+        // crate::kprintln!("[MEM] Polymorphic Heap: Base={:#x} (Offset={:#x})", randomized_start, offset);
         
         unsafe {
             inner.buddy.init(randomized_start, randomized_size);
         }
         inner.initialized = true;
+        crate::kprintln!("[MEM] Memory Init Done (Lock held)");
     }
     
     /// Check if initialized
@@ -594,6 +597,7 @@ pub unsafe fn free_dma(ptr: NonNull<u8>, size: usize) {
 
 /// Allocate pages
 pub unsafe fn alloc_pages(count: usize) -> Option<NonNull<u8>> {
+    crate::kprintln!("[MEM] Alloc Pages: {}", count);
     let mut inner = GLOBAL.inner.lock();
     inner.buddy.allocate(count * PAGE_SIZE)
 }
@@ -741,7 +745,7 @@ pub fn validate_read_ptr(ptr: *const u8, len: usize) -> Result<(), &'static str>
     // For this Sprint, let's keep this as a basic sanity check (User Space range)
     // and rely on the syscall layer (which we updated) to do the VMA check.
     
-    // Wait, I updated syscall.rs to use VMA checks in sys_read/write/print.
+    // Wait, I updated syscall.rs to use VMA checks in sys_read/sys_write/sys_print.
     // But sys_sigaction still uses this?
     // In sys_sigaction, I added:
     // if let Some(vmm) = &agent.vmm { if !vmm.is_mapped(...) ... }

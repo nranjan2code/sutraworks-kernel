@@ -109,35 +109,24 @@ _at_el1:
     msr     sctlr_el1, x0
     isb
     
-    // Stack Setup - use end of heap (stack grows down)
-    // Heap ends at __heap_end (~64MB after code), stack at top of that
-    ldr     x0, =__heap_end
+    // Stack Setup - use memory BEFORE the kernel to avoid heap collision
+    // Kernel loads at 0x40080000. We use the 512KB before that for stack.
+    ldr     x0, =0x40080000
     mov     sp, x0
 
-    // DEBUG: Print 'S'
-    ldr     x2, =0x09000000
-    mov     w1, #'S'
-    str     w1, [x2]
-    
-    // BSS Clear
-    adr     x0, __bss_start
-    adr     x1, __bss_end
-    cmp     x0, x1
-    b.ge    _bss_done
-    
-_bss_loop:
-    stp     xzr, xzr, [x0], #16
-    cmp     x0, x1
-    b.lt    _bss_loop
+    // Zero BSS
+    ldr     x0, =__bss_start
+    ldr     x1, =__bss_end
+    sub     x2, x1, x0
+    cbz     x2, 2f
+1:  str     xzr, [x0], #8
+    sub     x2, x2, #8
+    cbnz    x2, 1b
+2:
 
-_bss_done:
-    // DEBUG: Print 'Z'
-    ldr     x2, =0x09000000
-    mov     w1, #'Z'
-    str     w1, [x2]
-
-    // FPU Enable
-    mov     x0, #(3 << 20)
+    // Enable FPU
+    mrs     x0, cpacr_el1
+    orr     x0, x0, #(3 << 20)
     msr     cpacr_el1, x0
     isb
 
@@ -145,16 +134,11 @@ _bss_done:
     adr     x0, _vectors
     msr     vbar_el1, x0
     isb
-
-    // DEBUG: Print 'F'
-    ldr     x2, =0x09000000
-    mov     w1, #'F'
-    str     w1, [x2]
     
-    // Jump to Rust
+    // Jump to kernel
     bl      kernel_main
     
-    // Should never return
+    // Halt if return
     b       _halt
 
 _halt:
@@ -170,28 +154,41 @@ _halt:
 // ════════════════════════════════════════════════════════════════════════════
 .balign 0x800
 _vectors:
-    // Current EL with SP0
-    .balign 0x80
-    ldr x2, =0x09000000
-    mov w1, #'!'
-    str w1, [x2]
-    b _halt
+    .align 11
+    // Current EL with SP0 - Synchronous
+    b .
+    
+    .align 7
+    // Current EL with SP0 - IRQ
+    b .
+    
+    .align 7
+    // Current EL with SP0 - FIQ
+    b .
+    
+    .align 7
+    // Current EL with SP0 - SError
+    b .
+    
+    .align 7
+    // Current EL with SPx - Synchronous
+    ldr x0, =0x09000000
+    mov w1, 'S'
+    str w1, [x0]
+    b .
 
-    // Current EL with SPx
-    .balign 0x80
-    ldr x2, =0x09000000
-    mov w1, #'@'
-    str w1, [x2]
-    b _halt
-
-    // Lower EL using AArch64
+    .align 7
+    // Current EL with SPx - IRQ
+    ldr x0, =0x09000000
+    mov w1, 'Q'
+    str w1, [x0]
+    b .
     .balign 0x80
     ldr x2, =0x09000000
     mov w1, #'#'
     str w1, [x2]
     b _halt
 
-    // Lower EL using AArch32
     .balign 0x80
     ldr x2, =0x09000000
     mov w1, #'$'

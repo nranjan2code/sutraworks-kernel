@@ -326,14 +326,54 @@ impl VMM {
         }
     }
     
+    /// Map a 2MB block (Huge Page)
+    pub unsafe fn map_block_2mb(&mut self, virt_addr: u64, phys_addr: u64, flags: EntryFlags) -> Result<(), &'static str> {
+        if virt_addr & 0x1F_FFFF != 0 || phys_addr & 0x1F_FFFF != 0 {
+            return Err("Addresses must be 2MB aligned");
+        }
+        
+        let l0_idx = (virt_addr >> 39) & 0x1FF;
+        let l1_idx = (virt_addr >> 30) & 0x1FF;
+        let l2_idx = (virt_addr >> 21) & 0x1FF;
+        
+        let root = self.root_table.as_mut();
+        
+        // Level 0 -> Level 1
+        let l1_table = self.get_next_table(&mut root.entries[l0_idx as usize])?;
+        
+        // Level 1 -> Level 2
+        let l2_table = self.get_next_table(&mut l1_table.entries[l1_idx as usize])?;
+        
+        // Level 2 Entry (The Block)
+        let entry = &mut l2_table.entries[l2_idx as usize];
+        
+        // Block descriptor: VALID (1) | AF (1) | Not TABLE (0)
+        // Note: EntryFlags::TABLE is bit 1. We want it CLEARED for Block.
+        // But we pass 'flags' which might have attributes.
+        // We need to ensure TABLE bit is cleared.
+        let block_flags = (flags | EntryFlags::VALID | EntryFlags::AF) & !EntryFlags::TABLE;
+        
+        entry.set(phys_addr, block_flags);
+        
+        Ok(())
+    }
+
     /// Identity map a range of memory
     pub unsafe fn identity_map(&mut self, start: u64, end: u64, flags: EntryFlags) -> Result<(), &'static str> {
         let mut addr = start & !0xFFF;
         let end_aligned = (end + 0xFFF) & !0xFFF;
         
         while addr < end_aligned {
-            self.map_page(addr, addr, flags)?;
-            addr += 4096;
+            // Check if we can map 2MB block
+            // 1. Address is 2MB aligned
+            // 2. We have at least 2MB left
+            if addr & 0x1F_FFFF == 0 && addr + 0x20_0000 <= end_aligned {
+                self.map_block_2mb(addr, addr, flags)?;
+                addr += 0x20_0000; // 2MB
+            } else {
+                self.map_page(addr, addr, flags)?;
+                addr += 4096;
+            }
         }
         
         Ok(())
@@ -449,7 +489,7 @@ pub unsafe fn init() {
     if let Some(vmm) = vmm.as_mut() {
         crate::kprintln!("[MEM] Initializing VMM...");
         
-        #[cfg(not(test))]
+        #[cfg(not(any(test, feature = "qemu")))]
         {
             // 1. Identity map Kernel Code/Data (Normal Memory)
             // From 0x0 to 0x2_0000_0000 (8GB)
@@ -474,7 +514,7 @@ pub unsafe fn init() {
                 .expect("Failed to map peripherals");
         }
 
-        #[cfg(test)]
+        #[cfg(any(test, feature = "qemu"))]
         {
             // Map QEMU virt peripherals (UART at 0x09000000)
             // Map 0x08000000 to 0x10000000 (128MB) covering GIC and UART
@@ -523,6 +563,7 @@ pub unsafe fn init() {
         crate::arch::set_sctlr(sctlr | 1 | (1 << 2) | (1 << 12));
         
         crate::kprintln!("[MEM] MMU Enabled!");
+        crate::kprintln!("[MEM] VMM Done");
     }
 }
 

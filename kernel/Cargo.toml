@@ -23,6 +23,11 @@ name = "kernel_tests"
 path = "tests/kernel_tests.rs"
 harness = false  # Use custom test framework
 
+[[test]]
+name = "integration_tests"
+path = "tests/integration_tests.rs"
+harness = false
+
 # We're building for bare metal
 [profile.dev]
 panic = "abort"
@@ -45,3 +50,4 @@ default = []
 debug = []          # Enable debug output
 multicore = []      # Enable multi-core support
 gpu = []           # Enable GPU/display support
+qemu = []          # Enable QEMU support (virt machine)

@@ -91,11 +91,11 @@ pub extern "C" fn kernel_main() -> ! {
     raw_uart(b'R');
     raw_uart(b'I');
 
-    // Initialize kernel subsystems
-    intent_kernel::init_for_tests();
+    // Initialize kernel subsystems for testing
+    crate::init_for_tests();
     
-    raw_uart(b'D');
-
+    crate::kprintln!("[TEST] Starting Tests...");
+    
     // Run tests
     run_all_tests();
 

@@ -31,11 +31,12 @@ pub use rng::Rng;
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// Raspberry Pi 5 uses BCM2712 with a different peripheral base
-#[cfg(not(test))]
+/// Raspberry Pi 5 uses BCM2712 with a different peripheral base
+#[cfg(not(any(test, feature = "qemu")))]
 pub const PERIPHERAL_BASE: usize = 0x1_0000_0000;
 
 /// QEMU 'virt' machine uses 0x0900_0000 for UART
-#[cfg(test)]
+#[cfg(any(test, feature = "qemu"))]
 pub const PERIPHERAL_BASE: usize = 0x0900_0000;
 
 /// Legacy peripheral base (for backward compatibility checks)
@@ -45,10 +46,10 @@ pub const LEGACY_PERIPHERAL_BASE: usize = 0xFE00_0000;
 pub const _PADS_BANK0: usize = 0x00f0_0000;
 pub const GPIO_OFFSET: usize = 0x0020_0000;
 
-#[cfg(not(test))]
+#[cfg(not(any(test, feature = "qemu")))]
 pub const UART0_OFFSET: usize = 0x0020_1000;      // PL011 UART on Pi 5
 
-#[cfg(test)]
+#[cfg(any(test, feature = "qemu"))]
 pub const UART0_OFFSET: usize = 0x0000_0000;      // PL011 UART on virt machine
 
 pub const AUX_OFFSET: usize = 0x0021_5000;        // Mini UART, SPI1, SPI2

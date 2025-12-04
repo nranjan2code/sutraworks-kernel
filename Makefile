@@ -208,7 +208,7 @@ test-unit: $(BUILD_DIR)
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
 	clang --target=aarch64-none-elf -c -o $(BUILD_DIR)/boot_test.o $(BOOT_DIR)/boot_test.s
 	cd $(KERNEL_DIR) && \
-	RUSTFLAGS="-C target-feature=-fp-armv8 -C link-arg=-T../boot/linker_test.ld -C link-arg=../$(BUILD_DIR)/boot_test.o" cargo test --target $(TARGET) --test kernel_tests
+	RUSTFLAGS="-C link-arg=-T../boot/linker_test.ld -C link-arg=../$(BUILD_DIR)/boot_test.o" cargo test --target $(TARGET) --features qemu --test kernel_tests
 	@echo ""
 	@echo "✓ All unit tests passed!"
 
