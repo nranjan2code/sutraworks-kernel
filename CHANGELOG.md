@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (December 4, 2025) - 🧪 Integration Tests (Sprint 9)
+- **Integration Test Suite**
+  - Implemented `kernel/tests/integration_tests.rs` with custom `_start` and test runner.
+  - **Scenarios**:
+    - `filesystem_lifecycle`: Mount, Create, Write, Close, Open, Read verification on RamFS.
+    - `network_loopback`: Packet transmission and reception verification.
+    - `process_lifecycle`: Agent creation, stack allocation, and context initialization checks.
+    - `stress_memory`: High-volume allocation/deallocation to verify Slab/Buddy allocator stability.
+  - **Infrastructure**:
+    - Custom `test_linker.ld` for QEMU test environment.
+    - `run_test.sh` updated to handle QEMU semihosting exit codes (0x10/0x11).
+    - Added `make test-integration` target.
+- **Bug Fixes**
+  - **FPU Enable**: Enabled Floating Point Unit in test startup code to prevent `memcpy` crashes (SIMD).
+  - **Slab Allocator**: Fixed critical panic in `SlabCache::deallocate` (pointer arithmetic overflow).
+  - **QEMU Timeout**: Resolved environment hangs by properly initializing subsystems in tests.
+
 ### Added (December 4, 2025) - 🧠 Hailo-8 Driver Core (Sprint 7)
 - **HCP Protocol Implementation**
   - Implemented **Hailo Control Protocol (HCP)** structures (`HcpHeader`, `HcpCommand`, `HcpResponse`).

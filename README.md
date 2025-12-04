@@ -50,7 +50,10 @@ make kernel
 make run
 
 # Run 122 unit tests
-make test
+make test-unit
+
+# Run integration tests (QEMU)
+make test-integration
 ```
 
 ### Requirements
@@ -439,6 +442,7 @@ intent-kernel/
 | **10** | Networking | ✅ ✨ | **TCP/IP Stack** (Ethernet, ARP, IPv4, ICMP, UDP, TCP) |
 | **11. Hardware** | ✅ ✨ | **Real Drivers**: PCIe Root Complex, RP1 Southbridge, **Hailo-8 (HCP, DMA, Inference)** |
 | **12. Userspace** | ✅ ✨ | **ELF Loader**, Preemptive Scheduler, Syscalls, User Mode (EL0) |
+| **13. Integration** | ✅ ✨ | **Integration Tests** (QEMU, RamFS, Loopback, Process Lifecycle) |
 
 ### Test Coverage
 

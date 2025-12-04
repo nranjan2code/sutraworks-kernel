@@ -11,11 +11,10 @@ use core::panic::PanicInfo;
 use alloc::vec::Vec;
 use alloc::string::String;
 use alloc::sync::Arc;
-use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 
 use intent_kernel::arch::SpinLock;
-use intent_kernel::fs::vfs::{self, Filesystem, FileOps, FileStat, DirEntry, SeekFrom, VFS};
+use intent_kernel::fs::vfs::{Filesystem, FileOps, FileStat, DirEntry, SeekFrom, VFS};
 use intent_kernel::net::interface::{NetworkInterface, LoopbackInterface};
 use intent_kernel::kernel::process::{Agent, AgentState};
 
@@ -32,6 +31,12 @@ core::arch::global_asm!(
     ".text",
     ".global _start",
     "_start:",
+    // Enable FP/SIMD (CPACR_EL1.FPEN = 0b11)
+    "mrs x0, cpacr_el1",
+    "orr x0, x0, #(3 << 20)",
+    "msr cpacr_el1, x0",
+    "isb",
+
     // Zero BSS
     "ldr x0, =__bss_start",
     "ldr x1, =__bss_end",
@@ -162,6 +167,7 @@ fn run_test<F: Fn()>(name: &str, test: F) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 struct RamFile {
+    #[allow(dead_code)]
     name: String,
     data: Vec<u8>,
 }
@@ -258,7 +264,7 @@ impl FileOps for RamFileHandle {
 
 impl Filesystem for RamFs {
     fn open(&self, path: &str, _flags: usize) -> Result<Arc<SpinLock<dyn FileOps>>, &'static str> {
-        let mut inner = self.inner.lock();
+        let inner = self.inner.lock();
         if let Some(file) = inner.files.get(path) {
             Ok(Arc::new(SpinLock::new(RamFileHandle {
                 file: file.clone(),
@@ -371,7 +377,7 @@ fn test_process_lifecycle() {
     assert!(agent.kernel_stack.top > agent.kernel_stack.bottom);
     
     // 4. Verify Context
-    assert_eq!(agent.context.lr, dummy_entry as u64);
+    assert_eq!(agent.context.lr, dummy_entry as *const () as u64);
 }
 
 fn test_stress_memory() {

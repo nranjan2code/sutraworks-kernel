@@ -36,7 +36,7 @@ done
 wait $QEMU_PID
 EXIT_CODE=$?
 
-if [ $EXIT_CODE -eq 0 ] || [ $EXIT_CODE -eq 33 ]; then
+if [ $EXIT_CODE -eq 0 ] || [ $EXIT_CODE -eq 33 ] || [ $EXIT_CODE -eq 16 ]; then
     # 33 = 0x21 = (0x10 << 1) | 1 which is QEMU success for semihosting
     echo ""
     echo "=== TESTS COMPLETED ==="

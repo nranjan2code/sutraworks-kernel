@@ -214,7 +214,13 @@ test-unit: $(BUILD_DIR)
 
 # Run integration tests (future)
 test-integration:
-	@echo "Integration tests not yet implemented"
+	@echo "╔═══════════════════════════════════════════════════════════════╗"
+	@echo "║  Running Integration Tests (QEMU)                            ║"
+	@echo "╚═══════════════════════════════════════════════════════════════╝"
+	cd $(KERNEL_DIR) && \
+	RUSTFLAGS="-C link-arg=-Ttest_linker.ld" cargo test --target $(TARGET) --features qemu --test integration_tests
+	@echo ""
+	@echo "✓ All integration tests passed!"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TOOLCHAIN SETUP

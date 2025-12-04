@@ -373,20 +373,21 @@ impl SlabCache {
     }
     
     /// Deallocate to slab cache
-    pub unsafe fn deallocate(&mut self, ptr: NonNull<u8>, size: usize) {
-        let index = match self.slab_index(size) {
-            Some(i) => i,
-            None => return,
-        };
+    pub unsafe fn deallocate(&mut self, ptr: NonNull<u8>, _size: usize) {
+        // Find the slab header by masking the pointer (slabs are page-aligned)
+        let page_start = (ptr.as_ptr() as usize) & !(PAGE_SIZE - 1);
+        let header = page_start as *mut SlabHeader;
         
-        // Find containing slab (simplified: just add to first slab's free list)
-        if let Some(mut slab) = self.slabs[index] {
-            let header = slab.as_mut();
-            
-            // Add to free list
-            *(ptr.as_ptr() as *mut Option<NonNull<u8>>) = header.free_list;
-            header.free_list = Some(ptr);
-            header.allocated -= 1;
+        // Add to free list
+        *(ptr.as_ptr() as *mut Option<NonNull<u8>>) = (*header).free_list;
+        (*header).free_list = Some(ptr);
+        
+        // Decrement allocated count
+        // Note: We trust the slab header is valid and allocated > 0
+        if (*header).allocated > 0 {
+            (*header).allocated -= 1;
+        } else {
+            crate::kprintln!("[MEM] Double free or corruption in slab dealloc: ptr={:p}, header={:p}", ptr.as_ptr(), header);
         }
     }
 }
