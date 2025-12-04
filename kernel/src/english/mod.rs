@@ -84,6 +84,7 @@ pub fn init() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::steno::concepts;
 
     #[test]
     fn test_parse_simple_command() {

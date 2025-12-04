@@ -44,6 +44,24 @@ pub struct HcpCommand {
     pub payload: [u8; 64],    // Fixed size for simplicity, real driver might use variable
 }
 
+impl HcpCommand {
+    pub fn update_checksum(&mut self) {
+        let mut sum: u32 = 0;
+        // Accessing packed fields copies the value, which is safe for u32
+        sum = sum.wrapping_add(self.header.magic);
+        sum = sum.wrapping_add(self.header.seq_num);
+        sum = sum.wrapping_add(self.header.opcode);
+        sum = sum.wrapping_add(self.header.flags);
+        sum = sum.wrapping_add(self.header.payload_len);
+        
+        for b in self.payload.iter() {
+            sum = sum.wrapping_add(*b as u32);
+        }
+        
+        self.header.checksum = sum;
+    }
+}
+
 #[repr(C, packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct HcpResponse {
@@ -68,7 +86,7 @@ impl HcpHeader {
             opcode,
             flags: 0,
             payload_len,
-            checksum: 0, // TODO: Implement checksum calculation
+            checksum: 0, // Initial value, calculated later
         }
     }
 }
@@ -340,10 +358,11 @@ impl HailoDriver {
     /// Configure device for the specific model
     fn configure_device(&mut self, _header: &HefHeader) -> Result<(), &'static str> {
         // Send configuration command via HCP
-        let cmd = HcpCommand {
+        let mut cmd = HcpCommand {
             header: HcpHeader::new(0x20, self.seq_counter, 0), // 0x20 = CONFIG opcode
             payload: [0; 64],
         };
+        cmd.update_checksum();
         self.seq_counter += 1;
         
         self.cmd_queue.push(cmd)?;

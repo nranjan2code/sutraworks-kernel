@@ -94,21 +94,7 @@ impl Stroke {
     /// Examples: "STPH", "KAT", "-S", "TEFT", "12-9"
     pub fn from_steno(steno: &str) -> Option<Self> {
         let normalized = normalize_steno(steno)?;
-        let mut bits = 0u32;
-        
-        // Track position in key order
-        let mut min_idx = 0usize;
-        
-        for key in parse_steno_keys(&normalized) {
-            if let Some(idx) = key_index(&key) {
-                // Keys must be in order
-                if idx >= min_idx {
-                    bits |= 1 << idx;
-                    min_idx = idx + 1;
-                }
-            }
-        }
-        
+        let bits = parse_steno_to_bits(normalized);
         Some(Stroke(bits))
     }
     
@@ -295,10 +281,7 @@ impl RtfcreBuffer {
 // HELPER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/// Get the index of a key in the KEYS array
-fn key_index(key: &str) -> Option<usize> {
-    KEYS.iter().position(|&k| k == key)
-}
+
 
 /// Get number replacement for a key
 fn number_for_key(key: &str) -> Option<&'static str> {
@@ -319,32 +302,7 @@ fn normalize_steno(steno: &str) -> Option<&str> {
     Some(steno)
 }
 
-/// Parse steno string into individual keys
-fn parse_steno_keys(steno: &str) -> StenoKeyIter<'_> {
-    StenoKeyIter {
-        _steno: steno,
-        _pos: 0,
-        _seen_hyphen: false,
-        _seen_vowel: false,
-    }
-}
 
-/// Iterator over steno keys in a notation string
-struct StenoKeyIter<'a> {
-    _steno: &'a str,
-    _pos: usize,
-    _seen_hyphen: bool,
-    _seen_vowel: bool,
-}
-
-impl<'a> Iterator for StenoKeyIter<'a> {
-    type Item = heapless::String<4>; // No heapless, use array
-    
-    fn next(&mut self) -> Option<Self::Item> {
-        // This is a simplified parser - full implementation would handle all edge cases
-        None // TODO: Implement full parser
-    }
-}
 
 // Use a simpler approach without iterator for now
 /// Parse steno notation and return stroke bits

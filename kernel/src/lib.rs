@@ -148,3 +148,19 @@ macro_rules! serial_println {
         $crate::serial_print!("{}\n", format_args!($($arg)*))
     };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TEST MOCKS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[cfg(test)]
+#[no_mangle]
+pub extern "C" fn disable_interrupts() {}
+
+#[cfg(test)]
+#[no_mangle]
+pub extern "C" fn restore_interrupts(_: u64) {}
+
+#[cfg(test)]
+#[no_mangle]
+pub extern "C" fn switch_to(_prev: *mut u8, _next: *mut u8) {}

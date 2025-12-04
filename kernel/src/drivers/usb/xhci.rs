@@ -797,6 +797,41 @@ impl XhciController {
         // Poll for completion (timeout: 5 seconds)
         let timeout_ms = 5000;
         let start = crate::drivers::timer::uptime_ms();
+        
+        loop {
+            // Check if transfer completed
+            if let Some(ref transfer) = self.pending_transfers[slot_id as usize] {
+                if transfer.completed {
+                    let len = transfer.bytes_transferred;
+                    let code = transfer.completion_code;
+                    
+                    // Clear pending transfer
+                    self.pending_transfers[slot_id as usize] = None;
+                    
+                    if code == 1 { // Success
+                        return Ok(len);
+                    } else {
+                        return Err("Transfer Failed (Completion Code != Success)");
+                    }
+                }
+            } else {
+                // Should not happen unless cleared elsewhere
+                return Err("Transfer disappeared");
+            }
+            
+            if crate::drivers::timer::uptime_ms() - start > timeout_ms {
+                // Timeout!
+                // We should cancel the transfer on the ring, but for now just clear our tracking
+                self.pending_transfers[slot_id as usize] = None;
+                return Err("Transfer Timeout");
+            }
+            
+            // Wait a bit
+            crate::drivers::timer::delay_us(100);
+            
+            // Poll events
+            self.poll();
+        }
 
         loop {
             // Process event ring

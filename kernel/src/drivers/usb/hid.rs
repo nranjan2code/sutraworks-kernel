@@ -63,6 +63,7 @@ pub struct UsbHid {
     layout: Option<ReportLayout>,
     #[allow(dead_code)]
     last_stroke: Option<Stroke>,
+    pub use_boot_protocol: bool,
 }
 
 impl UsbHid {
@@ -71,6 +72,7 @@ impl UsbHid {
         Self {
             layout: None,
             last_stroke: None,
+            use_boot_protocol: true, // Default to Boot Protocol as xHCI sets it
         }
     }
 
@@ -209,6 +211,7 @@ impl UsbHid {
         });
         
         kprintln!("[HID] Parsed Layout: {} fields, {} bits", self.layout.as_ref().unwrap().fields.len(), current_offset);
+        self.use_boot_protocol = false; // Switch to Report Protocol
         Ok(())
     }
 
@@ -275,6 +278,10 @@ impl UsbHid {
 
     /// Parse a raw report buffer
     pub fn parse_report(&mut self, report: &[u8]) -> Option<Stroke> {
+        if self.use_boot_protocol {
+            return self.parse_boot_report(report);
+        }
+
         let layout = self.layout.as_ref()?;
         
         // Check Report ID
@@ -326,6 +333,31 @@ impl UsbHid {
                             stroke_bits |= 1 << steno_bit;
                         }
                     }
+                }
+            }
+        }
+        
+        if stroke_bits != 0 {
+            Some(Stroke::from_raw(stroke_bits))
+        } else {
+            None
+        }
+    }
+
+    /// Parse Boot Protocol Report (8 bytes)
+    fn parse_boot_report(&mut self, report: &[u8]) -> Option<Stroke> {
+        if report.len() < 8 { return None; }
+        // Byte 0: Modifiers
+        // Byte 1: Reserved
+        // Byte 2-7: Keycodes
+        
+        let mut stroke_bits = 0u32;
+        
+        for i in 2..8 {
+            let code = report[i];
+            if code != 0 {
+                if let Some(steno_bit) = self.map_usage_to_steno(code) {
+                     stroke_bits |= 1 << steno_bit;
                 }
             }
         }

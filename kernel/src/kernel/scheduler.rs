@@ -20,6 +20,10 @@ impl IntentScheduler {
         }
     }
 
+    pub fn current_pid(&self) -> Option<u64> {
+        self.current_agent_id
+    }
+
     /// Spawn a new kernel agent (simple, no embedding)
     pub fn spawn_simple(&mut self, entry: fn()) -> Result<(), &'static str> {
         let agent = Agent::new_kernel_simple(entry)?;
@@ -41,6 +45,69 @@ impl IntentScheduler {
         Ok(())
     }
 
+    /// Fork an agent
+    pub fn fork_agent(&mut self, parent_id: u64, frame: &crate::kernel::exception::ExceptionFrame, sp_el0: u64) -> Result<u64, &'static str> {
+        // Find parent index
+        let parent_idx = self.agents.iter().position(|a| a.id.0 == parent_id).ok_or("Parent not found")?;
+        
+        // Fork (clones parent)
+        let child = self.agents[parent_idx].fork(frame, sp_el0)?;
+        let child_id = child.id.0;
+        
+        self.agents.push_back(Box::new(child));
+        Ok(child_id)
+    }
+
+    /// Wait for a child process to terminate
+    pub fn wait_child(&mut self, parent_id: u64) -> Result<Option<u64>, &'static str> {
+        let mut has_children = false;
+        let mut reaped_pid = None;
+        let mut remove_idx = None;
+        
+        for (i, agent) in self.agents.iter().enumerate() {
+            if agent.parent_id == Some(parent_id) {
+                has_children = true;
+                if agent.state == AgentState::Terminated {
+                    reaped_pid = Some(agent.id.0);
+                    remove_idx = Some(i);
+                    break;
+                }
+            }
+        }
+        
+        if let Some(idx) = remove_idx {
+            self.agents.remove(idx);
+            return Ok(reaped_pid);
+        }
+        
+        if has_children {
+            Ok(None) // Should block
+        } else {
+            Err("No children")
+        }
+    }
+
+    /// Exit current agent and wake parent
+    pub fn exit_current(&mut self, _code: i32) {
+        let mut parent_id = None;
+        
+        if let Some(id) = self.current_agent_id {
+             if let Some(agent) = self.get_agent_mut(id) {
+                 agent.state = AgentState::Terminated;
+                 parent_id = agent.parent_id;
+             }
+        }
+        
+        // Wake parent
+        if let Some(pid) = parent_id {
+            if let Some(parent) = self.get_agent_mut(pid) {
+                if parent.state == AgentState::Blocked {
+                    parent.state = AgentState::Ready;
+                }
+            }
+        }
+    }
+
     /// Schedule the next agent
     /// 
     /// Returns a tuple of (prev_context_ptr, next_context_ptr) if a switch is needed.
@@ -56,7 +123,8 @@ impl IntentScheduler {
                 prev.state = AgentState::Ready;
                 self.agents.push_back(prev);
             } else if prev.state == AgentState::Terminated {
-                // Drop it (it's already popped)
+                // Keep it for wait()
+                self.agents.push_back(prev);
             } else {
                 // Blocked, Sleeping, or Ready, put it back
                 self.agents.push_back(prev);

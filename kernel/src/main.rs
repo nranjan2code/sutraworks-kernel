@@ -236,8 +236,10 @@ pub extern "C" fn kernel_main() -> ! {
         }
         
         let sd_dev = Arc::new(SdWrapper);
+        // Wrap in Cache (512 sectors = 256KB cache)
+        let cached_dev = Arc::new(fs::cache::CachedDevice::new(sd_dev, 512));
         
-        match fs::fat32::Fat32FileSystem::new(sd_dev) {
+        match fs::fat32::Fat32FileSystem::new(cached_dev) {
             Ok(fat32) => {
                 let mut vfs = fs::VFS.lock();
                 if let Err(e) = vfs.mount("/sd", fat32.clone()) {
@@ -583,13 +585,17 @@ fn panic(info: &PanicInfo) -> ! {
 fn syscall_test_task() {
     kprintln!("[TASK] Syscall Test Task Started");
     
+    // Create dummy frame for syscalls from kernel mode
+    let mut frame: crate::kernel::exception::ExceptionFrame = unsafe { core::mem::zeroed() };
+    
     // 1. Print
     let msg = "Hello from Syscall Task!\n";
     crate::kernel::syscall::dispatcher(
         crate::kernel::syscall::SyscallNumber::Print as u64,
         msg.as_ptr() as u64,
         msg.len() as u64,
-        0
+        0,
+        &mut frame
     );
     
     // 2. Open
@@ -598,7 +604,8 @@ fn syscall_test_task() {
         crate::kernel::syscall::SyscallNumber::Open as u64,
         path.as_ptr() as u64,
         0,
-        0
+        0,
+        &mut frame
     );
     
     if fd != u64::MAX {
@@ -609,7 +616,8 @@ fn syscall_test_task() {
             crate::kernel::syscall::SyscallNumber::Read as u64,
             fd,
             buf.as_mut_ptr() as u64,
-            32
+            32,
+            &mut frame
         );
         
         if read_len != u64::MAX {
@@ -621,7 +629,8 @@ fn syscall_test_task() {
         
         crate::kernel::syscall::dispatcher(
             crate::kernel::syscall::SyscallNumber::Close as u64,
-            fd, 0, 0
+            fd, 0, 0,
+            &mut frame
         );
     } else {
         kprintln!("[TASK] Open Failed");
@@ -631,7 +640,8 @@ fn syscall_test_task() {
     kprintln!("[TASK] Exiting...");
     crate::kernel::syscall::dispatcher(
         crate::kernel::syscall::SyscallNumber::Exit as u64,
-        0, 0, 0
+        0, 0, 0,
+        &mut frame
     );
     
     // Should not reach here
@@ -639,7 +649,8 @@ fn syscall_test_task() {
     loop {
         crate::kernel::syscall::dispatcher(
             crate::kernel::syscall::SyscallNumber::Yield as u64,
-            0, 0, 0
+            0, 0, 0,
+            &mut frame
         );
     }
 }

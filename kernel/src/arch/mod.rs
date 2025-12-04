@@ -464,3 +464,46 @@ core::arch::global_asm!(
     "eret"
 );
 
+core::arch::global_asm!(
+    ".global restore_exception_frame",
+    "restore_exception_frame:",
+    // x0 = frame pointer
+    // x1 = sp_el0
+    
+    "msr sp_el0, x1",
+    "mov sp, x0",
+    
+    // Restore SPSR, ELR
+    "ldr x2, [sp, #264]", // spsr
+    "msr spsr_el1, x2",
+    "ldr x2, [sp, #256]", // elr
+    "msr elr_el1, x2",
+    
+    // Restore registers
+    "ldp x0, x1, [sp, #0]",
+    "ldp x2, x3, [sp, #16]",
+    "ldp x4, x5, [sp, #32]",
+    "ldp x6, x7, [sp, #48]",
+    "ldp x8, x9, [sp, #64]",
+    "ldp x10, x11, [sp, #80]",
+    "ldp x12, x13, [sp, #96]",
+    "ldp x14, x15, [sp, #112]",
+    "ldp x16, x17, [sp, #128]",
+    "ldp x18, x19, [sp, #144]",
+    "ldp x20, x21, [sp, #160]",
+    "ldp x22, x23, [sp, #176]",
+    "ldp x24, x25, [sp, #192]",
+    "ldp x26, x27, [sp, #208]",
+    "ldp x28, x29, [sp, #224]",
+    "ldr x30, [sp, #240]",
+    
+    // Reclaim stack space (ExceptionFrame size = 280 bytes)
+    "add sp, sp, #280",
+    
+    "eret"
+);
+
+extern "C" {
+    pub fn restore_exception_frame(frame: *const u8, sp_el0: u64) -> !;
+}
+

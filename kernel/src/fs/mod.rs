@@ -5,6 +5,7 @@
 pub mod vfs;
 pub mod fat32;
 pub mod pipe;
+pub mod cache;
 
 pub use vfs::{VFS, FileOps, Filesystem, SeekFrom, O_RDONLY, O_WRONLY, O_RDWR, O_CREAT};
 

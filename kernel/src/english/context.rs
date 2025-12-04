@@ -16,7 +16,7 @@ use super::responses::IntentResult;
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// User experience mode
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum UserMode {
     /// New user - verbose help, detailed responses
     Beginner,

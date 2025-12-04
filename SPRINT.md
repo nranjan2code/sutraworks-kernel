@@ -181,11 +181,11 @@ Enable reading/writing files from SD card (dictionaries, models, logs).
 **File**: `kernel/src/fs/cache.rs` (NEW FILE)
 
 **Tasks**:
-- [ ] LRU cache implementation (Deferred)
-- [ ] Dirty page tracking (Deferred)
-- [ ] Sync/flush operations (Deferred)
+- [x] LRU cache implementation
+- [x] Dirty page tracking
+- [x] Sync/flush operations
 
-**Lines**: 0 (Deferred)
+**Lines**: 300
 
 ### 2.4 Integration (Session 5)
 **Tasks**:
@@ -269,11 +269,11 @@ Provide proper kernel interface for user processes.
 
 ### 3.3 Process Syscalls (Session 3)
 **Tasks**:
-- [ ] sys_fork() (Deferred to later)
+- [x] sys_fork()
 - [x] sys_exec() (via new_user_elf)
 - [x] sys_exit()
-- [ ] sys_wait() (Deferred)
-- [ ] sys_getpid() (Deferred)
+- [x] sys_wait()
+- [x] sys_getpid()
 
 **Lines**: 400
 

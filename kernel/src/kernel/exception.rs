@@ -206,7 +206,7 @@ pub extern "C" fn handle_exception(frame: *mut ExceptionFrame) {
             let arg1 = frame_mut.x[1];
             let arg2 = frame_mut.x[2];
             
-            let ret = crate::kernel::syscall::dispatcher(syscall_num, arg0, arg1, arg2);
+            let ret = crate::kernel::syscall::dispatcher(syscall_num, arg0, arg1, arg2, frame_mut);
             
             // Set return value
             frame_mut.x[0] = ret;

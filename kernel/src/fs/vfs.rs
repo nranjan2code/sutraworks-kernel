@@ -69,6 +69,7 @@ pub trait Filesystem: Send + Sync {
 pub trait BlockDevice: Send + Sync {
     fn read_sector(&self, sector: u32, buf: &mut [u8]) -> Result<(), &'static str>;
     fn write_sector(&self, sector: u32, buf: &[u8]) -> Result<(), &'static str>;
+    fn sync(&self) -> Result<(), &'static str> { Ok(()) } // Default implementation
 }
 
 /// File Descriptor
@@ -160,6 +161,12 @@ impl ProcessFileTable {
     }
 }
 
+impl Default for ProcessFileTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Global VFS Manager
 pub struct VfsManager {
     mounts: Vec<(String, Arc<dyn Filesystem>)>, // (Mount Point, FS)
@@ -187,17 +194,15 @@ impl VfsManager {
         let mut relative_path = path;
 
         for (mount_point, fs) in &self.mounts {
-            if path.starts_with(mount_point) {
-                if mount_point.len() > best_match_len {
-                    best_match_len = mount_point.len();
-                    best_fs = Some(fs.clone());
-                    
-                    // Strip mount point from path
-                    if path.len() == mount_point.len() {
-                        relative_path = "/";
-                    } else {
-                        relative_path = &path[mount_point.len()..];
-                    }
+            if path.starts_with(mount_point) && mount_point.len() > best_match_len {
+                best_match_len = mount_point.len();
+                best_fs = Some(fs.clone());
+                
+                // Strip mount point from path
+                if path.len() == mount_point.len() {
+                    relative_path = "/";
+                } else {
+                    relative_path = &path[mount_point.len()..];
                 }
             }
         }
@@ -227,6 +232,12 @@ impl VfsManager {
     pub fn read_dir(&self, path: &str) -> Result<Vec<DirEntry>, &'static str> {
         let (fs, rel_path) = self.resolve_path(path)?;
         fs.read_dir(rel_path)
+    }
+}
+
+impl Default for VfsManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

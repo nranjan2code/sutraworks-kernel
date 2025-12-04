@@ -38,7 +38,7 @@ const MAX_BUFFER_STROKES: usize = 8;
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// Engine state
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EngineState {
     /// Ready to process strokes
     Ready,

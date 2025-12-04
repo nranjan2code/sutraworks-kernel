@@ -5,7 +5,7 @@
 use alloc::format;
 use alloc::string::String;
 
-use crate::intent::Intent;
+use crate::intent::{Intent, IntentData};
 use crate::steno::dictionary::concepts;
 use crate::steno::EngineStats;
 
@@ -120,7 +120,7 @@ impl ResponseGenerator {
     // ═══════════════════════════════════════════════════════════════════════════
 
     fn help_response(&self) -> String {
-        format!(
+        String::from(
             "Welcome to Intent Kernel!\n\
              \n\
              You can type naturally to control the system:\n\
@@ -331,6 +331,16 @@ fn calculate_accuracy(stats: &EngineStats) -> f32 {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// TRAIT IMPLEMENTATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+impl Default for ResponseGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // TESTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -352,6 +362,7 @@ mod tests {
             intents_matched: 95,
             corrections: 5,
             unrecognized: 0,
+            multi_stroke_matches: 0,
         };
 
         // 100 strokes / 5 = 20 words
@@ -367,6 +378,7 @@ mod tests {
             intents_matched: 95,
             corrections: 5,
             unrecognized: 0,
+            multi_stroke_matches: 0,
         };
 
         assert_eq!(calculate_accuracy(&stats), 95.0);

@@ -144,6 +144,14 @@ impl PerceptionManager {
     }
 }
 
+
+
+impl Default for PerceptionManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

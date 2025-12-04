@@ -31,6 +31,10 @@ pub enum SyscallNumber {
     Socket = 14,
     Bind = 15,
     Connect = 16,
+    GetPid = 17,
+    Fork = 18,
+    Wait = 19,
+    Exec = 20,
     Unknown,
 }
 
@@ -54,6 +58,10 @@ impl From<u64> for SyscallNumber {
             14 => SyscallNumber::Socket,
             15 => SyscallNumber::Bind,
             16 => SyscallNumber::Connect,
+            17 => SyscallNumber::GetPid,
+            18 => SyscallNumber::Fork,
+            19 => SyscallNumber::Wait,
+            20 => SyscallNumber::Exec,
             _ => SyscallNumber::Unknown,
         }
     }
@@ -63,7 +71,11 @@ impl From<u64> for SyscallNumber {
 /// 
 /// Arguments are passed in x0-x7.
 /// Return value is placed in x0.
-pub fn dispatcher(num: u64, arg0: u64, arg1: u64, arg2: u64) -> u64 {
+/// Handle a system call
+/// 
+/// Arguments are passed in x0-x7.
+/// Return value is placed in x0.
+pub fn dispatcher(num: u64, arg0: u64, arg1: u64, arg2: u64, frame: &mut crate::kernel::exception::ExceptionFrame) -> u64 {
     let syscall = SyscallNumber::from(num);
     
     match syscall {
@@ -126,6 +138,18 @@ pub fn dispatcher(num: u64, arg0: u64, arg1: u64, arg2: u64) -> u64 {
             // arg0: fd, arg1: addr_ptr, arg2: addr_len
             sys_connect(arg0, arg1, arg2)
         }
+        SyscallNumber::GetPid => {
+            sys_getpid()
+        }
+        SyscallNumber::Fork => {
+            sys_fork(frame)
+        }
+        SyscallNumber::Wait => {
+            sys_wait(arg0 as i32)
+        }
+        SyscallNumber::Exec => {
+            sys_exec(arg0, frame)
+        }
         SyscallNumber::Unknown => {
             kprintln!("Unknown syscall: {}", num);
             u64::MAX
@@ -136,11 +160,9 @@ pub fn dispatcher(num: u64, arg0: u64, arg1: u64, arg2: u64) -> u64 {
 fn sys_exit(code: i32) {
     kprintln!("Process exited with code {}", code);
     
-    // Set state to Terminated
+    // Set state to Terminated and wake parent
     let mut scheduler = SCHEDULER.lock();
-    scheduler.with_current_agent(|agent| {
-        agent.state = crate::kernel::process::AgentState::Terminated;
-    });
+    scheduler.exit_current(code);
     drop(scheduler);
     
     // Yield CPU (Scheduler will drop this agent)
@@ -678,6 +700,91 @@ fn sys_connect(fd: u64, addr_ptr: u64, addr_len: u64) -> u64 {
             }
         } else {
             u64::MAX
+        }
+    }).unwrap_or(u64::MAX);
+    res
+}
+
+fn sys_getpid() -> u64 {
+    let mut scheduler = SCHEDULER.lock();
+    scheduler.current_pid().unwrap_or(u64::MAX)
+}
+
+fn sys_fork(frame: &crate::kernel::exception::ExceptionFrame) -> u64 {
+    // Read sp_el0
+    let sp_el0: u64;
+    unsafe { core::arch::asm!("mrs {}, sp_el0", out(reg) sp_el0); }
+    
+    let mut scheduler = SCHEDULER.lock();
+    if let Some(parent_id) = scheduler.current_pid() {
+        match scheduler.fork_agent(parent_id, frame, sp_el0) {
+            Ok(child_pid) => child_pid,
+            Err(e) => {
+                kprintln!("Fork failed: {}", e);
+                u64::MAX
+            }
+        }
+    } else {
+        u64::MAX
+    }
+}
+
+fn sys_wait(pid: i32) -> u64 {
+    // Only support wait(-1) for now (any child)
+    if pid != -1 {
+        // TODO: Support specific PID
+        return u64::MAX;
+    }
+
+    loop {
+        let mut scheduler = SCHEDULER.lock();
+        let current_pid = scheduler.current_pid().unwrap_or(0);
+        
+        match scheduler.wait_child(current_pid) {
+            Ok(Some(child_pid)) => {
+                return child_pid;
+            },
+            Ok(None) => {
+                // Children exist but running
+                scheduler.with_current_agent(|agent| {
+                    agent.state = crate::kernel::process::AgentState::Blocked;
+                });
+                drop(scheduler);
+                scheduler::yield_task();
+            },
+            Err(_) => {
+                return u64::MAX; // ECHILD
+            }
+        }
+    }
+}
+
+fn sys_exec(path_ptr: u64, frame: &mut crate::kernel::exception::ExceptionFrame) -> u64 {
+    // Validate pointer
+    let ptr = path_ptr as *const u8;
+    if crate::kernel::memory::validate_read_ptr(ptr, 1).is_err() {
+        return u64::MAX;
+    }
+    
+    // Read path string
+    let mut path_buf = [0u8; 64];
+    let mut len = 0;
+    for i in 0..64 {
+        let c = unsafe { *ptr.add(i) };
+        if c == 0 { break; }
+        path_buf[i] = c;
+        len += 1;
+    }
+    let path = core::str::from_utf8(&path_buf[0..len]).unwrap_or("");
+    
+    let mut scheduler = SCHEDULER.lock();
+    let res = scheduler.with_current_agent(|agent| {
+        match agent.exec(path, frame) {
+            Ok(_) => 0,
+            Err(e) => {
+                kprintln!("Exec failed: {}", e);
+                u64::MAX
+            }
         }
     }).unwrap_or(u64::MAX);
     

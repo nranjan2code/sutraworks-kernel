@@ -3,6 +3,7 @@
 //! Implements read/write support for FAT32 partitions.
 
 use alloc::vec::Vec;
+use alloc::vec;
 use alloc::string::String;
 use alloc::sync::Arc;
 use crate::arch::SpinLock;
@@ -171,8 +172,7 @@ impl Fat32FileSystem {
         let mut entries = Vec::new();
         let mut current_cluster = start_cluster;
         let cluster_size = self.bpb.sectors_per_cluster as usize * 512;
-        let mut buf = Vec::with_capacity(cluster_size);
-        buf.resize(cluster_size, 0);
+        let mut buf = vec![0; cluster_size];
 
         loop {
             // Read cluster
@@ -306,17 +306,17 @@ impl Filesystem for Fat32FileSystem {
 fn parse_fat_name(raw: &[u8; 11]) -> String {
     let mut name = String::new();
     // Filename (8 chars)
-    for i in 0..8 {
-        if raw[i] != 0x20 {
-            name.push(raw[i] as char);
+    for &c in raw.iter().take(8) {
+        if c != 0x20 {
+            name.push(c as char);
         }
     }
     // Extension (3 chars)
     if raw[8] != 0x20 {
         name.push('.');
-        for i in 8..11 {
-            if raw[i] != 0x20 {
-                name.push(raw[i] as char);
+        for &c in raw.iter().skip(8).take(3) {
+            if c != 0x20 {
+                name.push(c as char);
             }
         }
     }
@@ -358,8 +358,7 @@ impl FileOps for Fat32File {
             );
             
             // Read cluster
-            let mut cluster_buf = Vec::with_capacity(cluster_size as usize);
-            cluster_buf.resize(cluster_size as usize, 0);
+            let mut cluster_buf = vec![0; cluster_size as usize];
             self.fs.read_cluster(self.current_cluster, &mut cluster_buf)?;
             
             // Copy data

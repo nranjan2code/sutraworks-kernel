@@ -159,11 +159,43 @@ impl VmaManager {
     
     /// Unmap memory (munmap)
     pub fn munmap(&mut self, start: u64, len: u64) -> Option<VMA> {
-        // TODO: Handle partial unmaps and splitting
-        // For now, only support exact matches
-        if let Some(idx) = self.vmas.iter().position(|v| v.start == start && v.end == start + len) {
-            return Some(self.vmas.remove(idx));
+        let end = start + len;
+        
+        // Find the VMA that contains the range
+        // Note: This assumes the range is fully contained in ONE VMA.
+        let idx = self.vmas.iter().position(|v| v.start <= start && v.end >= end)?;
+        
+        // We need to clone the VMA properties to create the return value and potentially the split part
+        let original_perms = self.vmas[idx].perms;
+        let original_flags = self.vmas[idx].flags;
+        let unmapped_vma = VMA::new(start, len, original_perms, original_flags);
+        
+        let vma = &mut self.vmas[idx];
+        
+        if vma.start == start && vma.end == end {
+            // Case 1: Exact match - Remove the VMA
+            self.vmas.remove(idx);
+        } else if vma.start == start {
+            // Case 2: Prefix removal - Shrink from start
+            vma.start = end;
+        } else if vma.end == end {
+            // Case 3: Suffix removal - Shrink from end
+            vma.end = start;
+        } else {
+            // Case 4: Middle removal (Split)
+            // Current VMA becomes the left part
+            let right_start = end;
+            let right_len = vma.end - right_start;
+            
+            vma.end = start; // Shrink current to be left part
+            
+            // Create right part
+            let right_vma = VMA::new(right_start, right_len, original_perms, original_flags);
+            
+            // Insert right part after the current one
+            self.vmas.insert(idx + 1, right_vma);
         }
-        None
+        
+        Some(unmapped_vma)
     }
 }

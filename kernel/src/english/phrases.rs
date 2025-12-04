@@ -252,8 +252,7 @@ pub fn lookup(phrase: &str) -> Option<ConceptID> {
     let normalized = phrase.trim().to_lowercase();
 
     // Binary search would be better here, but requires sorted array
-    // For now, linear search is acceptable for ~200 phrases
-    // TODO: Implement perfect hash or trie for O(1) lookup
+    // For now, linear search is acceptable for ~200 phrases and avoids complexity.
     for entry in PHRASES {
         if entry.phrase == normalized {
             return Some(entry.concept);
@@ -310,7 +309,7 @@ mod tests {
 
     #[test]
     fn test_all_phrases_unique() {
-        use core::collections::BTreeSet;
+        use alloc::collections::BTreeSet;
         let mut seen = BTreeSet::new();
         for entry in PHRASES {
             assert!(seen.insert(entry.phrase), "Duplicate phrase: {}", entry.phrase);

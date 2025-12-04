@@ -603,6 +603,12 @@ pub unsafe fn alloc_pages(count: usize) -> Option<NonNull<u8>> {
     inner.buddy.allocate(count * PAGE_SIZE)
 }
 
+/// Allocate pages for user space
+pub unsafe fn alloc_user_pages(count: usize) -> Option<NonNull<u8>> {
+    // Future: Account to process or use separate pool
+    alloc_pages(count)
+}
+
 /// Free pages
 pub unsafe fn free_pages(ptr: NonNull<u8>, count: usize) {
     let mut inner = GLOBAL.inner.lock();

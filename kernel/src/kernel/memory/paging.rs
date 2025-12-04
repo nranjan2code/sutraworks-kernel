@@ -83,6 +83,16 @@ impl PageTable {
             *entry = PageTableEntry::new();
         }
     }
+
+    /// Check if the table is empty (no valid entries)
+    pub fn is_empty(&self) -> bool {
+        for entry in self.entries.iter() {
+            if entry.is_valid() {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 /// Bitflags for Page Table Entry attributes
@@ -275,9 +285,9 @@ impl VMM {
 
         let root = self.root_table.as_mut();
 
-        // Traverse, but don't allocate
+        // Traverse, keeping references to tables to check emptiness later
         let l1_entry = &mut root.entries[l0_idx as usize];
-        if !l1_entry.is_valid() { return Ok(None); } // Already unmapped
+        if !l1_entry.is_valid() { return Ok(None); }
         let l1_table = &mut *(l1_entry.address() as *mut PageTable);
 
         let l2_entry = &mut l1_table.entries[l1_idx as usize];
@@ -289,10 +299,40 @@ impl VMM {
         let l3_table = &mut *(l3_entry.address() as *mut PageTable);
 
         let entry = &mut l3_table.entries[l3_idx as usize];
+        if !entry.is_valid() { return Ok(None); }
+        
         let phys = entry.address();
-        *entry = PageTableEntry::new(); // Clear it
+        *entry = PageTableEntry::new(); // Clear the page entry
 
-        // TODO: Free tables if empty?
+        // Check if L3 table is empty and free it
+        if l3_table.is_empty() {
+            let l3_phys = l3_entry.address();
+            *l3_entry = PageTableEntry::new(); // Remove from L2
+            
+            if let Some(ptr) = NonNull::new(l3_phys as *mut u8) {
+                super::free_pages(ptr, 1);
+            }
+            
+            // Check if L2 table is empty
+            if l2_table.is_empty() {
+                let l2_phys = l2_entry.address();
+                *l2_entry = PageTableEntry::new(); // Remove from L1
+                
+                if let Some(ptr) = NonNull::new(l2_phys as *mut u8) {
+                    super::free_pages(ptr, 1);
+                }
+                
+                // Check if L1 table is empty
+                if l1_table.is_empty() {
+                    let l1_phys = l1_entry.address();
+                    *l1_entry = PageTableEntry::new(); // Remove from L0
+                    
+                    if let Some(ptr) = NonNull::new(l1_phys as *mut u8) {
+                        super::free_pages(ptr, 1);
+                    }
+                }
+            }
+        }
         
         Ok(Some(phys))
     }
@@ -323,6 +363,44 @@ impl VMM {
 
             let entry = &l3_table.entries[l3_idx as usize];
             entry.is_valid()
+        }
+    }
+
+    /// Translate a virtual address to physical address
+    pub fn translate(&self, virt_addr: u64) -> Option<u64> {
+        let l0_idx = (virt_addr >> 39) & 0x1FF;
+        let l1_idx = (virt_addr >> 30) & 0x1FF;
+        let l2_idx = (virt_addr >> 21) & 0x1FF;
+        let l3_idx = (virt_addr >> 12) & 0x1FF;
+        let offset = virt_addr & 0xFFF;
+
+        unsafe {
+            let root = self.root_table.as_ref();
+            
+            let l1_entry = &root.entries[l0_idx as usize];
+            if !l1_entry.is_valid() { return None; }
+            let l1_table = &*(l1_entry.address() as *const PageTable);
+
+            let l2_entry = &l1_table.entries[l1_idx as usize];
+            if !l2_entry.is_valid() { return None; }
+            if !l2_entry.is_table() { 
+                // Block mapping (1GB)
+                return Some(l2_entry.address() + (virt_addr & 0x3FFF_FFFF));
+            }
+            let l2_table = &*(l2_entry.address() as *const PageTable);
+
+            let l3_entry = &l2_table.entries[l2_idx as usize];
+            if !l3_entry.is_valid() { return None; }
+            if !l3_entry.is_table() { 
+                // Block mapping (2MB)
+                return Some(l3_entry.address() + (virt_addr & 0x1F_FFFF));
+            }
+            let l3_table = &*(l3_entry.address() as *const PageTable);
+
+            let entry = &l3_table.entries[l3_idx as usize];
+            if !entry.is_valid() { return None; }
+            
+            Some(entry.address() + offset)
         }
     }
     
@@ -386,8 +464,8 @@ impl VMM {
                 return Err("Huge pages not supported yet");
             }
             // Entry points to physical address of next table
-            // In identity mapping/early boot, phys == virt
-            // TODO: When we have proper VM, we need phys_to_virt translation here
+            // In identity mapping/early boot, phys == virt.
+            // We assume kernel page tables are always identity mapped.
             let table_addr = entry.address();
             Ok(&mut *(table_addr as *mut PageTable))
         } else {
@@ -470,6 +548,11 @@ impl UserAddressSpace {
     /// Check if a virtual address is mapped
     pub fn is_mapped(&self, virt_addr: u64) -> bool {
         self.vmm.is_mapped(virt_addr)
+    }
+
+    /// Translate a virtual address
+    pub fn translate(&self, virt_addr: u64) -> Option<u64> {
+        self.vmm.translate(virt_addr)
     }
 
     /// Unmap a virtual page

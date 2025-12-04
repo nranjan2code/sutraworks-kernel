@@ -181,6 +181,14 @@ impl Hud {
     }
 }
 
+
+
+impl Default for Hud {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // Simple integer to string converter
 fn u64_to_str(mut num: u64, buf: &mut [u8]) -> Result<&str, ()> {
     if buf.len() < 20 { return Err(()); }

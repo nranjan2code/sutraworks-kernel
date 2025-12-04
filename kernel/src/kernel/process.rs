@@ -71,6 +71,7 @@ pub struct Agent {
     pub vma_manager: crate::kernel::memory::vma::VmaManager,
     pub pending_signals: u32,
     pub blocked_signals: u32,
+    pub parent_id: Option<u64>,
 }
 
 impl Agent {
@@ -92,6 +93,7 @@ impl Agent {
             vma_manager: crate::kernel::memory::vma::VmaManager::new(),
             pending_signals: 0,
             blocked_signals: 0,
+            parent_id: None,
         };
 
         let stack_top = agent.kernel_stack.top;
@@ -156,6 +158,7 @@ impl Agent {
             vma_manager: crate::kernel::memory::vma::VmaManager::new(),
             pending_signals: 0,
             blocked_signals: 0,
+            parent_id: None,
         };
 
         // Kernel Stack Setup (for when we are in kernel mode handling this process)
@@ -235,6 +238,7 @@ impl Agent {
             vma_manager: crate::kernel::memory::vma::VmaManager::new(),
             pending_signals: 0,
             blocked_signals: 0,
+            parent_id: None,
         };
 
         // Kernel Stack Setup
@@ -279,6 +283,225 @@ impl Agent {
 
         Ok(agent)
     }
+
+
+    pub fn fork(&self, frame: &crate::kernel::exception::ExceptionFrame, sp_el0: u64) -> Result<Self, &'static str> {
+        // 1. Create new Address Space
+        let mut space = UserAddressSpace::new().ok_or("Failed to create user address space")?;
+        
+        // 2. Deep Copy Memory (VMAs)
+        // Iterate over all VMAs and copy data
+        for vma in &self.vma_manager.vmas {
+            // Check permissions (must be readable to copy)
+            if !vma.perms.read { continue; }
+            
+            let mut virt = vma.start;
+            while virt < vma.end {
+                // Get physical address of current page
+                if let Some(old_phys) = self.vmm.as_ref().unwrap().translate(virt) {
+                    // Allocate new page
+                    let new_page = unsafe { crate::kernel::memory::alloc_pages(1) }.ok_or("Out of memory for fork")?;
+                    let new_phys = new_page.as_ptr() as u64;
+                    
+                    // Copy data
+                    unsafe {
+                        core::ptr::copy_nonoverlapping(old_phys as *const u8, new_phys as *mut u8, 4096);
+                    }
+                    
+                    // Map new page in new VMM
+                    // Use same flags as VMA (approximate)
+                    // We need EntryFlags.
+                    // VMA perms -> EntryFlags
+                    use crate::kernel::memory::paging::EntryFlags;
+                    let mut flags = EntryFlags::ATTR_NORMAL | EntryFlags::SH_INNER | EntryFlags::AF;
+                    if vma.perms.write { flags |= EntryFlags::AP_RW_USER; } else { flags |= EntryFlags::AP_RO_USER; }
+                    if !vma.perms.execute { flags |= EntryFlags::UXN; }
+                    
+                    space.map_user(virt, new_phys, 4096).map_err(|_| "Failed to map forked page")?;
+                }
+                virt += 4096;
+            }
+        }
+        
+        // 3. Allocate Kernel Stack
+        let kernel_stack = alloc_stack(4).ok_or("Failed to alloc kernel stack")?;
+        
+        // 4. Copy Trap Frame to new Kernel Stack
+        // Frame size = 280 bytes.
+        // We place it at the top of the new stack.
+        let kstack_top = kernel_stack.top;
+        let frame_size = 280; // Must match assembly
+        let frame_ptr = (kstack_top - frame_size) & !0xF; // Align
+        
+        unsafe {
+            // Copy frame
+            core::ptr::copy_nonoverlapping(
+                frame as *const _ as *const u8, 
+                frame_ptr as *mut u8, 
+                frame_size as usize
+            );
+            
+            // Set return value (x0) to 0 for child
+            let frame_mut = &mut *(frame_ptr as *mut crate::kernel::exception::ExceptionFrame);
+            frame_mut.x[0] = 0;
+        }
+        
+        // 5. Create Agent
+        let mut agent = Agent {
+            id: AgentId::new(),
+            state: AgentState::Ready,
+            context: Context::default(),
+            capabilities: self.capabilities.clone(),
+            vmm: Some(space),
+            kernel_stack,
+            user_stack: None, // Managed by VMM/sp_el0
+            file_table: ProcessFileTable::new(), // TODO: Clone file table
+            wake_time: 0,
+            sig_actions: self.sig_actions.clone(),
+            vma_manager: self.vma_manager.clone(),
+            pending_signals: 0,
+            blocked_signals: self.blocked_signals,
+            parent_id: Some(self.id.0),
+        };
+        
+        // Clone File Table (dup)
+        // For now, just copy the vector of FDs (shared Arc).
+        // This means they share the same offset!
+        // Standard fork() shares file description (offset), so this is correct.
+        // We just need to clone the Arc.
+        for fd in &self.file_table.fds {
+            if let Some(desc) = fd {
+                agent.file_table.fds.push(Some(desc.clone()));
+            } else {
+                agent.file_table.fds.push(None);
+            }
+        }
+
+        // 6. Setup Context for Switch
+        let kstack_ptr = frame_ptr; // SP points to the frame
+        
+        agent.context.sp = kstack_ptr;
+        agent.context.lr = fork_return_trampoline as *const () as u64;
+        agent.context.x19 = kstack_ptr; // Arg1: Frame Ptr
+        agent.context.x20 = sp_el0;     // Arg2: SP_EL0
+        
+        agent.context.ttbr0 = agent.vmm.as_ref().unwrap().table_base();
+
+        Ok(agent)
+    }
+
+    /// Execute a new program (replace current process)
+    pub fn exec(&mut self, path: &str, frame: &mut crate::kernel::exception::ExceptionFrame) -> Result<(), &'static str> {
+        // 1. Read file from VFS
+        // We need to read the whole file into a buffer.
+        // For this prototype, we'll use a fixed size buffer on the heap (Vec).
+        // Limit: 1MB for now.
+        
+        let mut file = crate::fs::VFS.lock().open(path, crate::fs::O_RDONLY).map_err(|_| "File not found")?;
+        let mut file_lock = file.lock();
+        let size = file_lock.seek(crate::fs::SeekFrom::End(0)).map_err(|_| "Seek failed")? as usize;
+        file_lock.seek(crate::fs::SeekFrom::Start(0)).map_err(|_| "Seek failed")?;
+        
+        if size > 1024 * 1024 {
+            return Err("Executable too large");
+        }
+        
+        let mut buffer = alloc::vec![0u8; size];
+        let read = file_lock.read(&mut buffer).map_err(|_| "Read failed")?;
+        if read != size {
+            return Err("Incomplete read");
+        }
+        drop(file_lock);
+        
+        // 2. Parse ELF
+        let loader = crate::kernel::elf::ElfLoader::new(&buffer)?;
+        
+        // 3. Create NEW Address Space
+        let mut new_space = UserAddressSpace::new().ok_or("Failed to create user address space")?;
+        
+        // 4. Load Segments into NEW Space
+        loader.load(&mut new_space)?;
+        
+        // 5. Allocate NEW User Stack
+        let new_user_stack = alloc_stack(4).ok_or("Failed to alloc user stack")?;
+        
+        // 6. Map User Stack
+        let ustack_phys_start = new_user_stack.bottom;
+        let ustack_size = (new_user_stack.top - new_user_stack.bottom) as usize;
+        let ustack_virt_top = 0x0000_FFFF_FFFF_0000;
+        let ustack_virt_bottom = ustack_virt_top - ustack_size as u64;
+        
+        new_space.map_user(ustack_virt_bottom, ustack_phys_start, ustack_size).map_err(|_| "Failed to map user stack")?;
+        
+        // 7. Setup VMAs
+        use crate::kernel::memory::vma::{VMA, VmaPerms, VmaFlags};
+        let mut new_vma_manager = crate::kernel::memory::vma::VmaManager::new();
+        
+        // Stack VMA
+        let stack_vma = VMA::new(
+            ustack_virt_bottom,
+            ustack_size as u64,
+            VmaPerms::RW,
+            VmaFlags { private: true, anonymous: true, fixed: true }
+        );
+        let _ = new_vma_manager.add_vma(stack_vma);
+        
+        // Code VMA (Entry point page)
+        let entry_page = loader.entry_point() & !0xFFF;
+        let code_vma = VMA::new(
+            entry_page,
+            4096,
+            VmaPerms::RX,
+            VmaFlags { private: true, anonymous: false, fixed: true }
+        );
+        let _ = new_vma_manager.add_vma(code_vma);
+        
+        // 8. Commit Changes (Point of no return)
+        // Drop old resources
+        self.vmm = Some(new_space);
+        self.user_stack = Some(new_user_stack);
+        self.vma_manager = new_vma_manager;
+        
+        // Reset signals?
+        self.sig_actions = [SigAction::default(); 32];
+        self.pending_signals = 0;
+        
+        // 9. Update Exception Frame
+        // We are modifying the frame that will be restored upon return from syscall.
+        frame.elr = loader.entry_point();
+        // frame.sp_el0 = ustack_virt_top & !0xF; // Not in frame
+        
+        // Update SP_EL0 directly
+        let new_sp = ustack_virt_top & !0xF;
+        unsafe {
+             core::arch::asm!("msr sp_el0, {}", in(reg) new_sp);
+        }
+        
+        frame.spsr = 0; // EL0t
+        frame.x[0] = 0; // argc?
+        frame.x[1] = 0; // argv?
+        
+        // Update TTBR0 in Context (though context is saved on stack, 
+        // switch_to uses the one in Agent struct? No, switch_to saves/restores from struct.
+        // But we are currently RUNNING. The context struct is stale until we switch out.
+        // However, we need to ensure that when we return to user mode, we use the NEW TTBR0.
+        // The exception return (eret) doesn't change TTBR0.
+        // We must manually switch TTBR0 before returning?
+        // OR, we rely on the fact that we are in kernel, and when we return, we are still in the same process context.
+        // But we just changed the VMM!
+        // The hardware TTBR0_EL1 is still pointing to the OLD table!
+        // We MUST update TTBR0_EL1 immediately.
+        
+        unsafe {
+            crate::arch::set_ttbr0(self.vmm.as_ref().unwrap().table_base());
+            crate::arch::tlb_invalidate_all();
+        }
+        
+        // Also update the context struct for future switches
+        self.context.ttbr0 = self.vmm.as_ref().unwrap().table_base();
+        
+        Ok(())
+    }
 }
 
 
@@ -301,5 +524,21 @@ extern "C" fn user_trampoline() {
         core::arch::asm!("mov {}, x21", out(reg) arg);
         
         crate::arch::jump_to_userspace(entry, stack, arg);
+    }
+}
+
+/// Trampoline to return from fork
+/// 
+/// Expects:
+///   x19 = Frame Pointer
+///   x20 = SP_EL0
+extern "C" fn fork_return_trampoline() {
+    unsafe {
+        let frame_ptr: u64;
+        let sp_el0: u64;
+        core::arch::asm!("mov {}, x19", out(reg) frame_ptr);
+        core::arch::asm!("mov {}, x20", out(reg) sp_el0);
+        
+        crate::arch::restore_exception_frame(frame_ptr as *const u8, sp_el0);
     }
 }

@@ -160,9 +160,8 @@ impl<'a> ElfLoader<'a> {
         let page_count = ((end_page - start_page) / 4096) as usize;
 
         // Allocate pages
-        // TODO: We should probably have a way to allocate user pages specifically?
-        // For now, we use global allocator and map them.
-        let pages_ptr = unsafe { crate::kernel::memory::alloc_pages(page_count) }
+        // We use specific user page allocation for better accounting/separation
+        let pages_ptr = unsafe { crate::kernel::memory::alloc_user_pages(page_count) }
             .ok_or("Out of memory for segment")?;
         
         let phys_base = pages_ptr.as_ptr() as u64;

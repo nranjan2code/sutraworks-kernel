@@ -31,6 +31,12 @@ impl LoopbackInterface {
     }
 }
 
+impl Default for LoopbackInterface {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetworkInterface for LoopbackInterface {
     fn send(&mut self, packet: &[u8]) -> Result<(), &'static str> {
         // Enqueue packet for reception
