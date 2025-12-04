@@ -40,6 +40,9 @@ pub struct PerceptionManager {
     sensors: Vec<Box<dyn ObjectDetector>>,
 }
 
+/// Global Perception Manager instance
+pub static PERCEPTION_MANAGER: SpinLock<PerceptionManager> = SpinLock::new(PerceptionManager { sensors: Vec::new() });
+
 impl PerceptionManager {
     /// Initialize the Perception Manager.
     /// Probes for hardware and sets up the appropriate backend.
@@ -59,6 +62,12 @@ impl PerceptionManager {
         Self {
             sensors,
         }
+    }
+
+    /// Initialize the global manager
+    pub fn init() {
+        let mut mgr = PERCEPTION_MANAGER.lock();
+        *mgr = Self::new();
     }
 
     /// Get the list of active sensors.
@@ -150,6 +159,11 @@ impl Default for PerceptionManager {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Initialize the perception subsystem
+pub fn init() {
+    PerceptionManager::init();
 }
 
 #[cfg(test)]

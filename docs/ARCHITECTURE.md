@@ -28,6 +28,8 @@ Intent Kernel is a **Perceptual Computing Platform**—a bare-metal operating sy
 │                                                                          │
 │  ConceptID → Intent → Broadcast Executor (1:N)                          │
 │  Pure semantic processing. No character handling.                       │
+│                                                                          │
+│  Listeners: [Executor] [Visual Layer] [Network] [Logger]                │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -189,6 +191,30 @@ impl IntentExecutor {
     }
 }
 ```
+
+---
+
+---
+
+## Semantic Visual Interface (SVI) ✨ NEW!
+
+The **Semantic Visual Interface** is the kernel's projection layer. Unlike traditional GUIs that "drive" the OS, the SVI is a **Broadcast Listener** that reflects the semantic state of the kernel.
+
+### Architecture
+
+```
+Intent Broadcast (1:N) ──▶ Visual Layer ──▶ Compositor ──▶ Projections ──▶ Framebuffer
+```
+
+### Projections
+Visual elements are ephemeral "projections" triggered by intents:
+- **StenoTape**: Real-time stroke visualization (Always active).
+- **IntentLog**: History of recognized intents.
+- **Status**: System statistics overlay (Triggered by `STATUS` intent).
+- **Perception**: Visualizes sensor data and object detection.
+- **MemoryGraph**: Visualizes HDC neural memory nodes.
+
+For full details, see [VISUAL_INTERFACE.md](VISUAL_INTERFACE.md).
 
 ---
 

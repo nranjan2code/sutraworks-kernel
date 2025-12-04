@@ -65,7 +65,13 @@
 - [x] **Multi-Core SMP**: 4-core scheduler with work stealing and affinity.
 - [x] **Userspace & Scheduling**: ELF Loader, Preemptive Scheduler, Syscalls.
 
-### Phase 7: Error Recovery & Resilience (Current Focus)
+### Phase 7: Semantic Visual Interface (SVI) ✅
+- [x] **Visual Layer**: Broadcast listener architecture (`kernel/src/visual`).
+- [x] **Projections**: StenoTape, IntentLog, Status, Help, Perception, MemoryGraph.
+- [x] **Compositor**: Z-order rendering and intent-reactive updates.
+- [x] **Migration**: Replaced legacy HUD with modular projection system.
+
+### Phase 8: Error Recovery & Resilience (Current Focus)
 - [ ] **Driver Watchdogs**: Reset mechanisms for USB, SD, Network, Hailo.
 - [ ] **Graceful Degradation**: CPU fallback for AI, Serial fallback for display.
 - [ ] **System Resilience**: Network re-init, Filesystem error recovery.

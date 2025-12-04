@@ -351,6 +351,16 @@ impl IntentExecutor {
     ) -> bool {
         self.handlers.register_with_options(concept_id, handler, name, priority, required_cap)
     }
+
+    /// Register a wildcard handler (receives all intents)
+    pub fn register_wildcard(
+        &mut self,
+        handler: HandlerFn,
+        name: &'static str,
+        priority: u8,
+    ) -> bool {
+        self.handlers.register_wildcard(handler, name, priority)
+    }
     
     /// Unregister a handler
     pub fn unregister_handler(&mut self, name: &'static str) -> bool {
@@ -437,6 +447,16 @@ pub fn register_handler(
 ) -> bool {
     let mut executor = EXECUTOR.lock();
     executor.register_handler(concept_id, handler, name)
+}
+
+/// Register a wildcard handler
+pub fn register_wildcard(
+    handler: HandlerFn,
+    name: &'static str,
+    priority: u8,
+) -> bool {
+    let mut executor = EXECUTOR.lock();
+    executor.register_wildcard(handler, name, priority)
 }
 
 /// Unregister a handler by name

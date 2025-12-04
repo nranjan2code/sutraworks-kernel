@@ -9,6 +9,7 @@
 use core::ptr::NonNull;
 // use alloc::alloc::alloc;
 use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 use crate::intent::ConceptID;
 use crate::arch::SpinLock;
 use super::hnsw::HnswIndex;
@@ -191,6 +192,11 @@ impl NeuralAllocator {
     /// Get count of allocated blocks
     pub fn count(&self) -> usize {
         self.total_items
+    }
+
+    /// Get all allocated nodes (for visualization)
+    pub fn get_all_nodes(&self) -> Vec<IntentPtr> {
+        self.index.values().copied().collect()
     }
 }
 

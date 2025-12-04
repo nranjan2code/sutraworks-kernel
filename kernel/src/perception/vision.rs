@@ -72,7 +72,7 @@ impl RandomProjection {
 }
 
 /// Trait for Object Detection capabilities.
-pub trait ObjectDetector {
+pub trait ObjectDetector: Send {
     /// Detect objects in a raw image buffer.
     fn detect(&self, image_data: &[u8], width: u32, height: u32) -> Result<heapless::Vec<DetectedObject, 16>, &'static str>;
     

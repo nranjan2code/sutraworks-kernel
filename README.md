@@ -377,6 +377,13 @@ Text output on HDMI display:
 cprintln!("Intent executed: {}", intent.name);
 ```
 
+### ✅ Semantic Visual Interface (SVI) ✨ NEW!
+A broadcast-based, intent-reactive GUI that reflects the kernel's semantic state.
+- **Projections**: Ephemeral visual elements (StenoTape, IntentLog, Status, Help).
+- **Perception Overlay**: Visualizes active sensors and object detections.
+- **Memory Graph**: Visualizes HDC neural memory nodes in real-time.
+- **Broadcast Listener**: The GUI observes intents rather than driving them.
+
 ### ✅ Userspace & Scheduling ✨ COMPLETE!
 Full preemptive multitasking OS capabilities:
 - **ELF Loading**: Loads standard ELF64 binaries from SD card.
@@ -467,7 +474,8 @@ intent-kernel/
 | **10** | Networking | ✅ ✨ | **TCP/IP Stack** (Ethernet, ARP, IPv4, ICMP, UDP, TCP) |
 | **11. Hardware** | ✅ ✨ | **Real Drivers**: PCIe Root Complex, RP1 Southbridge, **Hailo-8 (HCP, DMA, Inference)** |
 | **12. Userspace** | ✅ ✨ | **ELF Loader**, Preemptive Scheduler, Syscalls, User Mode (EL0) |
-| **13. Integration** | ✅ ✨ | **Integration Tests** (QEMU, RamFS, Loopback, Process Lifecycle) |
+| **13. Visual Interface** | ✅ ✨ | **SVI**: Broadcast-based GUI, Projections, Perception Overlay, Memory Graph |
+| **14. Integration** | ✅ ✨ | **Integration Tests** (QEMU, RamFS, Loopback, Process Lifecycle) |
 
 ### Test Coverage
 
@@ -524,6 +532,7 @@ Semantic-first kernel with multiple input paths. Everyone can use English; power
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design and data flow |
 | [ENHANCEMENTS.md](docs/ENHANCEMENTS.md) | ✨ Recent enhancements (Hailo, SMP, Storage, Networking) |
 | [ENGLISH_LAYER.md](docs/ENGLISH_LAYER.md) | Natural language I/O system |
+| [VISUAL_INTERFACE.md](docs/VISUAL_INTERFACE.md) | Semantic Visual Interface (SVI) guide |
 | [API.md](docs/API.md) | Complete API reference |
 | [ROADMAP.md](docs/ROADMAP.md) | Development phases |
 | [BUILDING.md](docs/BUILDING.md) | Build instructions |

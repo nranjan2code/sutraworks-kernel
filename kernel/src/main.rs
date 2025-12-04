@@ -135,6 +135,12 @@ pub extern "C" fn kernel_main() -> ! {
     kprintln!("[INIT] Input Engine (Steno Path)...");
     steno::init();
 
+    // Initialize Visual Layer (Semantic GUI)
+    kprintln!("[INIT] Visual Projection Layer...");
+    visual::init();
+    // Register as a wildcard listener (Priority 10 = Normal)
+    intent::register_wildcard(visual::create_handler(), "VisualLayer", 10);
+
     // Demo Neural Memory (HDC Edition)
     kprintln!("[INIT] Neural Memory Demo (HDC)...");
     unsafe {
@@ -195,15 +201,19 @@ pub extern "C" fn kernel_main() -> ! {
 
     // Initialize Perception Layer (Adaptive Hardware Support)
     kprintln!("[INIT] Perception Cortex...");
-    let perception_mgr = perception::PerceptionManager::new();
+    // Initialize Perception Layer (Adaptive Hardware Support)
+    kprintln!("[INIT] Perception Cortex...");
+    perception::init();
+    
+    let perception_mgr = perception::PERCEPTION_MANAGER.lock();
     kprintln!("       Active Sensors:");
     for sensor in perception_mgr.sensors() {
         kprintln!("       - {}", sensor.backend_name());
     }
 
-    // Initialize HUD
-    kprintln!("[INIT] Heads-Up Display...");
-    perception::hud::init();
+    // Initialize HUD (Legacy - now handled by Visual Layer)
+    // kprintln!("[INIT] Heads-Up Display...");
+    // perception::hud::init();
 
     // Initialize Filesystem
     kprintln!("[INIT] Filesystem...");
@@ -368,11 +378,11 @@ async fn usb_loop() {
                 cprintln!("[USB] Intent: {}", intent.name);
                 intent::execute(&intent);
                 
-                // Update HUD
-                perception::hud::update(stroke, Some(&intent));
+                // Update Visual Layer
+                visual::handle_stroke(&stroke);
             } else {
                 // Unknown stroke
-                perception::hud::update(stroke, None);
+                visual::handle_stroke(&stroke);
             }
         }
         
@@ -432,9 +442,9 @@ async fn steno_loop() {
              cprintln!("[INTENT] {}", intent.name);
              intent::execute(&intent);
              
-             // Update HUD
+             // Update Visual Layer
              if let Some(stroke) = steno::Stroke::from_steno(input) {
-                 perception::hud::update(stroke, Some(&intent));
+                 visual::handle_stroke(&stroke);
              }
              continue;
         }
@@ -445,9 +455,9 @@ async fn steno_loop() {
             cprintln!("[INTENT] {}", intent.name);
             intent::execute(&intent);
             
-            // Update HUD
+            // Update Visual Layer
             if let Some(stroke) = steno::Stroke::from_steno(input) {
-                perception::hud::update(stroke, Some(&intent));
+                visual::handle_stroke(&stroke);
             }
             continue;
         }
@@ -455,9 +465,9 @@ async fn steno_loop() {
         kprintln!("[STENO] No match for: {}", input);
         cprintln!("Unknown command or stroke: {}", input);
         
-        // Update HUD for unrecognized stroke
+        // Update Visual Layer for unrecognized stroke
         if let Some(stroke) = steno::Stroke::from_steno(input) {
-            perception::hud::update(stroke, None);
+            visual::handle_stroke(&stroke);
         }
     }
 }
