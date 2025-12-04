@@ -947,4 +947,15 @@ Enable users to build applications by simple intent expression.
 
 **Lines**: 800
 
+### 12.4 Security Hardening (Session 4)
+**File**: `kernel/src/intent/security.rs` (NEW FILE)
+
+**Tasks**:
+- [ ] **Privileged Intents**: Reserve `ConceptID` range for kernel-only commands (Reboot, Shutdown).
+- [ ] **Handler Manifests**: Enforce static declaration of intent subscriptions (prevent dynamic wildcard snooping).
+- [ ] **Intent Signing**: Implement cryptographic signatures for `IntentManifest` files to prevent tampering.
+- [ ] **Queue Protection**: Implement rate limiting and quota management for `IntentQueue` to prevent flooding.
+
+**Lines**: 400
+
 ---
