@@ -16,6 +16,8 @@ use crate::kernel::capability::{
 
 pub mod handlers;
 pub mod queue;
+pub mod manifest;
+pub mod linker;
 
 pub use handlers::{HandlerRegistry, HandlerResult, HandlerFn, HandlerEntry};
 pub use queue::{IntentQueue, QueuedIntent, Priority};

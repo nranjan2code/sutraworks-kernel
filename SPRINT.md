@@ -33,8 +33,9 @@ Each sprint delivers ONE complete, production-grade component with:
 | 8 | Error Recovery | 500 | ✅ **COMPLETE** | 2/2 | 100% |
 | 9 | Test Suite | 2000 | 🟡 **IN PROGRESS** | 3/4 | 75% |
 | 10 | Performance Optimization | 1000 | ⏳ Planned | 0/3 | 0% |
+| 11 | Intent-Native Apps | 1500 | ⏳ Planned | 0/4 | 0% |
 
-**Total**: ~12,500 LOC production code across 10 sprints
+**Total**: ~14,000 LOC production code across 11 sprints
 
 ---
 
@@ -903,3 +904,47 @@ Optimize for production workload.
 **Sprint 9 Complete**
 
 **Next Session**: Sprint 9.3 (Hardware Tests) or Sprint 10 (Performance)
+
+# 📋 Sprint 12: Intent-Native Apps
+
+## Objective
+Enable users to build applications by simple intent expression.
+
+## Deliverables
+
+### 12.1 Intent Manifest Engine (Session 1)
+**File**: `kernel/src/intent/manifest.rs` (extend)
+
+**Tasks**:
+- [ ] Implement `IntentManifest` parser (YAML/JSON support)
+- [ ] Implement `FlowExecutor` state machine
+- [ ] Add variable resolution logic (`[Food: String]`)
+- [ ] Integrate with `IntentExecutor` broadcast system
+
+**Lines**: 600
+
+### 12.2 Semantic Linker (Session 2)
+**File**: `kernel/src/intent/linker.rs` (extend)
+
+**Tasks**:
+- [ ] Implement real HDC-based capability resolution
+- [ ] Create `SkillRegistry` for dynamic capability discovery
+- [ ] Implement "Just-in-Time" linking logic
+- [ ] Add `find_skill_by_description(desc: &str)`
+
+**Lines**: 500
+
+### 12.3 Skill System (Session 3)
+**File**: `kernel/src/intent/skills/mod.rs` (NEW FILE)
+
+**Tasks**:
+- [ ] Define `Skill` trait and interface
+- [ ] Create standard library of skills:
+    - [ ] `DatabaseSkill` (Simple Key-Value Store)
+    - [ ] `NotificationSkill` (HUD Alerts)
+    - [ ] `TimerSkill` (System Timer)
+- [ ] Implement WASM runtime for sandboxed skills (Optional)
+
+**Lines**: 800
+
+---

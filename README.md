@@ -392,6 +392,12 @@ Full preemptive multitasking OS capabilities:
 - **System Calls**: `yield`, `sleep`, `print`, `exit`, and File I/O.
 - **User Program**: `no_std` Rust userland support.
 
+### ✅ Intent-Native Apps ✨ NEW!
+The OS supports "Programming without Code" via **Intent Manifests**.
+- **Declarative Apps**: Define apps as a graph of `[Trigger] -> [Intent] -> [Action]`.
+- **Semantic Linking**: The kernel resolves intents to capabilities at runtime using HDC.
+- **Just-in-Time Assembly**: "I want to track calories" automatically links to the best available database and storage skills.
+
 ---
 
 ## Project Structure
