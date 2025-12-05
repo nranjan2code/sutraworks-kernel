@@ -6,7 +6,7 @@ Intent Kernel's deterministic timing and minimal jitter make it suitable for **i
 
 | Challenge | Linux/RTOS | Intent Kernel |
 |-----------|------------|---------------|
-| Timing jitter | 1-10ms | 187 cycles (~75ns) max |
+| Timing jitter | 1-10ms | 188 cycles (~75ns) max |
 | Worst-case latency | Unbounded (Linux) | Bounded, deterministic |
 | Control loop frequency | 1-10 kHz typical | >100 kHz possible |
 | Codebase audit | Millions of LOC | ~15,000 LOC (auditable) |
@@ -167,7 +167,7 @@ vs. Traditional: 10-50ms (multiple protection coordination delays)
 **Intent Kernel Advantage**:
 ```
 Vision System → PRODUCT_POSITION → Conveyor Controller
-                ~55 cycles          Robot Arm Controller
+                ~10 cycles          Robot Arm Controller
                                    (both receive simultaneously)
 ```
 
@@ -180,8 +180,8 @@ Vision System → PRODUCT_POSITION → Conveyor Controller
 | Sensor read | ~10 | ~4ns | 100kHz+ sampling |
 | Intent broadcast | 0 | <1ns | Synchronized multi-device |
 | Actuator command | ~50 | ~21ns | Immediate response |
-| Max jitter | 187 | ~75ns | Deterministic timing |
-| Context switch | 433 | ~175ns | Fast task switching |
+| Max jitter | 188 | ~75ns | Deterministic timing |
+| Context switch | 420 | ~168ns | Fast task switching |
 
 ## Control Loop Comparison
 

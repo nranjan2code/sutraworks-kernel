@@ -48,9 +48,9 @@ use-cases/
 
 | Domain | Key Requirement | Why Intent Kernel? |
 |--------|----------------|-------------------|
-| **Edge AI** | Real-time inference | 139-cycle neural alloc, semantic memory |
-| **Robotics** | Sensor-to-action latency | 55-cycle perception pipeline |
-| **Industrial IoT** | Deterministic timing | 187-cycle max jitter |
+| **Edge AI** | Real-time inference | 230-cycle neural alloc, semantic memory |
+| **Robotics** | <1μs control loops | Bounded latency, 0-cycle broadcast |
+| **Industrial IoT** | Deterministic timing | 188-cycle max jitter |
 | **Accessibility** | Responsive input | 37-cycle input processing |
 | **AR/VR/XR** | Motion-to-photon | Sub-microsecond perception |
 | **Healthcare** | Reliable monitoring | Zero-overhead security |

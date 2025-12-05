@@ -8,7 +8,7 @@ Intent Kernel's deterministic timing and broadcast architecture make it ideal fo
 |-----------|------------|---------------|
 | Sensor → Decision | 10-50ms | <1μs |
 | Control loop frequency | 100-1000 Hz | >100 kHz possible |
-| Timing jitter | 1-10ms | 187 cycles (~75ns) max |
+| Timing jitter | 1-10ms | 188 cycles (~75ns) max |
 | Multi-sensor fusion | Complex pub/sub | Native perception pipeline |
 | Emergency stop | Interrupt-based | Intent broadcast (0 cycles) |
 
@@ -31,7 +31,7 @@ For a robot moving at 1 m/s, 50ms latency means **5cm of uncontrolled motion**.
 Intent Kernel Stack:
 Sensor → Perception → Intent Broadcast → Motor Control
            ↓              ↓                  ↓
-         ~55 cycles    0 cycles           <100 cycles
+         <10 cycles    0 cycles           <100 cycles
          
 Total: <200ns
 ```
@@ -73,7 +73,7 @@ Position Sensor → ConceptID::POSITION → Trajectory Planner
 ```
 LiDAR ────┐
 Camera ───┼──→ Perception Manager ──→ OBSTACLE_DETECTED ──→ All Listeners
-IMU ──────┘         55 cycles             0 cycles
+IMU ──────┘         <10 cycles            0 cycles
 
 Listeners:
 ├─ Path Planner (replans route)
@@ -150,9 +150,9 @@ IMU ──→ GAIT_PHASE ──→ Trajectory Planner
 | Operation | Cycles | Time | Robotics Impact |
 |-----------|--------|------|-----------------|
 | Sensor read | ~10 | ~4ns | 100kHz sampling possible |
-| Perception pipeline | 55 | ~23ns | Real-time fusion |
+| Perception pipeline | <10 | ~4ns | Real-time fusion |
 | Intent broadcast | 0 | <1ns | All systems notified instantly |
-| Context switch | 433 | ~175ns | Fast task handoff |
+| Context switch | 420 | ~168ns | Fast task handoff |
 | Motor command | ~50 | ~20ns | Immediate response |
 
 **Total sensor-to-actuator**: <500ns (vs. 10-50ms ROS2)
@@ -204,14 +204,14 @@ intent::register_handler_with_priority(
 
 ```
 t=0:        LiDAR detects human at 0.48m
-t=55 cycles: Perception pipeline identifies as human
-t=55 cycles: HUMAN_DETECTED intent broadcast
-t=55 cycles: Emergency stop handler executes
-t=56 cycles: EMERGENCY_STOP broadcast to motors
-t=60 cycles: All 6 motor controllers receive stop
-t=100 cycles: Motors begin braking
+t=10 cycles: Perception pipeline identifies as human
+t=10 cycles: HUMAN_DETECTED intent broadcast
+t=10 cycles: Emergency stop handler executes
+t=11 cycles: EMERGENCY_STOP broadcast to motors
+t=15 cycles: All 6 motor controllers receive stop
+t=50 cycles: Motors begin braking
 ────────────────────────────────────
-Total: ~100 cycles = ~40ns from detection to motor brake
+Total: ~50 cycles = ~20ns from detection to motor brake
 ```
 
 ## Integration with ROS2

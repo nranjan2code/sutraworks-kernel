@@ -129,7 +129,7 @@ Force Sensors → Intent Broadcast → All Actuators
                 0 cycles          synchronized response
 
 IMU → ABNORMAL_MOTION → Emergency Soft-Stop
-      55 cycles       0 cycles to all motors
+      <10 cycles      0 cycles to all motors
 ```
 
 **Result**: Natural-feeling assistance with instant safety response.
@@ -188,7 +188,7 @@ Ultrasound Probe → Hailo-8 (AI Analysis) → DIAGNOSIS_RESULT
 | Sensor read | ~10 | ~4ns | No missed samples |
 | Alarm trigger | 0 | <1ns | Instant notification |
 | Intent broadcast | 0 | <1ns | All systems sync |
-| Max jitter | 187 | ~75ns | Predictable timing |
+| Max jitter | 188 | ~75ns | Predictable timing |
 
 ## Regulatory Considerations
 

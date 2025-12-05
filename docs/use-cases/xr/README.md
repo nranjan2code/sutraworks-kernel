@@ -7,9 +7,9 @@ Intent Kernel's sub-microsecond perception pipeline makes it suitable for **XR a
 | Challenge | Standard OS | Intent Kernel |
 |-----------|-------------|---------------|
 | Motion-to-photon | 20-50ms | <5ms possible |
-| Perception fusion | 10-20ms | 55 cycles (~23ns) |
-| Input latency | 5-20ms | 37 cycles (~15ns) |
-| Tracking jitter | Variable | 187 cycles max |
+| Perception fusion | 10-20ms | <10 cycles (~4ns) |
+| Input latency | 5-20ms | 43 cycles (~17ns) |
+| Tracking jitter | Variable | 188 cycles max |
 | Prediction accuracy | Lower (high latency) | Higher (low latency) |
 
 ## The XR Latency Problem
@@ -45,7 +45,7 @@ IMU → Perception → Rendering → Display
 ```
 IMU @ 1kHz ────────────┐
 Camera @ 90Hz ─────────┼──→ Perception Manager ──→ POSE_UPDATE
-Depth Sensor @ 60Hz ───┘         55 cycles
+Depth Sensor @ 60Hz ───┘         <10 cycles
 
 POSE_UPDATE broadcasts to:
 ├─ Reprojection Engine (warps partial frame)
@@ -151,7 +151,7 @@ Total passthrough latency: <8ms (vs. 30-50ms typical)
 | Operation | Cycles | Time | XR Impact |
 |-----------|--------|------|-----------|
 | IMU read | ~10 | ~4ns | 100kHz+ tracking possible |
-| Pose estimation | 55 | ~23ns | Negligible OS overhead |
+| Pose estimation | <10 | ~4ns | Negligible OS overhead |
 | Intent broadcast | 0 | <1ns | All systems sync perfectly |
 | Hand tracking fusion | ~100 | ~42ns | Real-time gesture recognition |
 
@@ -162,9 +162,9 @@ With Intent Kernel handling perception, the budget becomes:
 ```
 Motion occurs:                 t=0
 IMU read:                      t=0.004ns
-Perception pipeline:           t=0.023ns (23ns)
-Intent broadcast:              t=0.024ns
-Reprojection/Timewarp start:   t=0.025ns
+Perception pipeline:           t=0.008ns
+Intent broadcast:              t=0.009ns
+Reprojection/Timewarp start:   t=0.010ns
 GPU render submit:             t=0.1ms
 GPU execution:                 t=1-5ms (varies)
 Display scanout:               t=5-10ms (varies by display)
@@ -231,11 +231,11 @@ intent::register_handler(
 t=0:          IMU interrupt fires
 t=10 cycles:  Data read from SPI
 t=11 cycles:  IMU_UPDATE broadcast
-t=50 cycles:  Sensor fusion complete
-t=51 cycles:  POSE_UPDATE broadcast
-t=52 cycles:  Renderer, Audio, Haptics all updated
+t=20 cycles:  Sensor fusion complete
+t=21 cycles:  POSE_UPDATE broadcast
+t=22 cycles:  Renderer, Audio, Haptics all updated
 ────────────────────────────────────
-Total: ~52 cycles = ~22ns from IMU to all systems updated
+Total: ~22 cycles = ~9ns from IMU to all systems updated
 ```
 
 ## Power Efficiency for Mobile XR

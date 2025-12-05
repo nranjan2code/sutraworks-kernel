@@ -145,9 +145,9 @@ Intent Kernel natively supports **multiple input modalities**, critical for acce
 |--------------|---------|----------|
 | Physical switch | 37 cycles | Motor impairment |
 | Eye tracker | ~175ns dispatch | Gaze control |
-| Voice command | 187 cycles parse | Hands-free |
-| EMG sensor | ~55 cycles | Myoelectric prosthetics |
-| BCI | ~55 cycles | Locked-in syndrome |
+| Voice command | 208 cycles parse | Hands-free |
+| EMG sensor | <10 cycles | Myoelectric prosthetics |
+| BCI | <10 cycles | Locked-in syndrome |
 | Sip-and-puff | 37 cycles | Quadriplegia |
 
 **All inputs converge to the same ConceptID → Intent → Action pipeline.**
@@ -157,7 +157,7 @@ Intent Kernel natively supports **multiple input modalities**, critical for acce
 | Operation | Cycles | Time | Accessibility Impact |
 |-----------|--------|------|---------------------|
 | Switch input | 37 | ~15ns | Instant response |
-| Command parse | 187 | ~78ns | Natural language support |
+| Command parse | 208 | ~83ns | Natural language support |
 | Intent broadcast | 0 | <1ns | All outputs updated simultaneously |
 | TTS trigger | ~50 | ~21ns | Immediate speech |
 | Display update | ~100 | ~42ns | Instant visual feedback |

@@ -7,8 +7,8 @@ Intent Kernel's semantic memory and perception pipeline make it ideal for **edge
 | Challenge | Traditional OS | Intent Kernel |
 |-----------|---------------|---------------|
 | Inference trigger | 5-20ms syscall | 0-cycle intent dispatch |
-| Result storage | File/memory copy | 139-cycle semantic alloc |
-| Multi-model fusion | Complex IPC | 55-cycle perception pipeline |
+| Result storage | File/memory copy | 230-cycle ConceptID alloc |
+| Multi-model fusion | Complex IPC | 0-cycle intent broadcast |
 | Sensor polling | Interrupt latency | Direct memory-mapped I/O |
 
 ## Target Applications
@@ -59,7 +59,7 @@ Microphone → Audio Features → Classification → ConceptID → Action
 Intent Kernel Fusion:
 Camera ────┐
 Lidar  ────┼──→ Perception Manager ──→ Unified World Model
-IMU    ────┘         55 cycles
+IMU    ────┘         <10 cycles
 
 Traditional Fusion:
 Camera ──→ ROS Node ──┐
@@ -105,12 +105,12 @@ The architecture supports any NPU/TPU with:
 
 | Operation | Cycles | Time @ 2.4GHz |
 |-----------|--------|---------------|
-| Neural memory alloc | 139 | ~58ns |
-| Perception pipeline | 55 | ~23ns |
+| Neural memory alloc | 230 | ~92ns |
+| Perception pipeline | <10 | ~4ns |
 | Sensor fusion (N:1) | 0 | <1ns |
-| Object → ConceptID | ~100 | ~42ns |
+| Object → ConceptID | 0 | <1ns |
 
-**Total perception latency**: <200ns (vs. 50-100ms traditional)
+**Total perception latency**: <100ns (vs. 50-100ms traditional)
 
 ## Example: Smart Security Camera
 
@@ -145,7 +145,7 @@ perception::start_pipeline(vec![
 ```
 t=0:      Frame captured
 t=2ms:    Hailo-8 inference complete
-t=2.0001: Detection → ConceptID (200ns)
+t=2.0001: Detection → ConceptID (0ns)
 t=2.0002: Intent broadcast (0 cycles)
 t=2.0003: Handler executes (0 cycles)
 t=2.0004: Alert triggered
