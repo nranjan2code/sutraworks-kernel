@@ -257,19 +257,21 @@ impl HandlerRegistry {
 mod tests {
     use super::*;
     
-    static mut TEST_COUNTER: u32 = 0;
+    use core::sync::atomic::{AtomicU32, Ordering};
+    
+    static TEST_COUNTER: AtomicU32 = AtomicU32::new(0);
     
     fn test_handler_a(_: &Intent) -> HandlerResult {
-        unsafe { TEST_COUNTER += 1; }
+        TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
         HandlerResult::Handled
     }
     
     fn test_handler_b(_: &Intent) -> HandlerResult {
-        unsafe { TEST_COUNTER += 10; }
+        TEST_COUNTER.fetch_add(10, Ordering::Relaxed);
         HandlerResult::StopPropagation
     }
     
-    fn pass_through_handler(_: &Intent) -> HandlerResult {
+    fn _pass_through_handler(_: &Intent) -> HandlerResult {
         HandlerResult::NotHandled
     }
     
@@ -289,7 +291,7 @@ mod tests {
     #[test]
     fn test_dispatch_specific() {
         let mut registry = HandlerRegistry::new();
-        unsafe { TEST_COUNTER = 0; }
+        TEST_COUNTER.store(0, Ordering::Relaxed);
         
         registry.register(ConceptID(0x0001), test_handler_a, "test_a");
         
@@ -297,13 +299,13 @@ mod tests {
         let handled = registry.dispatch(&intent, |_| true);
         
         assert!(handled);
-        unsafe { assert_eq!(TEST_COUNTER, 1); }
+        assert_eq!(TEST_COUNTER.load(Ordering::Relaxed), 1);
     }
     
     #[test]
     fn test_dispatch_priority() {
         let mut registry = HandlerRegistry::new();
-        unsafe { TEST_COUNTER = 0; }
+        TEST_COUNTER.store(0, Ordering::Relaxed);
         
         // Lower priority
         registry.register_with_options(
@@ -327,13 +329,13 @@ mod tests {
         registry.dispatch(&intent, |_| true);
         
         // Only high priority should run (adds 10) because it returns StopPropagation
-        unsafe { assert_eq!(TEST_COUNTER, 10); }
+        assert_eq!(TEST_COUNTER.load(Ordering::Relaxed), 10);
     }
     
     #[test]
     fn test_dispatch_broadcast() {
         let mut registry = HandlerRegistry::new();
-        unsafe { TEST_COUNTER = 0; }
+        TEST_COUNTER.store(0, Ordering::Relaxed);
         
         // Handler A (adds 1)
         registry.register(ConceptID(0x0001), test_handler_a, "handler_a");
@@ -345,7 +347,7 @@ mod tests {
         registry.dispatch(&intent, |_| true);
         
         // Both should run
-        unsafe { assert_eq!(TEST_COUNTER, 2); }
+        assert_eq!(TEST_COUNTER.load(Ordering::Relaxed), 2);
     }
     
     #[test]
@@ -361,5 +363,11 @@ mod tests {
         assert_eq!(registry.len(), 1);
         
         assert!(!registry.unregister("nonexistent"));
+    }
+}
+
+impl Default for HandlerRegistry {
+    fn default() -> Self {
+        Self::new()
     }
 }

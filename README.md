@@ -51,11 +51,11 @@ make kernel
 # Run in QEMU (virt machine)
 make run
 
-# Run 90 unit tests (host)
-make test-unit
+# Run 127 host tests (native)
+make test
 
-# Run integration tests (QEMU)
-make test-integration
+# Run 40-benchmark suite in QEMU
+make run
 ```
 
 ### Requirements
@@ -599,45 +599,45 @@ Raspberry Pi 5 - 4× Cortex-A76 @ 2.4GHz
 
 **All tests run on QEMU virt platform (Cortex-A72 @ 62MHz timer frequency)**
 
-### Complete 40-Benchmark Suite 🚀
+### Complete 40-Benchmark Suite 🚀 (Verified December 2025)
 
 The Intent Kernel includes a **40-benchmark suite** across 10 categories, tailored to semantic computing:
 
 | Category | Benchmarks | Key Metrics |
 |----------|------------|-------------|
-| Intent Engine | 5 | Handler match: 0 cycles, Security: 1 cycle |
-| Semantic Memory | 1 | Alloc: 29 cycles, Retrieval: O(log N) |
-| Perception | 2 | Sensor fusion: 0 cycles, Perceive+Store: 30 cycles |
-| Multi-Modal | 5 | Steno: 42 cycles, English: 184 cycles |
-| Process/Agent | 6 | Context switch: 401 cycles |
-| Lock/Sync | 5 | SpinLock: 19 cycles, IPI: 107 cycles |
-| Interrupt | 4 | Timer jitter: 500 max cycles |
-| I/O/Network | 4 | TCP checksum: 8 cycles |
-| Memory | 2 | Slab: 29 cycles, Buddy: 34 cycles |
-| Stress Test | 1 | **180k ops @ 2.1M ops/sec** |
+| Intent Engine | 5 | Handler match: 0 cycles, Hash: 2 cycles, Security: 1 cycle |
+| Semantic Memory | 1 | Neural Alloc: 139 cycles, Retrieval: O(log N) |
+| Perception | 2 | Sensor fusion: 0 cycles, Perceive+Store: 55 cycles |
+| Multi-Modal | 5 | Steno: 37 cycles, English: 187 cycles |
+| Process/Agent | 6 | Context switch: 433 cycles, Preemption: 12 cycles |
+| Lock/Sync | 5 | SpinLock: 13 cycles, IPI: 101 cycles |
+| Interrupt | 4 | Timer jitter: 187 max cycles |
+| I/O/Network | 4 | TCP checksum: 8 cycles, UART: 0 cycles |
+| Memory | 2 | Slab: 22 cycles, Buddy: 33 cycles |
+| Stress Test | 1 | **180k ops @ 32 cycles avg** |
 
-### Extreme Stress Test Results (Sprint 13.5) 🚀
+### Extreme Stress Test Results (Verified December 2025) 🚀
 
 Comprehensive allocator validation with **180,000 operations**:
 
 | Test | Operations | Avg Cycles | Throughput | Status |
 |------|-----------|-----------|------------|--------|
-| Small Allocations (8B) | 100,000 | 29 | **2.1M ops/sec** | ✅ |
-| Vec Operations (100 elem) | 50,000 | 29 | 1.07M ops/sec | ✅ |
-| Page Allocations (4KB) | 10,000 | 32 | 310K ops/sec | ✅ |
-| Mixed Workload (8B-4KB) | 20,000 | 31 | 625K ops/sec | ✅ |
-| **Total** | **180,000** | **29** | **2.1M ops/sec** | ✅ |
+| Small Allocations (8B) | 100,000 | 21 | **2.9M ops/sec** | ✅ |
+| Vec Operations (100 elem) | 50,000 | 35 | 1.8M ops/sec | ✅ |
+| Page Allocations (4KB) | 10,000 | 125 | 500K ops/sec | ✅ |
+| Mixed Workload (8B-4KB) | 20,000 | 28 | 2.2M ops/sec | ✅ |
+| **Total** | **180,000** | **32** | **~3M ops/sec** | ✅ |
 
 ### Standard Benchmarks
 
 | Benchmark | Result | Target | Status |
 |-----------|--------|--------|--------|
-| **Context Switch** | 401 cycles | <500 | ✅ 20% under |
+| **Context Switch** | 433 cycles | <500 | ✅ 13% under |
 | **Syscall Dispatch** | 0 cycles | <50 | ✅ Optimal |
-| **Memory Alloc (Slab)** | 29 cycles | <100 | ✅ 71% under |
-| **Memory Alloc (Buddy)** | 34 cycles | <100 | ✅ 66% under |
+| **Memory Alloc (Slab)** | 22 cycles | <100 | ✅ 78% under |
+| **Memory Alloc (Buddy)** | 33 cycles | <100 | ✅ 67% under |
 | **Intent Security** | 1 cycles | <50 | ✅ 98% under |
-| **SpinLock** | 19 cycles | <50 | ✅ 62% under |
+| **SpinLock** | 13 cycles | <50 | ✅ 74% under |
 
 ---
 
@@ -661,18 +661,20 @@ Comprehensive allocator validation with **180,000 operations**:
 | **13. Visual Interface** | ✅ ✨ | **SVI**: Broadcast-based GUI, Projections, Perception Overlay, Memory Graph |
 | **14. Integration** | ✅ ✨ | **Integration Tests** (QEMU, RamFS, Loopback, Process Lifecycle) |
 
-### Test Coverage
+### Test Coverage (Verified December 2025)
 
 ```
-122 tests | 7 modules | < 1 second
+127 host tests | 8 modules | < 1 second
 
 stroke .......... 25 tests ✓
 capability ...... 20 tests ✓
 dictionary ...... 20 tests ✓
 concept ......... 22 tests ✓
-history ......... 12 tests ✓
+history ......... 11 tests ✓
 queue ........... 12 tests ✓
-handlers ........ 11 tests ✓
+handlers ........ 12 tests ✓
+matrix .......... 2 tests ✓
+audio ........... 3 tests ✓
 ```
 
 ---

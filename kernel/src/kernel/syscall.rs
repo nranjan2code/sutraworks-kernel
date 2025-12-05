@@ -275,7 +275,7 @@ fn sys_print(ptr: u64, len: u64) -> u64 {
 
     if !valid { return u64::MAX; }
 
-    match crate::kernel::memory::validate_user_str(ptr_raw, len) {
+    match unsafe { crate::kernel::memory::validate_user_str(ptr_raw, len) } {
         Ok(s) => {
             crate::kprint!("{}", s);
             0

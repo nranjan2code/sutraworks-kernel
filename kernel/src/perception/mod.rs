@@ -116,7 +116,7 @@ impl PerceptionManager {
             // Store in Neural Memory
             // We store the object metadata as the payload.
             unsafe {
-                if let Some(mut ptr) = allocator.alloc(core::mem::size_of::<DetectedObject>(), concept_id) {
+                if let Some(ptr) = allocator.alloc(core::mem::size_of::<DetectedObject>(), concept_id) {
                      core::ptr::write(ptr.ptr.as_ptr() as *mut DetectedObject, obj);
                 }
             }
@@ -137,7 +137,7 @@ impl PerceptionManager {
             let concept_id = ConceptID(0x500D_0000 | event.class_id as u64);
             
             unsafe {
-                if let Some(mut ptr) = allocator.alloc(core::mem::size_of::<audio::AudioEvent>(), concept_id) {
+                if let Some(ptr) = allocator.alloc(core::mem::size_of::<audio::AudioEvent>(), concept_id) {
                     core::ptr::write(ptr.ptr.as_ptr() as *mut audio::AudioEvent, event);
                 }
             }

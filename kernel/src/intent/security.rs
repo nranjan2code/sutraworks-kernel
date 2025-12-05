@@ -58,7 +58,7 @@ impl RateLimiter {
             sources: BTreeMap::new(),
             max_tokens: 100,      // Allow burst of 100 rapid intents
             refill_rate: 1000,    // Refill at 1000 tokens/second
-            refill_interval_ms: 1000 / 1000 as u64, // 1ms interval
+            refill_interval_ms: 1, // 1ms interval (1000/1000)
         }
     }
     
@@ -504,5 +504,29 @@ mod tests {
         
         // Check violation was logged
         assert_eq!(security.get_violation_count(SecurityViolation::PrivilegeEscalation), 1);
+    }
+}
+
+impl Default for IntentSecurity {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Default for HandlerIntegrityChecker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Default for RateLimiter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Default for PrivilegeChecker {
+    fn default() -> Self {
+        Self::new()
     }
 }

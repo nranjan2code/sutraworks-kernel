@@ -155,7 +155,7 @@ mod tests {
     #[test]
     fn test_expand_phrase() {
         assert_eq!(expand("quit now"), "exit now");
-        assert_eq!(expand("show sys info"), "show system information");
+        assert_eq!(expand("show sys info"), "show system status");
     }
 
     #[test]

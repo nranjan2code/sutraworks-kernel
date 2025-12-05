@@ -117,7 +117,7 @@ pub static PHRASES: &[PhraseEntry] = &[
     // ═══════════════════════════════════════════════════════════════════════════
     PhraseEntry::new("undo", concepts::UNDO),
     PhraseEntry::new("undo last", concepts::UNDO),
-    PhraseEntry::new("go back", concepts::UNDO),
+    PhraseEntry::new("step back", concepts::UNDO),
     PhraseEntry::new("reverse", concepts::UNDO),
     PhraseEntry::new("cancel last", concepts::UNDO),
     PhraseEntry::new("take back", concepts::UNDO),
@@ -192,7 +192,7 @@ pub static PHRASES: &[PhraseEntry] = &[
     PhraseEntry::new("grep", concepts::SEARCH),
     PhraseEntry::new("look up", concepts::SEARCH),
     PhraseEntry::new("where is", concepts::SEARCH),
-    PhraseEntry::new("show me", concepts::SEARCH),
+    PhraseEntry::new("display results", concepts::SEARCH),
 
     // ═══════════════════════════════════════════════════════════════════════════
     // CONFIRMATION (8 variations each)

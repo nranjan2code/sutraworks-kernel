@@ -124,15 +124,13 @@ impl ArpCache {
         let now = crate::drivers::timer::uptime_ms();
         const ARP_TIMEOUT_MS: u64 = 20 * 60 * 1000; // 20 minutes per RFC 826
         
-        for entry in &self.entries {
-            if let Some(e) = entry {
-                if e.ip == ip {
-                    // Check if entry has expired
-                    if now.saturating_sub(e.timestamp_ms) < ARP_TIMEOUT_MS {
-                        return Some(e.mac);
-                    }
-                    // Entry expired, will be replaced
+        for entry in self.entries.iter().flatten() {
+            if entry.ip == ip {
+                // Check if entry has expired
+                if now.saturating_sub(entry.timestamp_ms) < ARP_TIMEOUT_MS {
+                    return Some(entry.mac);
                 }
+                // Entry expired, will be replaced
             }
         }
         None
@@ -142,13 +140,11 @@ impl ArpCache {
         let now = crate::drivers::timer::uptime_ms();
         
         // Check if already exists (update timestamp)
-        for entry in &mut self.entries {
-            if let Some(e) = entry {
-                if e.ip == ip {
-                    e.mac = mac;
-                    e.timestamp_ms = now;
-                    return;
-                }
+        for entry in self.entries.iter_mut().flatten() {
+            if entry.ip == ip {
+                entry.mac = mac;
+                entry.timestamp_ms = now;
+                return;
             }
         }
         

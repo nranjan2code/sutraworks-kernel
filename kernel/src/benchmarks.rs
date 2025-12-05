@@ -528,7 +528,7 @@ fn bench_extreme_allocator_stress() {
 fn bench_intent_broadcast() {
     kprintln!("[BENCH] Intent Handler Dispatch (Raw)...");
     
-    use crate::intent::{Intent, ConceptID};
+
     use crate::steno::dictionary::concepts;
     
     let iterations = 10_000;
@@ -631,7 +631,7 @@ fn bench_neural_alloc() {
     
     for i in 0..iterations {
         let mut allocator = NEURAL_ALLOCATOR.lock();
-        let concept = ConceptID::new(0xBEEF_0000 | i as u64);
+        let concept = ConceptID::new(0xBEEF_0000 | i);
         // SAFETY: We're measuring allocation cost, not using the memory
         let _ptr = unsafe { allocator.alloc(64, concept) };
         core::hint::black_box(_ptr);
@@ -864,14 +864,14 @@ fn bench_security_pipeline() {
     use crate::intent::ConceptID;
     
     let iterations = 1_000;
-    let mut limiter = RateLimiter::new();
+    let _limiter = RateLimiter::new();
     let checker = PrivilegeChecker::new();
     
     let start = profiling::rdtsc();
     
     for i in 0..iterations {
         // Measure security check overhead without rate limiting blocking
-        let concept = ConceptID::new(0x0001_0000 | i as u64);
+        let concept = ConceptID::new(0x0001_0000 | i);
         let _allowed = checker.check_privilege(concept, PrivilegeLevel::User);
         core::hint::black_box(_allowed);
     }
@@ -928,7 +928,7 @@ fn bench_perceive_and_store() {
     for i in 0..iterations {
         // Simulate perception result -> neural memory
         // No hypervector generation needed
-        let concept = ConceptID::new(0xCAFE_0000 | i as u64);
+        let concept = ConceptID::new(0xCAFE_0000 | i);
         
         let mut allocator = NEURAL_ALLOCATOR.lock();
         if let Some(_ptr) = unsafe { allocator.alloc(32, concept) } {
@@ -1362,7 +1362,7 @@ fn bench_ethernet_tx() {
     kprintln!("[BENCH] Ethernet TX...");
     
     let iterations = 1_000;
-    let packet_size = 1500;
+    let _packet_size = 1500;
     
     let start = profiling::rdtsc();
     

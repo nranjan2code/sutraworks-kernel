@@ -64,8 +64,11 @@ impl WatchdogCore {
             // Health check every cycle
             self.check_heartbeats();
 
-            // Deadlock detection every 10 cycles
-            if cycle_count % 10 == 0 {
+
+            
+            // Heavy check every 100 cycles
+            // Heavy check every 100 cycles
+            if cycle_count.is_multiple_of(100) {
                 if let Some(deadlocked_tasks) = deadlock::detect_circular_wait() {
                     self.alert(Alert::DeadlockDetected(deadlocked_tasks));
                     self.handle_deadlock();
@@ -73,7 +76,7 @@ impl WatchdogCore {
             }
 
             // Memory check every 100 cycles
-            if cycle_count % 100 == 0 {
+            if cycle_count.is_multiple_of(100) {
                 health::check_memory_leaks();
             }
 
@@ -92,7 +95,7 @@ impl WatchdogCore {
     fn check_heartbeats(&self) {
         let now = crate::drivers::timer::uptime_ms();
 
-        for core_id in 0..NUM_WORKER_CORES {
+        for (core_id, _heartbeat) in HEARTBEATS.iter().enumerate().take(NUM_WORKER_CORES) {
             let last_beat = HEARTBEATS[core_id].load(Ordering::Relaxed);
 
             if last_beat > 0 && (now - last_beat) > HEARTBEAT_TIMEOUT_MS {
@@ -224,5 +227,11 @@ mod tests {
         assert_eq!(WATCHDOG_CORE, 3);
         assert_eq!(NUM_WORKER_CORES, 3);
         assert!(HEARTBEAT_TIMEOUT_MS > 0);
+    }
+}
+
+impl Default for WatchdogCore {
+    fn default() -> Self {
+        Self::new()
     }
 }

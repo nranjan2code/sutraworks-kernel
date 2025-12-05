@@ -50,7 +50,7 @@ impl WaitGraph {
     /// Add edge: from_task is waiting for to_task
     #[allow(dead_code)]
     pub fn add_edge(&mut self, from_task: u64, to_task: u64) {
-        self.edges.entry(from_task).or_insert_with(Vec::new).push(to_task);
+        self.edges.entry(from_task).or_default().push(to_task);
     }
     
     /// Find cycles using Tarjan's strongly connected components algorithm

@@ -294,3 +294,9 @@ mod tests {
         assert_eq!(history.at(HISTORY_SIZE - 1).unwrap().stroke.raw(), 100 - HISTORY_SIZE as u32);
     }
 }
+
+impl Default for StrokeHistory {
+    fn default() -> Self {
+        Self::new()
+    }
+}

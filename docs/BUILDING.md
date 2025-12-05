@@ -254,14 +254,11 @@ cargo +nightly build
 ### Run Unit Tests
 
 ```bash
-# Run host tests (122 tests, runs on your machine)
-cd kernel && cargo test --lib
+# Run host tests (127 tests, runs on your machine)
+make test
 
-# Specific test module
-cargo test --lib net::tcp
-
-# Run integration tests in QEMU
-make test-integration
+# Run 40-benchmark suite in QEMU
+make run
 
 # Output: Tests complete in <10 seconds
 ```
@@ -284,23 +281,24 @@ make run
 ### Test Architecture
 
 The testing infrastructure uses:
-- **Host tests**: Run on your development machine using `cargo test --lib`
-- **QEMU integration tests**: Full kernel boot tests in emulator
+- **Host tests**: Run on your development machine using `make test`
+- **QEMU benchmarks**: Full kernel boot tests in emulator with 40 benchmarks
 - **Custom allocator bypass**: `#[cfg(not(test))]` on `#[global_allocator]` allows host tests to use standard library allocator
 - **Custom test framework**: `#![custom_test_frameworks]` for bare-metal QEMU tests
 
-### Current Tests (90 total)
+### Current Tests (127 host tests)
 
 | Module | Tests | Description |
 |--------|-------|-------------|
-| Hailo Tensor | 2 | NMS, tensor parsing |
-| English Parser | 20+ | Context, phrases, synonyms, responses |
-| FS/Pipe | 2 | Empty, read/write operations |
-| Intent Handlers | 5 | Registration, dispatch, priority |
-| Intent Queue | 4 | Priority, deadline, push/pop |
-| Memory/Paging | 2 | Entry flags, address |
-| Scheduler | 2 | Empty, round-robin |
-| TCP | 18 | Flags, parsing, checksum, RTT, congestion, state |
+| Audio | 3 | Noise, silence, speech detection |
+| Handlers | 12 | Registry, dispatch, capabilities |
+| History | 11 | Undo/redo, ring buffer |
+| Matrix | 2 | LSH property, determinism |
+| Queue | 12 | Priority, deadline, FIFO |
+| Capability | 20 | Permissions, revocation, derive |
+| Concept | 22 | Hashing, categories, display |
+| Dictionary | 20 | Lookup, entries, steno sequences |
+| Stroke | 25 | Parsing, RTFCRE, key order |
 
 ### Host Test Fix
 

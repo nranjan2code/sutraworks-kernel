@@ -76,7 +76,15 @@ impl StenoDictionary {
             multi: MultiStrokeDictionary::new(),
         }
     }
+}
+
+impl Default for StenoDictionary {
+    fn default() -> Self {
+        Self::new()
+    }
+}
     
+impl StenoDictionary {
     /// Initialize with system defaults
     pub fn init_defaults(&mut self) {
         // ═══════════════════════════════════════════════════════════════════
@@ -282,6 +290,7 @@ impl StrokeSequence {
             len: 0,
         }
     }
+
     
     /// Create from a slice of strokes
     pub fn from_strokes(strokes: &[Stroke]) -> Self {
@@ -433,6 +442,7 @@ impl MultiStrokeDictionary {
             count: 0,
         }
     }
+
     
     /// Add a multi-stroke entry
     pub fn add_entry(&mut self, entry: MultiStrokeEntry) {
@@ -566,4 +576,16 @@ pub mod concepts {
     pub const MEMORY: ConceptID = ConceptID(0x0009_0001);
     pub const CPU_INFO: ConceptID = ConceptID(0x0009_0002);
     pub const UPTIME: ConceptID = ConceptID(0x0009_0003);
+}
+
+impl Default for StrokeSequence {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Default for MultiStrokeDictionary {
+    fn default() -> Self {
+        Self::new()
+    }
 }

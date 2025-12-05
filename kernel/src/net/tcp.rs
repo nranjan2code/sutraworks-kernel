@@ -472,11 +472,7 @@ impl TcpConnection {
             // SRTT = (1 - alpha) * SRTT + alpha * RTT
             // where alpha = 1/8, beta = 1/4
             
-            let delta = if measured_rtt > self.srtt {
-                measured_rtt - self.srtt
-            } else {
-                self.srtt - measured_rtt
-            };
+            let delta = measured_rtt.abs_diff(self.srtt);
             
             // RTTVAR = 3/4 * RTTVAR + 1/4 * delta
             self.rttvar = (self.rttvar * 3 + delta) / 4;
@@ -524,12 +520,12 @@ impl TcpConnection {
             self.last_ack = ack_num;
             
             // Exit fast recovery if all data is acknowledged
-            if self.congestion_state == CongestionState::FastRecovery {
-                if seq_after(ack_num, self.recover) || ack_num == self.recover {
-                    // Full ACK - exit fast recovery
-                    self.congestion_state = CongestionState::CongestionAvoidance;
-                    self.cwnd = self.ssthresh;
-                }
+            if self.congestion_state == CongestionState::FastRecovery 
+                && (seq_after(ack_num, self.recover) || ack_num == self.recover) 
+            {
+                // Full ACK - exit fast recovery
+                self.congestion_state = CongestionState::CongestionAvoidance;
+                self.cwnd = self.ssthresh;
             }
         } else if ack_num == self.send_unacked && ack_num == self.last_ack {
             // Duplicate ACK
@@ -794,6 +790,12 @@ impl TcpConnectionTable {
     }
 }
 
+impl Default for TcpConnectionTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // PACKET HANDLER
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -862,10 +864,8 @@ fn process_segment(conn: &mut TcpConnection, segment: &TcpSegment) -> Result<(),
         }
         TcpState::SynReceived => {
             // Expecting ACK
-            if segment.flags.contains(TcpFlags::ACK) {
-                if segment.ack_num == conn.send_next {
-                    conn.state = TcpState::Established;
-                }
+            if segment.flags.contains(TcpFlags::ACK) && segment.ack_num == conn.send_next {
+                conn.state = TcpState::Established;
             }
         }
         TcpState::Established => {
@@ -1003,7 +1003,7 @@ fn send_rst(_src_addr: Ipv4Addr, src_port: u16, dst_addr: Ipv4Addr, dst_port: u1
 /// Periodic TCP tick - check for retransmission timeouts
 /// Should be called from scheduler tick (e.g., every 100ms)
 pub fn tcp_tick() {
-    TCB_TABLE.lock().check_retransmits();
+    (*TCB_TABLE.lock()).check_retransmits();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1014,7 +1014,7 @@ pub fn tcp_tick() {
 pub fn listen(local_addr: Ipv4Addr, local_port: u16) -> Result<usize, &'static str> {
     let mut conn = TcpConnection::new(local_addr, local_port, Ipv4Addr::ANY, 0);
     conn.state = TcpState::Listen;
-    TCB_TABLE.lock().add(conn)
+    (*TCB_TABLE.lock()).add(conn)
 }
 
 /// Initiate a connection
@@ -1041,7 +1041,7 @@ pub fn connect(local_addr: Ipv4Addr, local_port: u16,
     
     ipv4::send_packet(remote_addr, 6, &segment.to_bytes())?;
     
-    TCB_TABLE.lock().add(conn)
+    (*TCB_TABLE.lock()).add(conn)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -152,8 +152,11 @@ impl From<u64> for DataFaultStatusCode {
 // HANDLERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/// # Safety
+/// This function is called from assembly with a raw pointer to the exception frame.
+/// The pointer must be valid and the stack accessible.
 #[no_mangle]
-pub extern "C" fn handle_exception(frame: *mut ExceptionFrame) {
+pub unsafe extern "C" fn handle_exception(frame: *mut ExceptionFrame) {
     let frame_ref = unsafe { &*frame };
     let ec = ExceptionClass::from(frame_ref.esr);
     
@@ -263,14 +266,18 @@ pub extern "C" fn handle_fiq(_frame: *mut ExceptionFrame) {
     // FIQ not used
 }
 
+/// # Safety
+/// Called from assembly with raw frame pointer.
 #[no_mangle]
-pub extern "C" fn handle_serror(frame: *mut ExceptionFrame) {
+pub unsafe extern "C" fn handle_serror(frame: *mut ExceptionFrame) {
     crate::kprintln!("!!! SYSTEM ERROR (SError) !!!");
     handle_exception(frame);
 }
 
+/// # Safety
+/// Called from assembly with raw frame pointer.
 #[no_mangle]
-pub extern "C" fn handle_sync_lower(frame: *mut ExceptionFrame) {
+pub unsafe extern "C" fn handle_sync_lower(frame: *mut ExceptionFrame) {
     handle_exception(frame);
 }
 

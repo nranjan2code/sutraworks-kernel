@@ -527,3 +527,9 @@ pub fn queue_len() -> usize {
     let executor = EXECUTOR.lock();
     executor.queue_len()
 }
+
+impl Default for IntentExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}

@@ -130,3 +130,9 @@ mod tests {
     }
 }
 
+
+impl Default for SystemHealth {
+    fn default() -> Self {
+        Self::new()
+    }
+}

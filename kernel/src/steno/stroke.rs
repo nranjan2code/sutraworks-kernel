@@ -154,10 +154,8 @@ impl Stroke {
         let has_right = (bits & 0x7FE000) != 0; // -F through -Z (bits 13-22)
         
         // Output each pressed key
-        for i in 0..NUM_KEYS {
+        for (i, key) in KEYS.iter().enumerate().take(NUM_KEYS) {
             if (bits & (1 << i)) != 0 {
-                let key = KEYS[i];
-                
                 // Handle number conversions
                 if has_number && i > 0 {
                     if let Some(num) = number_for_key(key) {
@@ -189,7 +187,7 @@ impl Stroke {
         }
         
         // Add hyphen for right-only strokes that didn't get one
-        if has_right && !has_left && !has_vowel && !buf.starts_with('-') && buf.len() > 0 {
+        if has_right && !has_left && !buf.starts_with('-') && !buf.is_empty() {
             // Actually this case is handled above
         }
         
@@ -239,6 +237,7 @@ impl RtfcreBuffer {
             len: 0,
         }
     }
+
     
     /// Push a character
     pub fn push(&mut self, c: char) {
@@ -454,5 +453,11 @@ mod tests {
         assert_eq!(bits & (1 << 2), 1 << 2); // T-
         assert_eq!(bits & (1 << 4), 1 << 4); // P-
         assert_eq!(bits & (1 << 6), 1 << 6); // H-
+    }
+}
+
+impl Default for RtfcreBuffer {
+    fn default() -> Self {
+        Self::new()
     }
 }

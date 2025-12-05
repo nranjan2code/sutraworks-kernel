@@ -103,6 +103,7 @@ impl StenoEngine {
             timestamp: 0,
         }
     }
+
     
     /// Initialize the engine with default dictionary
     pub fn init(&mut self) {
@@ -485,5 +486,11 @@ mod tests {
         engine.process(stroke2);
         
         assert_eq!(engine.stats().multi_stroke_matches, 1);
+    }
+}
+
+impl Default for StenoEngine {
+    fn default() -> Self {
+        Self::new()
     }
 }

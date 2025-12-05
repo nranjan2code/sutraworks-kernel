@@ -374,7 +374,7 @@ impl FileOps for Fat32File {
             self.current_offset += bytes_to_read as u64;
             
             // Move to next cluster if needed
-            if (self.current_offset % cluster_size) == 0 && self.current_offset < self.size {
+            if self.current_offset.is_multiple_of(cluster_size) && self.current_offset < self.size {
                 match self.fs.get_next_cluster(self.current_cluster)? {
                     Some(next) => self.current_cluster = next,
                     None => break, // Should not happen if size is correct

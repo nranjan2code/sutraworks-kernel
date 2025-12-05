@@ -159,3 +159,5 @@ impl NeuralAllocator {
     }
 }
 
+
+impl Default for NeuralAllocator { fn default() -> Self { Self::new() } }

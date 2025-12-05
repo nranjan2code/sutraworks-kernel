@@ -33,11 +33,16 @@ mod real {
 
 #[cfg(feature = "test_mocks")]
 mod mocks {
-    #[no_mangle]
-    pub unsafe extern "C" fn read_timer() -> u64 { 0 }
+    use core::sync::atomic::{AtomicU64, Ordering};
+    static MOCK_TIMER: AtomicU64 = AtomicU64::new(1_000_000); // Start at 1s
 
     #[no_mangle]
-    pub unsafe extern "C" fn read_timer_freq() -> u64 { 54_000_000 }
+    pub unsafe extern "C" fn read_timer() -> u64 { 
+        MOCK_TIMER.fetch_add(100, Ordering::Relaxed)
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn read_timer_freq() -> u64 { 1_000_000 } // 1 MHz for simple math
 
     #[no_mangle]
     pub unsafe extern "C" fn wait_for_interrupt() {}
@@ -320,29 +325,53 @@ impl<'a, T: ?Sized> Drop for SpinLockGuard<'a, T> {
 // REGISTER ACCESS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// REGISTER ACCESS
+// ═══════════════════════════════════════════════════════════════════════════════
+
 /// Read a 32-bit value from a memory-mapped register
 #[inline]
+#[cfg(not(feature = "test_mocks"))]
 pub unsafe fn read32(addr: usize) -> u32 {
     core::ptr::read_volatile(addr as *const u32)
 }
 
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn read32(_addr: usize) -> u32 { 0 }
+
 /// Write a 32-bit value to a memory-mapped register
 #[inline]
+#[cfg(not(feature = "test_mocks"))]
 pub unsafe fn write32(addr: usize, value: u32) {
     core::ptr::write_volatile(addr as *mut u32, value);
 }
 
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn write32(_addr: usize, _value: u32) {}
+
 /// Read a 64-bit value from a memory-mapped register
 #[inline]
+#[cfg(not(feature = "test_mocks"))]
 pub unsafe fn read64(addr: usize) -> u64 {
     core::ptr::read_volatile(addr as *const u64)
 }
 
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn read64(_addr: usize) -> u64 { 0 }
+
 /// Write a 64-bit value to a memory-mapped register
 #[inline]
+#[cfg(not(feature = "test_mocks"))]
 pub unsafe fn write64(addr: usize, value: u64) {
     core::ptr::write_volatile(addr as *mut u64, value);
 }
+
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn write64(_addr: usize, _value: u64) {}
 
 /// Modify a 32-bit register: clear bits in mask, then set bits in value
 #[inline]
@@ -369,49 +398,84 @@ pub fn delay_cycles(n: u32) {
 
 /// Set Translation Control Register (TCR_EL1)
 #[inline]
+#[cfg(not(feature = "test_mocks"))]
 pub unsafe fn set_tcr(value: u64) {
     core::arch::asm!("msr tcr_el1, {}", in(reg) value, options(nostack));
 }
 
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn set_tcr(_value: u64) {}
+
 /// Set Memory Attribute Indirection Register (MAIR_EL1)
 #[inline]
+#[cfg(not(feature = "test_mocks"))]
 pub unsafe fn set_mair(value: u64) {
     core::arch::asm!("msr mair_el1, {}", in(reg) value, options(nostack));
 }
 
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn set_mair(_value: u64) {}
+
 /// Set Translation Table Base Register 0 (TTBR0_EL1)
 #[inline]
+#[cfg(not(feature = "test_mocks"))]
 pub unsafe fn set_ttbr0(value: u64) {
     core::arch::asm!("msr ttbr0_el1, {}", in(reg) value, options(nostack));
 }
 
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn set_ttbr0(_value: u64) {}
+
 /// Set Translation Table Base Register 1 (TTBR1_EL1)
 #[inline]
+#[cfg(not(feature = "test_mocks"))]
 pub unsafe fn set_ttbr1(value: u64) {
     core::arch::asm!("msr ttbr1_el1, {}", in(reg) value, options(nostack));
 }
 
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn set_ttbr1(_value: u64) {}
+
 /// Get System Control Register (SCTLR_EL1)
 #[inline]
+#[cfg(not(feature = "test_mocks"))]
 pub unsafe fn get_sctlr() -> u64 {
     let value: u64;
     core::arch::asm!("mrs {}, sctlr_el1", out(reg) value, options(nostack));
     value
 }
 
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn get_sctlr() -> u64 { 0 }
+
 /// Set System Control Register (SCTLR_EL1)
 #[inline]
+#[cfg(not(feature = "test_mocks"))]
 pub unsafe fn set_sctlr(value: u64) {
     core::arch::asm!("msr sctlr_el1, {}", in(reg) value, options(nostack));
 }
 
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn set_sctlr(_value: u64) {}
+
 /// Invalidate TLB (all)
 #[inline]
+#[cfg(not(feature = "test_mocks"))]
 pub unsafe fn tlb_invalidate_all() {
     core::arch::asm!("tlbi vmalle1is", options(nostack));
     dsb();
     isb();
 }
+
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn tlb_invalidate_all() {}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONTEXT SWITCHING

@@ -98,6 +98,12 @@ impl StatusProjection {
     }
 }
 
+impl Default for StatusProjection {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Projection for StatusProjection {
     fn name(&self) -> &'static str { "StatusProjection" }
     
@@ -165,6 +171,12 @@ pub struct HelpProjection {
 impl HelpProjection {
     pub const fn new() -> Self {
         Self { visible: false }
+    }
+}
+
+impl Default for HelpProjection {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -263,6 +275,12 @@ impl StenoTapeProjection {
     }
 }
 
+impl Default for StenoTapeProjection {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Projection for StenoTapeProjection {
     fn name(&self) -> &'static str { "StenoTape" }
     
@@ -329,6 +347,12 @@ impl IntentLogProjection {
     }
 }
 
+impl Default for IntentLogProjection {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Projection for IntentLogProjection {
     fn name(&self) -> &'static str { "IntentLog" }
     
@@ -376,6 +400,12 @@ pub struct PerceptionOverlay {
 impl PerceptionOverlay {
     pub const fn new() -> Self {
         Self { visible: true }
+    }
+}
+
+impl Default for PerceptionOverlay {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -436,6 +466,12 @@ impl MemoryGraph {
     }
 }
 
+impl Default for MemoryGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Projection for MemoryGraph {
     fn name(&self) -> &'static str { "MemoryGraph" }
     
@@ -461,8 +497,7 @@ impl Projection for MemoryGraph {
         let allocator = crate::kernel::memory::neural::NEURAL_ALLOCATOR.lock();
         let nodes = allocator.get_all_nodes();
         
-        let mut i = 0;
-        for node in nodes {
+        for (i, node) in nodes.iter().enumerate() {
             if i >= 10 { break; } // Limit to 10 nodes for now
             
             // Simple layout: Grid
@@ -482,7 +517,7 @@ impl Projection for MemoryGraph {
                  fb.draw_string(x + 10, y, s, color, None);
             }
             
-            i += 1;
+
         }
     }
 }

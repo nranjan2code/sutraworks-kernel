@@ -167,3 +167,15 @@ impl Future for YieldNow {
 pub async fn yield_now() {
     YieldNow::new().await
 }
+
+impl Default for YieldNow {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Default for Executor {
+    fn default() -> Self {
+        Self::new()
+    }
+}

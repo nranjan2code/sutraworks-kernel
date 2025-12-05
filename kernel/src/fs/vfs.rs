@@ -159,7 +159,10 @@ impl ProcessFileTable {
         
         Ok(newfd)
     }
-    pub fn clone(&self) -> Self {
+}
+
+impl Clone for ProcessFileTable {
+    fn clone(&self) -> Self {
         ProcessFileTable {
             fds: self.fds.clone(),
         }

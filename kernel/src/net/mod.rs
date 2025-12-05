@@ -41,7 +41,16 @@ impl NetConfig {
             mac_addr: MacAddress([0, 0, 0, 0, 0, 0]),
         }
     }
+}
+
+impl Default for NetConfig {
+    fn default() -> Self {
+        Self::new()
+    }
     
+}
+
+impl NetConfig {
     /// Check if an IP is on the local subnet
     pub fn is_local(&self, ip: Ipv4Addr) -> bool {
         for i in 0..4 {

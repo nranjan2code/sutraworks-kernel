@@ -89,8 +89,8 @@ impl IntentScheduler {
         // Let's update all for visibility, or just assume core 0 manages it.
         // Since it's a shared queue, the "queue depth" is the global depth.
         let len = self.agents.len();
-        for i in 0..4 {
-             CORE_STATS[i].lock().queue_length = len;
+        for stat in &CORE_STATS {
+             stat.lock().queue_length = len;
         }
     }
 
@@ -462,4 +462,10 @@ pub fn record_idle_end(core_id: usize, start: u64) {
 
 pub fn get_core_stats(core_id: usize) -> CoreStats {
     IntentScheduler::get_core_stats(core_id)
+}
+
+impl Default for IntentScheduler {
+    fn default() -> Self {
+        Self::new()
+    }
 }

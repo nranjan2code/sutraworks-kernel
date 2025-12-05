@@ -199,3 +199,5 @@ impl VmaManager {
         Some(unmapped_vma)
     }
 }
+
+impl Default for VmaManager { fn default() -> Self { Self::new() } }

@@ -342,3 +342,5 @@ pub fn read_block(sector: u32, buf: &mut [u8]) -> Result<(), &'static str> {
 pub fn write_block(sector: u32, buf: &[u8]) -> Result<(), &'static str> {
     SD_DRIVER.lock().write_sector(sector, buf)
 }
+
+impl Default for SdCardDriver { fn default() -> Self { Self::new() } }

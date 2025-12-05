@@ -24,7 +24,15 @@ impl PerformanceCounters {
             total_syscall_cycles: AtomicU64::new(0),
         }
     }
+}
 
+impl Default for PerformanceCounters {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PerformanceCounters {
     /// Reset all counters to zero.
     pub fn reset(&self) {
         self.context_switches.store(0, Ordering::Relaxed);

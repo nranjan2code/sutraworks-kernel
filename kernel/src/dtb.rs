@@ -23,6 +23,7 @@ pub enum MachineType {
 }
 
 /// Get the detected machine type
+#[allow(unused_unsafe)]
 pub fn machine_type() -> MachineType {
     let dtb_addr = unsafe { __dtb_ptr };
     

@@ -13,7 +13,7 @@ use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::collections::BTreeMap;
 
-use intent_kernel::arch::SpinLock;
+use intent_kernel::kernel::sync::SpinLock;
 use intent_kernel::fs::vfs::{Filesystem, FileOps, FileStat, DirEntry, SeekFrom, VFS};
 use intent_kernel::net::interface::{NetworkInterface, LoopbackInterface};
 use intent_kernel::kernel::process::{Agent, AgentState};
@@ -62,9 +62,13 @@ core::arch::global_asm!(
     // Memory Layout Symbols
     ".global __heap_start",
     ".global __heap_end",
+    ".global __dtb_ptr",
     ".global __dma_start",
     ".global __dma_end",
     ".section .data",
+    ".align 12",
+    "__dtb_ptr:",
+    ".quad 0",
     ".align 12",
     "__heap_start:",
     ".space 1024 * 1024 * 8", // 8MB Heap

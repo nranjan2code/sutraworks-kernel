@@ -109,7 +109,7 @@ impl Agent {
         let stack_top = stack_top & !0xF;
 
         agent.context.sp = stack_top;
-        agent.context.lr = entry as u64;
+        agent.context.lr = entry as usize as u64;
         agent.context.ttbr0 = 0; // Kernel threads share TTBR1, TTBR0 is unused/zeroed
 
         Ok(agent)
@@ -380,7 +380,7 @@ impl Agent {
             user_stack: None, // Managed by VMM/sp_el0
             file_table: ProcessFileTable::new(),
             wake_time: 0,
-            sig_actions: self.sig_actions.clone(),
+            sig_actions: self.sig_actions,
             vma_manager: self.vma_manager.clone(),
             pending_signals: 0,
             blocked_signals: self.blocked_signals,
@@ -555,5 +555,11 @@ extern "C" fn fork_return_trampoline() {
         core::arch::asm!("mov {}, x20", out(reg) sp_el0);
         
         crate::arch::restore_exception_frame(frame_ptr as *const u8, sp_el0);
+    }
+}
+
+impl Default for AgentId {
+    fn default() -> Self {
+        Self::new()
     }
 }

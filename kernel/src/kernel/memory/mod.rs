@@ -65,6 +65,7 @@ mod mocks {
 use mocks::*;
 
 /// Get heap region bounds
+#[allow(unused_unsafe)]
 pub fn heap_region() -> (usize, usize) {
     unsafe {
         let start = &__heap_start as *const u8 as usize;
@@ -74,6 +75,7 @@ pub fn heap_region() -> (usize, usize) {
 }
 
 /// Get DMA region bounds
+#[allow(unused_unsafe)]
 pub fn dma_region() -> (usize, usize) {
     unsafe {
         let start = &__dma_start as *const u8 as usize;
@@ -83,6 +85,7 @@ pub fn dma_region() -> (usize, usize) {
 }
 
 /// Get GPU shared memory region bounds
+#[allow(unused_unsafe)]
 pub fn gpu_region() -> (usize, usize) {
     unsafe {
         let start = &__gpu_start as *const u8 as usize;
@@ -348,6 +351,15 @@ impl SlabCache {
             allocated_bytes: 0,
         }
     }
+}
+
+impl Default for SlabCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl SlabCache {
     
     /// Get slab index for size
     fn slab_index(&self, size: usize) -> Option<usize> {
@@ -471,6 +483,15 @@ impl KernelAllocator {
             }),
         }
     }
+}
+
+impl Default for KernelAllocator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl KernelAllocator {
     
     /// Initialize the allocator with ASLR seed
     pub fn init(&self, seed: u64) {
@@ -541,7 +562,8 @@ pub fn stats() -> AllocatorStats {
 pub fn heap_available() -> usize {
     let (start, end) = heap_region();
     let stats = GLOBAL.stats();
-    (end - start).saturating_sub(stats.allocated)
+    let size = if end >= start { end - start } else { 0 };
+    size.saturating_sub(stats.allocated)
 }
 
 /// Allocate memory and return a Capability (Forward-Looking API)
@@ -897,7 +919,7 @@ pub fn validate_write_ptr(ptr: *mut u8, len: usize) -> Result<(), &'static str> 
 }
 
 /// Validate a user string (UTF-8)
-pub fn validate_user_str(ptr: *const u8, len: usize) -> Result<&'static str, &'static str> {
+pub unsafe fn validate_user_str(ptr: *const u8, len: usize) -> Result<&'static str, &'static str> {
     validate_read_ptr(ptr, len)?;
     
     // SAFETY: We validated the pointer range is in user space.
@@ -908,3 +930,5 @@ pub fn validate_user_str(ptr: *const u8, len: usize) -> Result<&'static str, &'s
     
     core::str::from_utf8(slice).map_err(|_| "Invalid UTF-8")
 }
+
+impl Default for BuddyAllocator { fn default() -> Self { Self::new() } }

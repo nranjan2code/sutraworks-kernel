@@ -115,3 +115,5 @@ pub fn read_reg(offset: usize) -> u32 {
 pub fn write_reg(offset: usize, value: u32) {
     RP1.lock().write(offset, value)
 }
+
+impl Default for Rp1Driver { fn default() -> Self { Self::new() } }

@@ -431,3 +431,5 @@ impl StrokeProducer for UsbHid {
 
 /// Global HID instance
 pub static HID_DRIVER: SpinLock<UsbHid> = SpinLock::new(UsbHid::new());
+
+impl Default for UsbHid { fn default() -> Self { Self::new() } }

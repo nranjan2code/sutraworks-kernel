@@ -63,3 +63,9 @@ mod tests {
         assert_eq!(linker.find_capability("Rocket Ship"), None);
     }
 }
+
+impl Default for HdcLinker {
+    fn default() -> Self {
+        Self::new()
+    }
+}

@@ -62,6 +62,8 @@ pub struct ConversationContext {
     mode: UserMode,
     /// Conversation history (limited to last N)
     history: Vec<HistoryEntry>,
+    /// Total commands executed (lifetime)
+    command_count: usize,
     /// Parser instance
     parser: EnglishParser,
 }
@@ -74,6 +76,7 @@ impl ConversationContext {
             last_result: None,
             mode: UserMode::Beginner, // Start in beginner mode
             history: Vec::new(),
+            command_count: 0,
             parser: EnglishParser::new(),
         }
     }
@@ -94,6 +97,7 @@ impl ConversationContext {
     pub fn update(&mut self, concept: ConceptID, result: IntentResult) {
         self.last_intent = Some(concept);
         self.last_result = Some(result.clone());
+        self.command_count += 1;
 
         // Add to history
         if self.history.len() >= MAX_HISTORY {
@@ -117,12 +121,12 @@ impl ConversationContext {
     /// Detect and upgrade user mode based on usage
     pub fn auto_upgrade_mode(&mut self) {
         // If user has executed 20+ commands, upgrade from Beginner
-        if self.history.len() >= 20 && self.mode == UserMode::Beginner {
+        if self.command_count >= 20 && self.mode == UserMode::Beginner {
             self.mode = UserMode::Intermediate;
         }
 
         // If user has executed 100+ commands, upgrade to Advanced
-        if self.history.len() >= 100 && self.mode == UserMode::Intermediate {
+        if self.command_count >= 100 && self.mode == UserMode::Intermediate {
             self.mode = UserMode::Advanced;
         }
     }
@@ -132,6 +136,7 @@ impl ConversationContext {
         self.history.clear();
         self.last_intent = None;
         self.last_result = None;
+        // Do not reset command_count as it tracks lifetime usage
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

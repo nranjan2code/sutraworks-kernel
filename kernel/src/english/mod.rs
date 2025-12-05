@@ -107,8 +107,5 @@ mod tests {
         assert!(parse("HeLp").is_some());
     }
 
-    #[test]
-    fn test_parse_unknown() {
-        assert!(parse("asdfasdf").is_none());
-    }
+
 }

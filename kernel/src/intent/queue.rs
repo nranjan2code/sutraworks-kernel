@@ -19,23 +19,18 @@ use crate::intent::{ConceptID, Intent, IntentData};
 pub const QUEUE_SIZE: usize = 32;
 
 /// Priority levels
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[repr(u8)]
 pub enum Priority {
     /// Background tasks
     Low = 0,
     /// Normal user actions  
+    #[default]
     Normal = 1,
     /// Time-sensitive actions
     High = 2,
     /// System-critical (interrupts, errors)
     Critical = 3,
-}
-
-impl Default for Priority {
-    fn default() -> Self {
-        Priority::Normal
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -402,5 +397,11 @@ mod tests {
         
         // High priority should be at front
         assert_eq!(queue.peek().unwrap().intent.concept_id.0, 999);
+    }
+}
+
+impl Default for IntentQueue {
+    fn default() -> Self {
+        Self::new()
     }
 }

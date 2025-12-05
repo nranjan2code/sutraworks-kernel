@@ -458,7 +458,7 @@ impl VMM {
     }
     
     /// Helper to get the next level table, allocating it if necessary
-    unsafe fn get_next_table(&self, entry: &mut PageTableEntry) -> Result<&mut PageTable, &'static str> {
+    unsafe fn get_next_table<'a>(&self, entry: &'a mut PageTableEntry) -> Result<&'a mut PageTable, &'static str> {
         if entry.is_valid() {
             if !entry.is_table() {
                 return Err("Huge pages not supported yet");
@@ -690,3 +690,6 @@ mod tests {
         assert_eq!(entry.as_u64() & 0xFFF, 1);
     }
 }
+
+impl Default for PageTableEntry { fn default() -> Self { Self::new() } }
+impl Default for PageTable { fn default() -> Self { Self::new() } }
