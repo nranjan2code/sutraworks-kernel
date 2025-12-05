@@ -198,7 +198,7 @@ No characters. No words. No NLP. Pure stroke→intent mapping.
     - [x] Remove legacy floating-point embeddings.
     - [x] Fix all compiler warnings.
     - [x] Clarify stub/fake implementations.
-- [ ] Integration tests on QEMU
+- [x] Integration tests on QEMU
 - [ ] Hardware tests on Pi 5
 
 ### Documentation

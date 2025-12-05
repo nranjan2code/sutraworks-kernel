@@ -254,7 +254,7 @@ cargo +nightly build
 ### Run Unit Tests
 
 ```bash
-# Run host tests (90 tests, runs on your machine)
+# Run host tests (122 tests, runs on your machine)
 cd kernel && cargo test --lib
 
 # Specific test module

@@ -628,10 +628,15 @@ loop {
 
 ## What's Next (Future Work)
 
-### Short-Term (Next Sprint)
-- [ ] **Driver Watchdogs**: Reset mechanisms for hardware drivers.
-- [ ] **Graceful Degradation**: Fallback paths for hardware failures.
-- [ ] **TCP Retransmission**: Robust network handling.
+### Short-Term (Sprint 14)
+- [ ] **Intent-Native Apps**: Programming without code via Intent Manifests.
+- [ ] **Semantic Linker**: Runtime intent-to-capability resolution.
+- [ ] **Skill Registry**: Discoverable system capabilities.
+
+### Completed (Sprint 8-13) ✅
+- [x] **Driver Watchdogs**: Reset mechanisms for hardware drivers.
+- [x] **Graceful Degradation**: Fallback paths for hardware failures.
+- [x] **TCP Retransmission**: Robust network handling with congestion control.
 
 ### Medium-Term (Next Quarter)
 - [ ] **Camera Driver**: MIPI CSI-2 support.

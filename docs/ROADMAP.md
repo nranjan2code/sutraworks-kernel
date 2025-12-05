@@ -71,10 +71,10 @@
 - [x] **Compositor**: Z-order rendering and intent-reactive updates.
 - [x] **Migration**: Replaced legacy HUD with modular projection system.
 
-### Phase 8: Error Recovery & Resilience (Current Focus)
-- [ ] **Driver Watchdogs**: Reset mechanisms for USB, SD, Network, Hailo.
-- [ ] **Graceful Degradation**: CPU fallback for AI, Serial fallback for display.
-- [ ] **System Resilience**: Network re-init, Filesystem error recovery.
+### Phase 8: Error Recovery & Resilience ✅
+- [x] **Driver Watchdogs**: Reset mechanisms for USB, SD, Network, Hailo.
+- [x] **Graceful Degradation**: CPU fallback for AI, Serial fallback for display.
+- [x] **System Resilience**: Network re-init, Filesystem error recovery.
 - [ ] **LLM Integration**: Small quantized LLM on CPU/NPU hybrid (Future).
 
 ## Test Coverage
