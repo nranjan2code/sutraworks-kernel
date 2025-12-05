@@ -254,6 +254,33 @@ A human eye blink takes ~100 milliseconds. Most Intent Kernel operations complet
 
 ---
 
+## Detailed Analysis: Reflex vs. Thought 🧠
+
+One of the most striking results from the benchmark suite is the **~100x latency gap** between Steno input and Neural processing. This is a deliberate architectural feature, not a bug.
+
+| System | Benchmark | Cycles | Time | System Analogy |
+|--------|-----------|--------|------|----------------|
+| **Reflex (System 1)** | Steno Stroke | **43** | ~17 ns | Spinal Cord (Hot Stove) |
+| **Cognition (System 2)** | Neural Selection | **5,775** | ~2.3 μs | Frontal Cortex (Decision) |
+
+### Why the Gap?
+
+1.  **Reflex (Steno)** is a **Lookup**:
+    *   `Input(0x140)` → `Lookup Table` → `ConceptID(0x1004)`
+    *   **Complexity**: O(1)
+    *   **Goal**: Speed. Capturing human intent before the neural layers even notice.
+
+2.  **Cognition (Neural)** is a **Process**:
+    *   `ConceptID` → `Decay?` → `Summation?` → `Inhibit?` → `Sort Priorities` → `Select`
+    *   **Complexity**: O(N log N) + O(Links)
+    *   **Goal**: Intelligence. Weighing options, suppressing bad ideas, and reacting to surprise.
+
+### The Biological Parallels
+
+This 134x speed difference mirrors the biological gap between a **spinal reflex** (~30ms) and a **cortical decision** (~300-500ms). The Intent Kernel allows you to operate at "Reflex Speed" for learned tasks (typing, commands) while the "Cortical Logic" runs safely in the background to handle complexity.
+
+---
+
 ## Comparison with Other Kernels
 
 How does Intent Kernel compare to mainstream operating systems?

@@ -40,6 +40,15 @@ Intent Kernel is a **Perceptual Computing Platform**—a bare-metal operating sy
 - **Perception Mode**: Sensor data → ConceptID → semantic memory
 - **Hybrid Mode**: Mix any inputs freely (power users)
 
+### 5. Universal Accessibility
+Semantic-first kernel with multiple input paths. Everyone can use English; power users can unlock maximum speed with steno.
+
+### 6. The Two Systems
+We explicitly model **System 1 (Reflex)** and **System 2 (Cognition)**:
+- **Reflex**: Lookup-based, O(1), instant (<50 cycles). Used for direct commands.
+- **Cognition**: Logic-based, O(N), deliberate (>5000 cycles). Used for scheduling, inhibiting, and learning.
+The kernel allows you to operate at reflex speed while the cognitive layer protects you in the background.
+
 ### Neural Architecture
 
 The Intent Kernel uses a **biologically-inspired neural architecture** for intent processing:

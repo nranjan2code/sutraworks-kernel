@@ -657,6 +657,8 @@ Comprehensive allocator validation with **180,000 operations**:
 | Mixed Workload (8B-4KB) | 20,000 | 31 | 2.0M ops/sec | ✅ |
 | **Total** | **180,000** | **29** | **~3M ops/sec** | ✅ |
 
+> **Biological Performance Profile**: The benchmark results reveal a deliberate ~100x gap between **Reflex** (steno input, 43 cycles) and **Cognition** (neural selection, 5,775 cycles). This mimics the biological distinction between spinal reflexes and cortical decision-making, ensuring the kernel is fast where it needs to be and smart where it has to be.
+
 ### Standard Benchmarks
 
 | Benchmark | Result | Target | Status |
