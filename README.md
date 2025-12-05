@@ -107,8 +107,8 @@ Keyboard → English Text → Natural Language Parser → Intent → Execute
 Vision and audio inputs are processed through the Hailo-8 NPU and converted to hypervectors:
 
 ```
-Camera → Hailo-8 NPU → YOLO Detection → Hypervector → Semantic Memory
-Mic    → Audio Features → Classification → Hypervector → Semantic Memory
+Camera → Hailo-8 NPU → YOLO Detection → ConceptID → Semantic Memory
+Mic    → Audio Features → Classification → ConceptID → Semantic Memory
 ```
 
 ### Comparison
@@ -287,18 +287,7 @@ let response = english::generate_response(&intent, &result);
 
 Production-grade multi-layered security protecting the intent execution pipeline:
 
-**HDC-Based Anomaly Detection**:
-- **Semantic Baseline Learning**: Majority voting algorithm over 1024-bit Hypervectors
-- **Anomaly Detection**: Hamming similarity threshold (0.3 = 70% different)
-- **Online Learning**: Adaptive baseline that evolves with normal usage
-
-**Traditional Security Layers**:
-- **Rate Limiting**: Configurable token bucket (default: 1000/sec burst 100, strict: 10/sec burst 10)
-- **Privilege Checking**: ConceptID range enforcement (Kernel: 0x0-0xFFFF protected)
-- **Handler Integrity**: FNV-1a checksum verification to detect code tampering
-- **Violation Logging**: Tracks last 100 security violations with timestamps
-
-**Performance**: ~30 cycles overhead per intent (real QEMU measurement, 10,000 iterations)
+**Performance**: ~20 cycles overhead per intent (real QEMU measurement)
 
 ```rust
 // Security enforced on EVERY intent execution
@@ -324,8 +313,8 @@ if let Err(violation) = security.check_intent(...) {
 - **Health Monitoring**: CPU, memory, thermal sensors, task queues
 - **Deadlock Detection**: Wait-for graph analysis with Tarjan's algorithm
 - **Self-Healing**: Automatic recovery from hung cores, deadlocks, memory leaks
-- **Intent Security**: Spam detection, privilege escalation prevention (future)
-- **Anomaly Detection**: HDC-based semantic baseline learning (future)
+- **Intent Security**: Spam detection, privilege escalation prevention
+- **Anomaly Detection**: Behavioral pattern analysis (future)
 
 **Performance**:
 - Context switch: 54 cycles (372% better than target)
@@ -350,13 +339,13 @@ Interrupt-safe concurrency primitives and removal of unsafe global state.
 - **Safe Interrupts**: Thread-safe handler registration.
 - **Overflow Protection**: Hardened filesystem parsers.
 
-### ✅ Real Neural Memory ✨ NEW!
-True "Vector Symbolic Architecture" (VSA) memory system:
-- **1024-bit Binary Hypervectors**: Replaced inefficient floats with holographic bit patterns.
-- **HNSW Indexing**: **O(log N)** graph-based retrieval for scalable performance (replaced linear scan).
+### ✅ Semantic Memory ✨ NEW!
+Efficient, type-safe semantic storage:
+- **ConceptID Indexing**: Direct mapping of semantic concepts to memory blocks.
+- **Scalability**: Verified up to **1,000,000 concepts** (16ms alloc output).
+- **O(log N) Retrieval**: Fast BTreeMap-based lookups.
 - **Dynamic Page Allocation**: Memory grows indefinitely with system RAM (Bump Allocator).
-- **Cognitive Algebra**: `Bind`, `Bundle`, and `Permute` operations for semantic reasoning.
-- **Robustness**: Information is distributed across 1024 bits; resilient to noise and bit flips.
+- **Efficiency**: Eliminates HNSW overhead for clean, deterministic storage.
 
 ### ✅ Safe Stack Architecture
 - **VMM-Backed Stacks**: Real virtual memory pages for process stacks.
@@ -379,14 +368,14 @@ Full xHCI Host Controller Driver with RAII Memory Management:
 ### ✅ Real Perception ✨ COMPLETE!
 Computer Vision pipeline with Hardware Acceleration support:
 - **Hailo-8 Driver**: Full YOLO tensor parser with NMS algorithm
-- **Tensor Parsing**: Processes 1917 detection boxes → Top 16 objects with hypervectors
+- **Tensor Parsing**: Processes 1917 detection boxes → Top 16 objects
 - **Sensor Fusion**: Combines data from multiple detectors (Hailo-8 + CPU fallback)
-- **Visual Intents**: Automatically generates 1024-bit Hypervectors for detected objects and stores them in Neural Memory. The system "remembers" what it sees.
+- **Visual Intents**: Automatically maps detected objects to `ConceptID` and stores them in Semantic Memory. The system "remembers" what it sees.
 
 ### ✅ Audio Perception ✨ NEW!
 The kernel can "hear" and classify sounds:
 - **Feature Extraction**: Zero Crossing Rate (ZCR) + Energy.
-- **Acoustic Intents**: Maps sounds (Speech, Noise, Silence) to Semantic Hypervectors.
+- **Acoustic Intents**: Maps sounds (Speech, Noise, Silence) to `ConceptID`.
 - **Neural Integration**: Stores acoustic memories alongside visual ones.
 
 ### ✅ Multi-Core SMP ✨ COMPLETE!
@@ -617,8 +606,8 @@ The Intent Kernel includes a **40-benchmark suite** across 10 categories, tailor
 | Category | Benchmarks | Key Metrics |
 |----------|------------|-------------|
 | Intent Engine | 5 | Handler match: 0 cycles, Security: 1 cycle |
-| HDC Memory | 7 | HNSW Search: 800 cycles, Bind/Bundle: 0 cycles |
-| Perception | 4 | Sensor fusion: 0 cycles, Perceive+Store: 15k cycles |
+| Semantic Memory | 1 | Alloc: 29 cycles, Retrieval: O(log N) |
+| Perception | 2 | Sensor fusion: 0 cycles, Perceive+Store: 30 cycles |
 | Multi-Modal | 5 | Steno: 42 cycles, English: 184 cycles |
 | Process/Agent | 6 | Context switch: 401 cycles |
 | Lock/Sync | 5 | SpinLock: 19 cycles, IPI: 107 cycles |

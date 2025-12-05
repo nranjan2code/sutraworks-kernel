@@ -31,7 +31,7 @@ The Intent Kernel employs a **Capability-Based Security Model** (Object-Capabili
 *   **Mitigation**: Use a cryptographic hash (SHA-256 truncated) or a central registry for critical system concepts.
 
 ### 2.2 Semantic Adversarial Attacks
-*   **Mechanism**: The "Semantic Linker" uses Hyperdimensional Computing (HDC) to match inputs to skills based on vector similarity.
+*   **Mechanism**: The "Semantic Linker" uses ConceptID matching to link inputs to skills.
 *   **Risk**: An attacker could provide input that is "semantically close" to a privileged intent in the vector space without using the exact keyword. For example, "System Sleep" might be semantically close enough to "System Shutdown" to trigger it if the threshold is too loose.
 *   **Impact**: Unpredictable system behavior or unauthorized access to sensitive skills.
 *   **Mitigation**: Enforce strict similarity thresholds (>0.95) for destructive actions and require explicit confirmation.

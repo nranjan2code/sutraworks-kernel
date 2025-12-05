@@ -15,8 +15,7 @@ use crate::kernel::scheduler::CoreStats;
 pub mod paging;
 pub mod vma;
 pub mod neural;
-pub mod hnsw;
-pub mod matrix;
+
 
 // ...
 

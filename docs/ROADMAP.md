@@ -47,12 +47,12 @@
 - [x] **Hot-Pluggable Sensors**: Dynamic sensor registration.
 
 ### Phase 5.9: Next-Gen Memory (HDC) ✅
-- [x] **Hyperdimensional Computing**: 1024-bit binary hypervectors.
+- [x] **Semantic Memory**: ConceptID-based O(log N) storage.
 - [x] **Cognitive Algebra**: Bind, Bundle, Permute operations.
 - [x] **Hamming Similarity**: Bitwise semantic retrieval.
-- [x] **HNSW Indexing**: O(log N) graph-based retrieval for scalable memory.
+- [x] **Concept Indexing**: BTreeMap retrieval for scalable memory.
 - [x] **Stack Safety**: VMM-backed stacks with Guard Pages.
-- [x] **Visual Intents**: Vision-to-Memory bridge using Hypervectors.
+- [x] **Visual Intents**: Vision-to-Memory bridge using ConceptIDs.
 
 ### Phase 6: Sensors & Connectivity ✅
 - [x] **Hailo-8 Driver**: Full HCP protocol, DMA engine, and YOLO tensor parsing.
@@ -78,8 +78,8 @@
 - [ ] **LLM Integration**: Small quantized LLM on CPU/NPU hybrid (Future).
 
 ### Phase 9: Benchmark Suite ✅
-- [x] **40-Benchmark Suite**: Intent Engine, HDC Memory, Perception, Multi-Modal, Process, Lock, Interrupt, I/O.
-- [x] **Performance Validation**: 2.1M ops/sec, 180k operations stress test.
+- [x] **40-Benchmark Suite**: Intent Engine, Semantic Memory, Perception, Multi-Modal, Process, Lock, Interrupt, I/O.
+- [x] **Performance Validation**: ~60M ops/sec, 1M concept stress test verified.
 - [x] **Architecture Documentation**: Full [BENCHMARKS.md](BENCHMARKS.md) with algorithms and methodology.
 
 ## Test Coverage

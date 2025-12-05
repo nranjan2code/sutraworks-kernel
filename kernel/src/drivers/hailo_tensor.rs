@@ -3,7 +3,7 @@
 //! Parses raw output tensors from Hailo-8 inference jobs into DetectedObject structures.
 //! Supports YOLO-style output format (bounding boxes + class probabilities).
 
-use crate::perception::vision::{DetectedObject, RandomProjection};
+use crate::perception::vision::{DetectedObject};
 
 /// YOLO Output Tensor Layout
 ///
@@ -99,18 +99,8 @@ impl YoloOutputParser {
         // Apply Non-Maximum Suppression (NMS)
         let nms_results = self.apply_nms(&candidates);
 
-        // Convert to DetectedObject with hypervectors
+        // Convert to DetectedObject
         for det in nms_results {
-            // Generate hypervector from bounding box features
-            // Feature vector: [x, y, w, h, confidence, class_id]
-            let features = [
-                det.x, det.y, det.w, det.h,
-                det.confidence,
-                det.class_id as f32 / 80.0,  // Normalized class ID
-            ];
-
-            let hypervector = RandomProjection::project(&features);
-
             if objects.len() < 16 {
                 objects.push(DetectedObject {
                     class_id: det.class_id,
@@ -119,7 +109,6 @@ impl YoloOutputParser {
                     y: det.y,
                     width: det.w,
                     height: det.h,
-                    hypervector,
                 }).ok();
             }
         }

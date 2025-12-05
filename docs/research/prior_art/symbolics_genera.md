@@ -29,7 +29,7 @@ Genera was a walled garden. It didn't play well with the emerging Unix/C world. 
 
 ## Relevance to Intent Kernel
 Genera proves that a **Semantic OS is possible and superior for developer/user agency**.
-*   **Lesson:** We cannot rely on custom hardware (like Lisp CPUs) to enforce semantics. We must build a semantic layer *on top* of commodity hardware (using Rust/WASM/HDC) to achieve the same "live object" feel without the hardware lock-in.
+*   **Lesson:** We cannot rely on custom hardware (like Lisp CPUs) to enforce semantics. We must build a semantic layer *on top* of commodity hardware (using Rust/WASM/Semantic Memory) to achieve the same "live object" feel without the hardware lock-in.
 *   **Lesson:** The "Single Address Space" concept is powerful. The Intent Kernel's "Neural Memory" is the modern equivalent—a shared semantic space for all intents.
 
 ## References

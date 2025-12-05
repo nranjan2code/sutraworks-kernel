@@ -25,9 +25,9 @@ This document summarizes the three major enhancements implemented to complete th
   - Configurable threshold (default 0.4)
   - Prevents duplicate detections
 
-- **Hypervector Generation**:
+- **Concept Generation**:
   - Converts detections to 1024-bit semantic vectors
-  - Uses Random Projection (LSH) on box features
+  - Maps detection to ConceptID directly
   - Enables semantic memory integration
 
 - **Performance**:
@@ -63,7 +63,7 @@ impl ObjectDetector for HailoSensor {
 ```
 
 **N:1 Sensor Fusion** now fully functional:
-- Hailo-8 returns parsed objects with hypervectors
+- Hailo-8 returns parsed objects mapped to ConceptIDs
 - CPU fallback (EdgeDetector, ColorBlob) still available
 - Results merged into unified perception stream
 
@@ -83,7 +83,7 @@ DetectedObject {
     confidence: 0.85,
     x: 0.5, y: 0.5,
     width: 0.2, height: 0.4,
-    hypervector: [0xABCD...; 16],  // 1024-bit semantic signature
+    concept_id: ConceptID,         // Semantic signature
 }
 ```
 
@@ -541,9 +541,8 @@ loop {
       │                   │                         │
       │                   ▼                         │
       │        ┌─────────────────────────┐          │
-      │        │  NEURAL MEMORY (HDC)    │          │
-      │        │  1024-bit Hypervectors  │          │
-      │        │  HNSW Index (O(log N))  │          │
+      │        │  SEMANTIC MEMORY (ID)   │          │
+      │        │  Concept Index (BTree)  │          │
       │        └─────────────────────────┘          │
       │                                             │
       └─────────────────┬───────────────────────────┘
@@ -569,8 +568,15 @@ loop {
    - Camera captures speaker's face
    - Hailo-8 runs YOLOv5 inference
    - Tensor parser extracts detected objects
-   - Hypervector generated for "person speaking"
-   - Stored in neural memory for context
+   - Concept mapped for "person speaking"
+   - Stored in Semantic Memory
+   - ConceptID stored alongside visual data
+   - Unified "World Model" created from sensor fusion
+   - Save neural memory index (concepts)
+   - Restore on boot
+   - Visual + Audio concepts queried
+   - Classified as "speech" or "noise"
+   - Hypervector stored alongside visual data
 
 3. **Audio Classification** (Core 2, High Priority):
    - Microphone captures ambient sound

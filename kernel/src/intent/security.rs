@@ -1,12 +1,11 @@
 //! Intent Security Module
 //!
-//! Comprehensive security system using Hyperdimensional Computing for anomaly detection.
-//! Provides: rate limiting, privilege checking, handler integrity, and semantic anomaly detection.
+//! Comprehensive security system for the Intent Kernel.
+//! Provides: rate limiting, privilege checking, and handler integrity verification.
 
-use alloc::collections::{BTreeMap, VecDeque};
+use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 use crate::intent::ConceptID;
-use crate::kernel::memory::neural::{Hypervector, hamming_similarity};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECURITY VIOLATION TRACKING
@@ -18,7 +17,6 @@ pub enum SecurityViolation {
     RateLimitExceeded,
     PrivilegeEscalation,
     HandlerTampering,
-    SemanticAnomaly,
 }
 
 /// Security violation record
@@ -288,178 +286,6 @@ impl HandlerIntegrityChecker {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// HDC-BASED SEMANTIC ANOMALY DETECTION
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/// Semantic baseline for normal intent patterns
-pub struct SemanticBaseline {
-    /// Normal intent pattern (bundled hypervector of typical intents)
-    baseline: Hypervector,
-    /// Number of samples used to build baseline
-    sample_count: usize,
-    /// Recent intent history for online learning
-    history: VecDeque<Hypervector>,
-    /// Maximum history size
-    max_history: usize,
-}
-
-impl SemanticBaseline {
-    /// Create a new semantic baseline
-    pub const fn new() -> Self {
-        Self {
-            baseline: [0u64; 16],
-            sample_count: 0,
-            history: VecDeque::new(),
-            max_history: 10,
-        }
-    }
-
-    /// Learn baseline from a set of normal intent hypervectors
-    /// 
-    /// Uses HDC bundling (majority rule) to create a composite "normal" pattern
-    pub fn learn_baseline(&mut self, samples: &[Hypervector]) {
-        if samples.is_empty() {
-            return;
-        }
-
-        // For bundling in binary HDC, we use majority voting across all samples
-        // This creates a prototype that is similar to all inputs
-        let mut result = [0u64; 16];
-        
-        for i in 0..16 {
-            let mut bit_counts = [0u32; 64];
-            
-            // Count bits across all samples
-            for sample in samples.iter() {
-                for bit_pos in 0..64 {
-                    if (sample[i] >> bit_pos) & 1 == 1 {
-                        bit_counts[bit_pos] += 1;
-                    }
-                }
-            }
-            
-            // Majority vote
-            let threshold = (samples.len() / 2) as u32;
-            let mut word = 0u64;
-            for bit_pos in 0..64 {
-                if bit_counts[bit_pos] > threshold {
-                    word |= 1u64 << bit_pos;
-                }
-            }
-            
-            result[i] = word;
-        }
-
-        self.baseline = result;
-        self.sample_count = samples.len();
-    }
-
-    /// Add a sample to the history and update baseline online
-    pub fn update_baseline(&mut self, sample: Hypervector) {
-        self.history.push_back(sample);
-        
-        if self.history.len() > self.max_history {
-            self.history.pop_front();
-        }
-
-        // Rebuild baseline from history if we have enough samples
-        if self.history.len() >= 3 {
-            let samples: Vec<Hypervector> = self.history.iter().copied().collect();
-            self.learn_baseline(&samples);
-        }
-    }
-
-    /// Check if a hypervector is similar to the baseline
-    /// 
-    /// # Arguments
-    /// * `query` - Hypervector to check
-    /// * `threshold` - Similarity threshold (0.0 to 1.0)
-    /// 
-    /// # Returns
-    /// `true` if similar (normal), `false` if anomalous
-    pub fn is_normal(&self, query: &Hypervector, threshold: f32) -> bool {
-        if self.sample_count == 0 {
-            // No baseline learned yet, assume normal
-            return true;
-        }
-
-        let similarity = hamming_similarity(&self.baseline, query);
-        similarity >= threshold
-    }
-
-    /// Get baseline similarity to a query
-    pub fn similarity(&self, query: &Hypervector) -> f32 {
-        if self.sample_count == 0 {
-            return 1.0; // No baseline = everything is normal
-        }
-        hamming_similarity(&self.baseline, query)
-    }
-
-    /// Check if baseline is initialized
-    pub fn is_initialized(&self) -> bool {
-        self.sample_count > 0
-    }
-}
-
-/// Anomaly detector using HDC similarity
-pub struct AnomalyDetector {
-    baseline: SemanticBaseline,
-    anomaly_threshold: f32,
-    learning_mode: bool,
-}
-
-impl AnomalyDetector {
-    /// Create a new anomaly detector
-    /// 
-    /// # Arguments
-    /// * `threshold` - Minimum similarity to baseline (default: 0.3)
-    pub const fn new(threshold: f32) -> Self {
-        Self {
-            baseline: SemanticBaseline::new(),
-            anomaly_threshold: threshold,
-            learning_mode: true,
-        }
-    }
-
-    /// Train the detector with normal intent patterns
-    pub fn train(&mut self, samples: &[Hypervector]) {
-        self.baseline.learn_baseline(samples);
-        self.learning_mode = false;
-    }
-
-    /// Detect if an intent is anomalous
-    /// 
-    /// # Returns
-    /// `(is_anomaly, similarity_score)`
-    pub fn detect(&mut self, intent_hv: &Hypervector) -> (bool, f32) {
-        let similarity = self.baseline.similarity(intent_hv);
-        
-        // In learning mode, add to baseline
-        if self.learning_mode {
-            self.baseline.update_baseline(*intent_hv);
-        }
-        
-        let is_anomaly = !self.baseline.is_normal(intent_hv, self.anomaly_threshold);
-        (is_anomaly, similarity)
-    }
-
-    /// Enable or disable learning mode
-    pub fn set_learning_mode(&mut self, enabled: bool) {
-        self.learning_mode = enabled;
-    }
-
-    /// Get current anomaly threshold
-    pub fn get_threshold(&self) -> f32 {
-        self.anomaly_threshold
-    }
-
-    /// Set anomaly threshold
-    pub fn set_threshold(&mut self, threshold: f32) {
-        self.anomaly_threshold = threshold.clamp(0.0, 1.0);
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // INTEGRATED SECURITY COORDINATOR
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -468,7 +294,6 @@ pub struct IntentSecurity {
     rate_limiter: RateLimiter,
     privilege_checker: PrivilegeChecker,
     handler_checker: HandlerIntegrityChecker,
-    anomaly_detector: AnomalyDetector,
     violations: Vec<ViolationRecord>,
     max_violations: usize,
 }
@@ -480,7 +305,6 @@ impl IntentSecurity {
             rate_limiter: RateLimiter::new(), // 1000/sec, burst 100
             privilege_checker: PrivilegeChecker::new(),
             handler_checker: HandlerIntegrityChecker::new(),
-            anomaly_detector: AnomalyDetector::new(0.3), // 30% similarity threshold
             violations: Vec::new(),
             max_violations: 100,
         }
@@ -491,7 +315,6 @@ impl IntentSecurity {
     /// Performs all security checks in order:
     /// 1. Rate limiting
     /// 2. Privilege checking
-    /// 3. Semantic anomaly detection
     /// 
     /// # Returns
     /// `Ok(())` if allowed, `Err(SecurityViolation)` if blocked
@@ -500,7 +323,6 @@ impl IntentSecurity {
         concept_id: ConceptID,
         source_id: u64,
         privilege: PrivilegeLevel,
-        intent_hv: &Hypervector,
         timestamp: u64,
     ) -> Result<(), SecurityViolation> {
         // 1. Rate limiting check
@@ -515,20 +337,7 @@ impl IntentSecurity {
             return Err(SecurityViolation::PrivilegeEscalation);
         }
 
-        // 3. Anomaly detection
-        let (is_anomaly, _similarity) = self.anomaly_detector.detect(intent_hv);
-        if is_anomaly {
-            self.log_violation(SecurityViolation::SemanticAnomaly, concept_id, source_id, timestamp);
-            // Note: We log but don't block anomalies (could be false positive)
-            // In production, this would trigger additional monitoring
-        }
-
         Ok(())
-    }
-
-    /// Train anomaly detector with normal intent patterns
-    pub fn train_anomaly_detector(&mut self, samples: &[Hypervector]) {
-        self.anomaly_detector.train(samples);
     }
 
     /// Register a handler for integrity checking
@@ -671,51 +480,14 @@ mod tests {
     }
 
     #[test]
-    fn test_baseline_learning() {
-        let mut baseline = SemanticBaseline::new();
-        
-        // Create 3 similar hypervectors
-        let hv1 = [0xFFFF_FFFF_FFFF_FFFF; 16];
-        let hv2 = [0xFFFF_FFFF_FFFF_FFFE; 16];
-        let hv3 = [0xFFFF_FFFF_FFFF_FFFD; 16];
-        
-        baseline.learn_baseline(&[hv1, hv2, hv3]);
-        assert!(baseline.is_initialized());
-        
-        // Should recognize similar patterns
-        assert!(baseline.is_normal(&hv1, 0.9));
-    }
-
-    #[test]
-    fn test_anomaly_detection() {
-        let mut detector = AnomalyDetector::new(0.6);
-        
-        // Train with normal patterns
-        let normal1 = [0xAAAA_AAAA_AAAA_AAAA; 16];
-        let normal2 = [0xAAAA_AAAA_AAAA_BBBB; 16];
-        detector.train(&[normal1, normal2]);
-        
-        // Similar pattern should be normal
-        let similar = [0xAAAA_AAAA_AAAA_CCCC; 16];
-        let (is_anomaly, _sim) = detector.detect(&similar);
-        assert!(!is_anomaly);
-        
-        // Very different pattern should be anomalous
-        let anomalous = [0x0000_0000_0000_0000; 16];
-        let (is_anomaly, _sim) = detector.detect(&anomalous);
-        assert!(is_anomaly);
-    }
-
-    #[test]
     fn test_security_integration() {
         let mut security = IntentSecurity::new();
         let concept = ConceptID::new(0x0001_0000_0000_0001);
         let source_id = 1;
         let timestamp = 0;
-        let hv = [0xAAAA_AAAA_AAAA_AAAA; 16];
 
         // First intent should pass
-        assert!(security.check_intent(concept, source_id, PrivilegeLevel::User, &hv, timestamp).is_ok());
+        assert!(security.check_intent(concept, source_id, PrivilegeLevel::User, timestamp).is_ok());
     }
 
     #[test]
@@ -724,10 +496,9 @@ mod tests {
         let concept = ConceptID::new(0x0000_0000_0000_0001); // Kernel concept
         let source_id = 1;
         let timestamp = 0;
-        let hv = [0x0; 16];
 
         // Try to execute kernel intent from user context
-        let result = security.check_intent(concept, source_id, PrivilegeLevel::User, &hv, timestamp);
+        let result = security.check_intent(concept, source_id, PrivilegeLevel::User, timestamp);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), SecurityViolation::PrivilegeEscalation);
         

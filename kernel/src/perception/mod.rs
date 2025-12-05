@@ -114,14 +114,11 @@ impl PerceptionManager {
             let concept_id = ConceptID(0xCAFE_0000 | obj.class_id as u64);
             
             // Store in Neural Memory
-            // We store the object metadata as the "data" payload.
-            // The key is the Hypervector.
+            // We store the object metadata as the payload.
             unsafe {
-                allocator.alloc(
-                    core::mem::size_of::<DetectedObject>(), 
-                    concept_id, 
-                    obj.hypervector.data
-                );
+                if let Some(mut ptr) = allocator.alloc(core::mem::size_of::<DetectedObject>(), concept_id) {
+                     core::ptr::write(ptr.ptr.as_ptr() as *mut DetectedObject, obj);
+                }
             }
             count += 1;
         }
@@ -140,11 +137,9 @@ impl PerceptionManager {
             let concept_id = ConceptID(0x500D_0000 | event.class_id as u64);
             
             unsafe {
-                allocator.alloc(
-                    core::mem::size_of::<audio::AudioEvent>(),
-                    concept_id,
-                    event.hypervector.data
-                );
+                if let Some(mut ptr) = allocator.alloc(core::mem::size_of::<audio::AudioEvent>(), concept_id) {
+                    core::ptr::write(ptr.ptr.as_ptr() as *mut audio::AudioEvent, event);
+                }
             }
             Ok(true)
         } else {
@@ -196,7 +191,6 @@ mod tests {
             class_id: 1, 
             confidence: 0.9, 
             x: 0.5, y: 0.5, width: 0.1, height: 0.1,
-            hypervector: crate::perception::vision::VisualHypervector { data: [1; 16] } 
         };
         let mut cam_objs = Vec::new();
         cam_objs.push(cam_obj);
@@ -211,7 +205,6 @@ mod tests {
             class_id: 2, 
             confidence: 0.8, 
             x: 0.2, y: 0.2, width: 0.1, height: 0.1,
-            hypervector: crate::perception::vision::VisualHypervector { data: [2; 16] }
         };
         let mut lidar_objs = Vec::new();
         lidar_objs.push(lidar_obj);

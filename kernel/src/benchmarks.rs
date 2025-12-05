@@ -23,22 +23,14 @@ pub fn run_all() {
     bench_concept_lookup();
     bench_security_pipeline();
     
-    // === 2. HDC MEMORY BENCHMARKS (7) ===
-    kprintln!("\n═══ 2. Hyperdimensional Computing (7 benchmarks) ═══");
-    bench_hamming_similarity();
-    bench_hdc_bind();
-    bench_hdc_bundle();
-    bench_hdc_permute();
-    bench_hnsw_search();
+    // === 2. SEMANTIC MEMORY BENCHMARKS ===
+    kprintln!("\n═══ 2. Semantic Memory Benchmarks ═══");
     bench_neural_alloc();
-    bench_lsh_projection();
     
-    // === 3. PERCEPTION BENCHMARKS (4) ===
-    kprintln!("\n═══ 3. Perception Pipeline (4 benchmarks) ═══");
+    // === 3. PERCEPTION BENCHMARKS (2) ===
+    kprintln!("\n═══ 3. Perception Pipeline (2 benchmarks) ═══");
     bench_sensor_fusion();
     bench_perceive_and_store();
-    bench_visual_hv();
-    bench_object_to_concept();
     
     // === 4. MULTI-MODAL INPUT BENCHMARKS (5) ===
     kprintln!("\n═══ 4. Multi-Modal Input (5 benchmarks) ═══");
@@ -621,130 +613,19 @@ fn bench_concept_lookup() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// HYPERDIMENSIONAL COMPUTING (HDC) BENCHMARKS
+// SEMANTIC MEMORY BENCHMARKS
 // ═══════════════════════════════════════════════════════════════════════════════
-
-/// Benchmark Hamming Similarity (1024-bit)
-/// 
-/// Core similarity metric: XOR + popcount across 16 u64s.
-fn bench_hamming_similarity() {
-    kprintln!("[BENCH] Hamming Similarity (1024-bit)...");
-    
-    use crate::kernel::memory::neural::{Hypervector, hamming_similarity};
-    
-    let iterations = 10_000;
-    
-    // Create two test hypervectors
-    let hv_a: Hypervector = [0xAAAA_AAAA_AAAA_AAAA; 16];
-    let hv_b: Hypervector = [0x5555_5555_5555_5555; 16];
-    
-    let start = profiling::rdtsc();
-    
-    for _ in 0..iterations {
-        let sim = hamming_similarity(&hv_a, &hv_b);
-        core::hint::black_box(sim);
-    }
-    
-    let end = profiling::rdtsc();
-    let total_cycles = end.wrapping_sub(start);
-    let avg_cycles = total_cycles / iterations;
-    
-    kprintln!("  -> Avg Similarity Calc: {} cycles", avg_cycles);
-}
-
-/// Benchmark Hypervector Bind (XOR)
-/// 
-/// Bind: A ⊗ B = A XOR B (creates orthogonal concept)
-fn bench_hdc_bind() {
-    kprintln!("[BENCH] HDC Bind (XOR)...");
-    
-    use crate::kernel::memory::neural::{Hypervector, bind};
-    
-    let iterations = 10_000;
-    
-    let hv_a: Hypervector = [0xCAFE_BABE_DEAD_BEEF; 16];
-    let hv_b: Hypervector = [0x1234_5678_9ABC_DEF0; 16];
-    
-    let start = profiling::rdtsc();
-    
-    for _ in 0..iterations {
-        let result = bind(&hv_a, &hv_b);
-        core::hint::black_box(result);
-    }
-    
-    let end = profiling::rdtsc();
-    let total_cycles = end.wrapping_sub(start);
-    let avg_cycles = total_cycles / iterations;
-    
-    kprintln!("  -> Avg Bind (XOR): {} cycles", avg_cycles);
-}
-
-/// Benchmark Hypervector Bundle (Majority Vote)
-/// 
-/// Bundle: A + B + C = Majority vote across 3 vectors
-fn bench_hdc_bundle() {
-    kprintln!("[BENCH] HDC Bundle (Majority)...");
-    
-    use crate::kernel::memory::neural::{Hypervector, bundle_majority};
-    
-    let iterations = 10_000;
-    
-    let hv_a: Hypervector = [0xFFFF_0000_FFFF_0000; 16];
-    let hv_b: Hypervector = [0x0000_FFFF_0000_FFFF; 16];
-    let hv_c: Hypervector = [0xFFFF_FFFF_0000_0000; 16];
-    
-    let start = profiling::rdtsc();
-    
-    for _ in 0..iterations {
-        let result = bundle_majority(&hv_a, &hv_b, &hv_c);
-        core::hint::black_box(result);
-    }
-    
-    let end = profiling::rdtsc();
-    let total_cycles = end.wrapping_sub(start);
-    let avg_cycles = total_cycles / iterations;
-    
-    kprintln!("  -> Avg Bundle (Majority): {} cycles", avg_cycles);
-}
-
-/// Benchmark Hypervector Permute (Cyclic Shift)
-/// 
-/// Permute: Π(A) = Rotate by 1 bit position
-fn bench_hdc_permute() {
-    kprintln!("[BENCH] HDC Permute (Cyclic Shift)...");
-    
-    use crate::kernel::memory::neural::{Hypervector, permute};
-    
-    let iterations = 10_000;
-    
-    let hv: Hypervector = [0xDEAD_BEEF_CAFE_BABE; 16];
-    
-    let start = profiling::rdtsc();
-    
-    for _ in 0..iterations {
-        let result = permute(&hv);
-        core::hint::black_box(result);
-    }
-    
-    let end = profiling::rdtsc();
-    let total_cycles = end.wrapping_sub(start);
-    let avg_cycles = total_cycles / iterations;
-    
-    kprintln!("  -> Avg Permute (Shift): {} cycles", avg_cycles);
-}
 
 /// Benchmark Neural Memory Allocation
 /// 
-/// Allocate semantic memory block with ConceptID and Hypervector.
+/// Allocate semantic memory block with ConceptID.
 fn bench_neural_alloc() {
     kprintln!("[BENCH] Neural Memory Alloc...");
     
-    use crate::kernel::memory::neural::{NEURAL_ALLOCATOR, Hypervector};
+    use crate::kernel::memory::neural::{NEURAL_ALLOCATOR};
     use crate::intent::ConceptID;
     
-    let iterations = 1_000; // Fewer iterations to avoid memory exhaustion
-    
-    let test_hv: Hypervector = [0x1234_5678_9ABC_DEF0; 16];
+    let iterations = 1_000;
     
     let start = profiling::rdtsc();
     
@@ -752,9 +633,8 @@ fn bench_neural_alloc() {
         let mut allocator = NEURAL_ALLOCATOR.lock();
         let concept = ConceptID::new(0xBEEF_0000 | i as u64);
         // SAFETY: We're measuring allocation cost, not using the memory
-        let _ptr = unsafe { allocator.alloc(64, concept, test_hv) };
+        let _ptr = unsafe { allocator.alloc(64, concept) };
         core::hint::black_box(_ptr);
-        // Note: We don't free here to measure pure alloc cost
     }
     
     let end = profiling::rdtsc();
@@ -1002,71 +882,7 @@ fn bench_security_pipeline() {
     kprintln!("  -> Avg Security Check: {} cycles", avg_cycles);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ADDITIONAL HDC BENCHMARKS
-// ═══════════════════════════════════════════════════════════════════════════════
 
-/// Benchmark HNSW Index Search
-fn bench_hnsw_search() {
-    kprintln!("[BENCH] HNSW Nearest Neighbor Search...");
-    
-    use crate::kernel::memory::neural::{Hypervector, NEURAL_ALLOCATOR};
-    use crate::intent::ConceptID;
-    
-    // First, populate the index with some entries
-    let test_hv: Hypervector = [0xDEAD_BEEF_CAFE_BABE; 16];
-    for i in 0..10u64 {
-        let mut allocator = NEURAL_ALLOCATOR.lock();
-        let concept = ConceptID::new(0xABCD_0000 | i);
-        unsafe { allocator.alloc(64, concept, test_hv); }
-    }
-    
-    let iterations = 1_000;
-    let query_hv: Hypervector = [0xCAFE_BABE_DEAD_BEEF; 16];
-    
-    let start = profiling::rdtsc();
-    
-    for _ in 0..iterations {
-        let allocator = NEURAL_ALLOCATOR.lock();
-        let result = unsafe { allocator.retrieve_nearest(&query_hv) };
-        core::hint::black_box(result);
-    }
-    
-    let end = profiling::rdtsc();
-    let avg_cycles = end.wrapping_sub(start) / iterations;
-    
-    kprintln!("  -> Avg HNSW Search: {} cycles", avg_cycles);
-}
-
-/// Benchmark LSH Projection (Feature -> Hypervector)
-fn bench_lsh_projection() {
-    kprintln!("[BENCH] LSH Feature Projection...");
-    
-    use crate::kernel::memory::neural::Hypervector;
-    
-    let iterations = 10_000;
-    
-    // Simulate feature vector
-    let features = [0.1f32, 0.5, 0.3, 0.8, 0.2, 0.9, 0.4, 0.7];
-    
-    let start = profiling::rdtsc();
-    
-    for _ in 0..iterations {
-        // Simple LSH: threshold-based projection
-        let mut hv: Hypervector = [0; 16];
-        for (i, &f) in features.iter().enumerate() {
-            if f > 0.5 {
-                hv[i % 16] |= 1 << (i % 64);
-            }
-        }
-        core::hint::black_box(hv);
-    }
-    
-    let end = profiling::rdtsc();
-    let avg_cycles = end.wrapping_sub(start) / iterations;
-    
-    kprintln!("  -> Avg LSH Projection: {} cycles", avg_cycles);
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PERCEPTION BENCHMARKS
@@ -1102,21 +918,22 @@ fn bench_sensor_fusion() {
 fn bench_perceive_and_store() {
     kprintln!("[BENCH] Perceive → Store Pipeline...");
     
-    use crate::kernel::memory::neural::{Hypervector, NEURAL_ALLOCATOR};
+    use crate::kernel::memory::neural::{NEURAL_ALLOCATOR};
     use crate::intent::ConceptID;
     
-    let iterations = 100; // Fewer to avoid memory exhaustion
+    let iterations = 1_000; 
     
     let start = profiling::rdtsc();
     
     for i in 0..iterations {
         // Simulate perception result -> neural memory
-        let perceived_hv: Hypervector = [0xEEFF_0000 | i; 16];
-        let concept = ConceptID::new(0xCAFE_0000 | i);
+        // No hypervector generation needed
+        let concept = ConceptID::new(0xCAFE_0000 | i as u64);
         
         let mut allocator = NEURAL_ALLOCATOR.lock();
-        let _ptr = unsafe { allocator.alloc(32, concept, perceived_hv) };
-        core::hint::black_box(_ptr);
+        if let Some(_ptr) = unsafe { allocator.alloc(32, concept) } {
+            core::hint::black_box(_ptr);
+        }
     }
     
     let end = profiling::rdtsc();
@@ -1125,33 +942,7 @@ fn bench_perceive_and_store() {
     kprintln!("  -> Avg Perceive+Store: {} cycles", avg_cycles);
 }
 
-/// Benchmark Visual Hypervector Generation
-fn bench_visual_hv() {
-    kprintln!("[BENCH] Visual Hypervector Generation...");
-    
-    use crate::kernel::memory::neural::Hypervector;
-    
-    let iterations = 10_000;
-    
-    // Simulate edge features from image
-    let edge_features = [128u8, 64, 192, 32, 255, 0, 128, 96];
-    
-    let start = profiling::rdtsc();
-    
-    for _ in 0..iterations {
-        // Convert edge features to hypervector
-        let mut hv: Hypervector = [0; 16];
-        for (i, &edge) in edge_features.iter().enumerate() {
-            hv[i % 16] = (edge as u64) * 0x0101010101010101;
-        }
-        core::hint::black_box(hv);
-    }
-    
-    let end = profiling::rdtsc();
-    let avg_cycles = end.wrapping_sub(start) / iterations;
-    
-    kprintln!("  -> Avg Visual HV: {} cycles", avg_cycles);
-}
+
 
 /// Benchmark Object-to-ConceptID Mapping
 fn bench_object_to_concept() {

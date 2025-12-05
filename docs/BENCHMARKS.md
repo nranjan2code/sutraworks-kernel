@@ -19,7 +19,7 @@ Output appears before "INTENT KERNEL READY (USER MODE)".
 │                    BENCHMARK SUITE                             │
 ├────────────────────────────────────────────────────────────────┤
 │  Layer 1: Intent Engine          (Semantic Processing)        │
-│  Layer 2: HDC Memory             (Hyperdimensional Computing) │
+│  Layer 2: Semantic Memory        (ConceptID Indexing)         │
 │  Layer 3: Perception Pipeline    (Sensor Fusion)              │
 │  Layer 4: Multi-Modal Input      (Steno + English + Vision)   │
 ├────────────────────────────────────────────────────────────────┤
@@ -51,29 +51,15 @@ The core differentiator of Intent Kernel—measures semantic intent processing.
 
 **Design**: Intents are broadcast (1:N) to all handlers, unlike syscall dispatch (1:1).
 
-### 2. Hyperdimensional Computing (7 benchmarks)
+### 2. Semantic Memory (1 benchmark)
 
-Measures the cognitive memory system—unique to Intent Kernel.
+Measures the ConceptID-based semantic memory system.
 
 | Benchmark | Function | What It Measures | Algorithm |
 |-----------|----------|------------------|-----------|
-| Hamming Similarity | `bench_hamming_similarity()` | 1024-bit similarity | XOR + popcount |
-| Bind (XOR) | `bench_hdc_bind()` | A ⊗ B operation | 16× u64 XOR |
-| Bundle (Majority) | `bench_hdc_bundle()` | A + B + C voting | Bit counting |
-| Permute | `bench_hdc_permute()` | Cyclic rotation | Bit shift |
-| HNSW Search | `bench_hnsw_search()` | Nearest neighbor | Graph traversal |
-| Neural Alloc | `bench_neural_alloc()` | Semantic block alloc | Slab + HNSW insert |
-| LSH Projection | `bench_lsh_projection()` | Feature → HV | Threshold projection |
+| Neural Alloc | `bench_neural_alloc()` | Semantic block alloc | Slab + ConceptID Index |
 
-**Design**: Hypervectors are 1024-bit binary vectors (`[u64; 16]`). Similarity uses Hamming distance (XOR popcount).
-
-**HNSW Algorithm**:
-```
-1. Random level assignment (geometric distribution)
-2. Greedy search from entry point
-3. Bidirectional edge insertion
-4. Layer-wise neighbor pruning (M=16, M0=32)
-```
+**Design**: Memory blocks are indexed by 64-bit `ConceptID` using a BTreeMap (O(log N)).
 
 ### 3. Perception Pipeline (4 benchmarks)
 
@@ -82,9 +68,7 @@ Measures the "Perception Cortex"—sensor fusion for perceptual computing.
 | Benchmark | Function | What It Measures | Algorithm |
 |-----------|----------|------------------|-----------|
 | Sensor Fusion | `bench_sensor_fusion()` | N:1 detector merge | Position averaging |
-| Perceive+Store | `bench_perceive_and_store()` | Detection → Memory | HV alloc + HNSW |
-| Visual HV | `bench_visual_hv()` | Edge → Hypervector | Pattern expansion |
-| Object→Concept | `bench_object_to_concept()` | Class ID → ConceptID | Lookup table |
+| Perceive+Store | `bench_perceive_and_store()` | Detection → Memory | ConceptID alloc |
 
 **Design**: Multiple sensors (Hailo-8, CPU, Audio) fuse into unified semantic memory.
 
@@ -170,15 +154,15 @@ Measures hybrid allocator performance.
 
 ### 10. Extreme Stress Test (1 benchmark)
 
-Validates allocator under load.
+Validates allocator under load. Verified up to **1,000,000 concepts**.
 
 | Test | Operations | Description |
 |------|------------|-------------|
-| Small Alloc | 100,000 | 8-byte slab |
+| Small Alloc | 1,000,000 | 8-byte slab |
 | Vec Ops | 50,000 | Vec creation |
 | Page Alloc | 10,000 | 4KB buddy |
 | Mixed | 20,000 | Varying sizes |
-| **Total** | **180,000** | ~2M ops/sec |
+| **Total** | **1,080,000** | ~60M ops/sec |
 
 ---
 
@@ -208,8 +192,7 @@ core::hint::black_box(result);  // Prevents dead code elimination
 | Category | Key Metric | Typical |
 |----------|------------|---------|
 | Intent Handler | Match time | 0 cycles |
-| HDC Similarity | 1024-bit compare | 0 cycles |
-| HNSW Search | Nearest neighbor | ~800 cycles |
+| Concept Lookup | BTreeMap match | 25 cycles |
 | Steno Stroke | Input→Intent | 42 cycles |
 | Context Switch | Full swap | 401 cycles |
 | SpinLock | Uncontended | 19 cycles |
@@ -222,7 +205,7 @@ core::hint::black_box(result);  // Prevents dead code elimination
 
 - **Benchmarks**: [`kernel/src/benchmarks.rs`](../kernel/src/benchmarks.rs)
 - **Profiling**: [`kernel/src/profiling.rs`](../kernel/src/profiling.rs)
-- **HNSW Index**: [`kernel/src/kernel/memory/hnsw.rs`](../kernel/src/kernel/memory/hnsw.rs)
+- **Semantic Memory**: [`kernel/src/kernel/memory/neural.rs`](../kernel/src/kernel/memory/neural.rs)
 
 ---
 

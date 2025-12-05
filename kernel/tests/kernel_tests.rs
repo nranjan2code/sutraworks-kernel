@@ -63,11 +63,7 @@ fn run_all_tests() {
     
     // Intent tests
     run_test("intent::test_concept_id_hashing", unit::intent_tests::test_concept_id_hashing);
-    run_test("intent::test_embedding_creation", unit::intent_tests::test_embedding_creation);
-    run_test("intent::test_embedding_similarity_identical", unit::intent_tests::test_embedding_similarity_identical);
-    run_test("intent::test_embedding_similarity_different", unit::intent_tests::test_embedding_similarity_different);
     run_test("intent::test_neural_memory_basic", unit::intent_tests::test_neural_memory_basic);
-    run_test("intent::test_neural_memory_threshold", unit::intent_tests::test_neural_memory_threshold);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

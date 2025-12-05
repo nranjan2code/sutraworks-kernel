@@ -6,7 +6,7 @@ The **Semantic Visual Interface (SVI)** is the visual projection layer of the In
 
 1.  **Intent-Driven**: The interface updates in response to semantic intents (`ConceptID`), not just raw input events.
 2.  **Projections, Not Windows**: Visual elements are ephemeral "projections" that appear when needed and dissolve when irrelevant.
-3.  **Semantic Layout**: (Planned) Visual elements arrange themselves based on semantic similarity (HDC), clustering related concepts together.
+3.  **Semantic Layout**: (Planned) Visual elements arrange themselves based on semantic categories, clustering related concepts together.
 
 ## Architecture
 
@@ -52,7 +52,7 @@ A `Projection` is a trait that defines a visual element:
 | **Status** | System statistics (CPU, Memory, Stroke count). | `STATUS` intent |
 | **Help** | Modal overlay showing available commands. | `HELP` intent |
 | **Perception** | Visualizes active sensors and object detection. | *Always Active* |
-| **MemoryGraph** | Visualizes HDC neural memory nodes. | *Always Active* |
+| **MemoryGraph** | Visualizes semantic memory nodes. | *Always Active* |
 
 ## Usage
 
@@ -64,6 +64,6 @@ The SVI is active by default on boot. It renders to the primary framebuffer (HDM
 - **Clear Screen**: Type `clear` or steno `KHR*`.
 
 ## Future Roadmap
-- **HDC Layout**: Use hypervector similarity to position projections.
+- **Semantic Layout**: Use category grouping to position projections.
 - **Semantic Zoom**: Reveal more detail as the user "zooms" into a concept.
 - **Intent History Timeline**: A visual scrubber for past intents.

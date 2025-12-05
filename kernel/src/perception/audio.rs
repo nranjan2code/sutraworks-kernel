@@ -1,20 +1,10 @@
 //! Audio Perception Subsystem
 //!
-//! This module handles sound processing, feature extraction, and semantic projection.
-//! It converts raw audio samples into 1024-bit Audio Hypervectors.
+//! This module handles sound processing and feature extraction.
 //!
 //! # Features
 //! - **Zero Crossing Rate (ZCR)**: Measure of noisiness/frequency.
 //! - **Short-Time Energy (STE)**: Measure of loudness/activity.
-//! - **Random Projection**: Maps features to semantic space.
-
-use crate::perception::vision::RandomProjection;
-
-/// Represents a semantic hypervector of an audio segment (1024-bit).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AudioHypervector {
-    pub data: [u64; 16],
-}
 
 /// A detected audio event.
 #[derive(Debug, Clone, Copy)]
@@ -23,7 +13,6 @@ pub struct AudioEvent {
     pub confidence: f32,
     pub energy: f32,
     pub zcr: f32,
-    pub hypervector: AudioHypervector,
 }
 
 /// Audio Feature Extractor
@@ -76,23 +65,11 @@ impl AudioProcessor {
             1 // Speech (or Tonal)
         };
         
-        // 4. Feature Projection
-        // Features: [energy, zcr, 0...]
-        let mut features = [0.0f32; 64];
-        features[0] = energy;
-        features[1] = zcr;
-        // Add some "spectral" dummy features based on ZCR to vary the vector
-        features[2] = zcr * energy; 
-        features[3] = (1.0 - zcr) * energy;
-        
-        let hv_data = RandomProjection::project(&features);
-        
         Some(AudioEvent {
             class_id,
             confidence: (energy * 10.0).min(1.0), // Crude confidence
             energy,
             zcr,
-            hypervector: AudioHypervector { data: hv_data.data },
         })
     }
 }

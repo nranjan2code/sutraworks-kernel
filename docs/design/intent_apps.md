@@ -49,7 +49,7 @@ pub struct FlowStep {
 ### 2. The Semantic Linker (The "Compiler")
 Traditional OSes link symbols (function names) at compile time. The Intent Kernel links **Semantics** at runtime.
 
-*   **Mechanism**: The Linker uses Hyperdimensional Computing (HDC) to find the best match for a requested capability.
+*   **Mechanism**: The Linker uses `ConceptID` lookups to find the best match for a requested capability.
 *   **Example**: If the manifest asks for "Food Database", the Linker searches the local vector space for installed skills. It might find `NutritionIX_API_Skill` (Similarity: 0.95) or a local `CSV_Lookup_Skill` (Similarity: 0.88).
 *   **Benefit**: Apps are **polymorphic**. The same "Calorie Tracker" manifest works whether you have a cloud API plugin or a local file plugin installed. The "code" changes, but the intent remains valid.
 
@@ -75,7 +75,7 @@ Skills are the atomic building blocks. They must implement a standard interface 
 
 ```rust
 pub trait Skill {
-    /// The semantic description of what this skill does (for HDC embedding)
+    /// The semantic description of what this skill does (mapped to ConceptID)
     fn description(&self) -> &'static str;
     
     /// The set of intents this skill can handle

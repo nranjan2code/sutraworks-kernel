@@ -53,8 +53,8 @@ All inputs converge to the same semantic representation:
 │  │              SEMANTIC PROCESSING LAYER                   │   │
 │  │  Steno: Dictionary lookup (<0.1μs)                       │   │
 │  │  English: NLP parser + synonyms (~30μs)                  │   │
-│  │  Vision: YOLO → Hypervector (~50ms)                      │   │
-│  │  Audio: Classification → Hypervector (~50ms)             │   │
+│  │  Vision: YOLO → ConceptID (~50ms)                        │   │
+│  │  Audio: Classification → ConceptID (~50ms)               │   │
 │  └─────────────────────────┬───────────────────────────────┘   │
 │                            ▼                                    │
 │                    ┌──────────────┐                            │
@@ -109,10 +109,10 @@ No other OS has built-in semantic memory:
 
 | Feature | Implementation |
 |---------|----------------|
-| **1024-bit Hypervectors** | Binary patterns representing concepts |
-| **Cognitive Algebra** | Bind (XOR), Bundle (Majority), Permute |
-| **HNSW Indexing** | O(log N) semantic retrieval |
-| **Sensor Fusion** | Vision/Audio → Hypervector → Memory |
+| **Concept-Native Memory** | Direct mapping of concepts to memory blocks |
+| **Deterministic Indexing** | O(log N) BTreeMap retrieval |
+| **HNSW Indexing** | Replaced with BTreeMap for efficiency |
+| **Sensor Fusion** | Vision/Audio → ConceptID → Memory |
 
 This enables the OS to **remember what it sees/hears** semantically.
 
@@ -136,7 +136,7 @@ Intent::STATUS → [Executor, HUD, Logger, NetworkBroadcast]
 | **License** | MIT | MIT | Apache 2.0 | Commercial |
 | **Language** | Pure Rust | C | C | C |
 | **AI Integration** | ✅ Native | ❌ Manual | ❌ Manual | ❌ Manual |
-| **Semantic Memory** | ✅ HDC/HNSW | ❌ | ❌ | ❌ |
+| **Semantic Memory** | ✅ ConceptID | ❌ | ❌ | ❌ |
 | **Process Isolation** | ✅ VMM | ❌ | ⚠️ Optional | ✅ |
 | **TCP/IP** | ✅ Full | ✅ | ✅ | ✅ |
 | **Target** | Semantic computing | IoT/Control | IoT | Safety-critical |
@@ -229,7 +229,7 @@ Intent::STATUS → [Executor, HUD, Logger, NetworkBroadcast]
 | Requirement | How Intent Kernel Delivers |
 |-------------|---------------------------|
 | Object detection | Hailo-8 NPU + YOLO |
-| Semantic memory | "I saw a cat" stored as hypervector |
+| Semantic memory | "I saw a cat" stored as ConceptID |
 | Query by meaning | "What did you see?" retrieves using HNSW |
 | Low power | Bare-metal efficiency |
 
@@ -312,8 +312,8 @@ Intent::STATUS → [Executor, HUD, Logger, NetworkBroadcast]
 | Strength | Evidence |
 |----------|----------|
 | **Input Latency** | <0.1ms (10-100x faster than desktop apps) |
-| **Semantic Memory** | Only OS with built-in HDC/HNSW |
-| **AI Integration** | Native Hailo-8 with hypervector output |
+| **Semantic Memory** | Only OS with native Semantic Memory |
+| **AI Integration** | Native Hailo-8 with ConceptID output |
 | **Boot Time** | ~100ms (vs seconds for Linux) |
 | **Code Quality** | Pure Rust, memory-safe |
 | **Resource Efficiency** | ~10MB RAM vs 64MB+ for Linux |

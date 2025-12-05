@@ -24,7 +24,7 @@ We are at a unique point in history where:
 2.  **AI is smart enough** to structure unstructured data.
 3.  **Users are frustrated enough** with the fragmentation of the "App Trap" to try something new.
 
-The Intent Kernel is not just "WinFS 2.0"; it is the realization of that vision using the tools (AI/HDC) that were missing 20 years ago.
+The Intent Kernel is not just "WinFS 2.0"; it is the realization of that vision using the tools (AI/Semantic Memory) that were missing 20 years ago.
 
 ## References
 1.  **Kanerva, P. (2009):** *Hyperdimensional Computing: An Introduction to Computing in Distributed Representation with High-Dimensional Random Vectors*. Cognitive Computation. (Foundational paper for HDC).

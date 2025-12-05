@@ -173,18 +173,6 @@ impl IntentExecutor {
         // Get current timestamp
         let timestamp = crate::drivers::timer::uptime_ms();
         
-        // Convert ConceptID to Hypervector for anomaly detection
-        // Use the concept ID as a seed for a simple hypervector
-        let intent_hv = {
-            let id = intent.concept_id.0;
-            let mut hv = [0u64; 16];
-            // Simple deterministic hypervector generation from concept ID
-            for i in 0..16 {
-                hv[i] = id.wrapping_mul(0x517cc1b727220a95u64.wrapping_add(i as u64));
-            }
-            hv
-        };
-        
         // Determine privilege level (kernel privilege assumed for now)
         // In real implementation, this would check the current execution level
         let privilege = security::PrivilegeLevel::Kernel;
@@ -194,7 +182,6 @@ impl IntentExecutor {
             intent.concept_id,
             source_id,
             privilege,
-            &intent_hv,
             timestamp,
         ) {
             crate::kprintln!("[SECURITY] Intent rejected: {:?}", violation);

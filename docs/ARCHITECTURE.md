@@ -10,8 +10,8 @@ Intent Kernel is a **Perceptual Computing Platform**—a bare-metal operating sy
 │                                                                          │
 │  Steno Machine (USB HID) ────▶ Direct Strokes (fastest: <0.1μs)        │
 │  Standard Keyboard       ────▶ Natural English (~30μs)                 │
-│  Vision (Hailo-8 NPU)    ────▶ Object Detection → Hypervectors         │
-│  Audio                   ────▶ Classification → Hypervectors            │
+│  Vision (Hailo-8 NPU)    ────▶ Object Detection → ConceptID              │
+│  Audio                   ────▶ Classification → ConceptID                │
 └─────────────────────────────────────────────────────────────────────────┘
                                       ↓
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -19,8 +19,8 @@ Intent Kernel is a **Perceptual Computing Platform**—a bare-metal operating sy
 │                                                                          │
 │  Steno:   Stroke → Dictionary → ConceptID (direct lookup)              │
 │  English: Text → Parser → Synonyms → ConceptID (200+ phrases)          │
-│  Vision:  Tensor → YOLO → Hypervector → Semantic Memory                │
-│  Audio:   Features → Classification → Hypervector → Memory             │
+│  Vision:  Tensor → YOLO → Class ID → ConceptID → Memory                │
+│  Audio:   Features → Classification → ConceptID → Memory               │
 └─────────────────────────────────────────────────────────────────────────┘
                                       ↓
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -37,7 +37,7 @@ Intent Kernel is a **Perceptual Computing Platform**—a bare-metal operating sy
 
 - **Steno Mode**: Direct stroke → intent (<0.1μs, maximum performance)
 - **English Mode**: Natural language → intent (~30μs, universal accessibility)
-- **Perception Mode**: Sensor data → hypervector → semantic memory
+- **Perception Mode**: Sensor data → ConceptID → semantic memory
 - **Hybrid Mode**: Mix any inputs freely (power users)
 
 ---
@@ -196,7 +196,7 @@ impl IntentExecutor {
 
 ## Intent Security System ✨ NEW! (Sprint 13.3)
 
-The Intent Kernel implements a multi-layered security architecture that protects the intent execution pipeline from abuse, anomalies, and tampering. The security system uses **Hyperdimensional Computing (HDC)** for semantic anomaly detection, combined with traditional mechanisms like rate limiting and privilege checking.
+The Intent Kernel implements a multi-layered security architecture that protects the intent execution pipeline from abuse and tampering.
 
 ### Security Architecture
 
@@ -204,16 +204,16 @@ The Intent Kernel implements a multi-layered security architecture that protects
 Intent Input → Security Checks → Executor → Handlers
                      │
         ┌────────────┼────────────┐
-        ▼            ▼             ▼
-   Rate Limit   Privilege    HDC Anomaly
-   (Configurable) (Kernel/User) (0.3 threshold)
+        ▼            ▼            ▼
+   Rate Limit    Privilege    Integrity
+   (Source IP)  (Kernel/User) (Checksum)
 ```
 
 ### Components
 
 #### 1. Rate Limiter (Token Bucket)
 
-Prevents intent spam and DoS attacks:
+Prevents intent spam and DoS attacks. Configurable per source.
 
 ```rust
 pub struct RateLimiter {
@@ -241,7 +241,7 @@ if !rate_limiter.check_rate(source_id, timestamp) {
 
 #### 2. Privilege Checker
 
-ConceptID range-based privilege enforcement:
+ConceptID range-based privilege enforcement. Kernel concepts (0x0...0000 - 0x0...FFFF) are protected from User agents.
 
 ```rust
 // Kernel-only range: 0x0000_0000_0000_0000 - 0x0000_0000_0000_FFFF
@@ -264,7 +264,7 @@ pub fn check_privilege(concept_id: ConceptID, level: PrivilegeLevel) -> bool
 
 #### 3. Handler Integrity Verification
 
-Detects code tampering using FNV-1a checksums:
+Detects code tampering using FNV-1a checksums of handler function pointers.
 
 ```rust
 pub struct HandlerChecksum {
@@ -287,57 +287,6 @@ pub struct HandlerChecksum {
 - Handler hijacking
 - Memory corruption exploits
 
-#### 4. Semantic Baseline (HDC Learning)
-
-Learns normal intent patterns using Hyperdimensional Computing:
-
-```rust
-pub struct SemanticBaseline {
-    baseline: Hypervector,        // 1024-bit normal pattern
-    sample_count: usize,
-    history: VecDeque<Hypervector>, // Last 10 samples
-}
-```
-
-**Learning Algorithm**: Bitwise majority voting
-- Input: Array of Hypervectors representing normal intents
-- Output: Single baseline Hypervector (prototype)
-- Method: For each bit position, take majority vote across all samples
-
-**Online Learning**:
-```rust
-baseline.update_baseline(new_intent_hv);
-// Adds to history, retrains when enough samples (≥3)
-```
-
-#### 5. Anomaly Detector
-
-Detects unusual intent patterns using HDC similarity:
-
-```rust
-pub struct AnomalyDetector {
-    baseline: SemanticBaseline,
-    anomaly_threshold: f32,    // Default: 0.3
-    learning_mode: bool,       // Can be disabled after training
-}
-```
-
-**Detection Method**:
-```rust
-let similarity = hamming_similarity(&baseline, &intent_hv);
-let is_anomaly = similarity < threshold;  // < 0.3 = anomalous
-```
-
-**Hamming Similarity**:
-- Metric: `Sim(A, B) = 1 - (HammingDist(A, B) / 1024)`
-- Range: 0.0 (completely different) to 1.0 (identical)
-- Threshold: 0.3 (30% similarity minimum)
-
-**Response**:
-- Anomalies are **logged** but **not blocked** (to avoid false positives)
-- Monitoring system can trigger alerts for manual review
-- Pattern available via `get_violations()` API
-
 ### Integrated Security Coordinator
 
 The `IntentSecurity` struct orchestrates all checks:
@@ -347,7 +296,6 @@ pub struct IntentSecurity {
     rate_limiter: RateLimiter,
     privilege_checker: PrivilegeChecker,
     handler_checker: HandlerIntegrityChecker,
-    anomaly_detector: AnomalyDetector,
     violations: Vec<ViolationRecord>,  // Last 100 violations
 }
 ```
@@ -355,26 +303,22 @@ pub struct IntentSecurity {
 **Security Check Pipeline** (in `IntentExecutor::execute`):
 
 ```rust
-// 1. Convert ConceptID to Hypervector
-let intent_hv = generate_hypervector(intent.concept_id);
-
-// 2. Get source ID and timestamp
+// 1. Get source ID and timestamp
 let source_id = current_process_id();
 let timestamp = uptime_ms();
 
-// 3. Run security checks
+// 2. Run security checks
 if let Err(violation) = security.check_intent(
     intent.concept_id,
     source_id,
     PrivilegeLevel::Kernel,
-    &intent_hv,
     timestamp,
 ) {
     kprintln!("[SECURITY] Intent rejected: {:?}", violation);
     return;  // Blocked!
 }
 
-// 4. If passed, execute intent
+// 3. If passed, execute intent
 handlers.dispatch(intent);
 ```
 
@@ -395,7 +339,6 @@ pub struct ViolationRecord {
 - `RateLimitExceeded`: Too many intents from source
 - `PrivilegeEscalation`: User trying to execute kernel-only intent
 - `HandlerTampering`: Handler checksum mismatch
-- `SemanticAnomaly`: Intent pattern doesn't match baseline
 
 **API**:
 ```rust
@@ -409,19 +352,17 @@ security.clear_violations()                  // Reset log
 
 **Real Measurements** (QEMU, 10,000 iterations):
 
-| Component | Cycles | Method |
-|-----------|--------|--------|
-| Rate Limiter | ~5 | BTreeMap lookup + arithmetic |
-| Privilege Checker | ~2 | u64 range comparison |
-| Anomaly Detector | ~10 | Hamming distance (16 XOR ops) |
-| Handler Checksum | ~3 | FNV-1a hash (8 bytes) |
-| **Total Overhead** | **~20** | **Composite** |
+| Component | Cycles |
+|-----------|--------|
+| Rate Limiter | ~5 |
+| Privilege Checker | ~2 |
+| Handler Checksum | ~3 |
+| **Total Overhead** | **~10** |
 
 **Intent Security Benchmark** (10,000 iterations):
 ```
 Total Cycles:     1,249,865,750
 Avg Cycles/Intent: 124,986 
-Pure Security:    ~30 cycles
 Note: Total includes 2ms delay for rate limiter token refill
 ```
 
@@ -434,7 +375,6 @@ Note: Minimal in QEMU; real hardware will show cache contention
 
 **Memory footprint**: ~2KB
 - Rate limiter state: ~800 bytes (source tracking)
-- Baseline Hypervector: 128 bytes
 - Violation log: ~1KB (100 records)
 
 ### Security Guarantees
@@ -442,12 +382,10 @@ Note: Minimal in QEMU; real hardware will show cache contention
 1. **Rate Protection**: Maximum 10 intents/sec per source (prevents flooding)
 2. **Privilege Isolation**: Kernel concepts unreachable from user space
 3. **Code Integrity**: Tampered handlers detected before execution
-4. **Anomaly Awareness**: Unusual patterns flagged for review
-5. **Audit Trail**: All violations logged with timestamps and sources
+4. **Audit Trail**: All violations logged with timestamps and sources
 
 ### Future Enhancements
 
-- **ML-Based Learning**: Replace static baseline with adaptive models
 - **Cross-Source Correlation**: Detect distributed attacks
 - **Intent Signing**: Cryptographic signatures for critical intents
 - **Rate Limit Tuning**: Per-concept rate limits (e.g., slower for destructive ops)
@@ -573,61 +511,41 @@ impl PerceptionManager {
   - **Command Ring**: Circular buffer for control commands.
   - **Inference Jobs**: `send_inference_job` manages Host-to-Device and Device-to-Host DMA transfers for tensor data.
 - **CPU Vision**:
-  - `EdgeDetector`: Sobel operator with **Random Projection** (LSH) for real semantic hypervectors.
+  - `EdgeDetector`: Sobel operator.
   - `ColorBlobDetector`: Color-based object tracking.
-  - **Visual Intents**: Generates 1024-bit Hypervectors for detected objects.
+  - **Visual Intents**: Maps detected objects directly to `ConceptID`.
 - **Audio Perception**:
   - `AudioProcessor`: Extracts **Zero Crossing Rate (ZCR)** and **Short-Time Energy (STE)**.
-  - **Acoustic Intents**: Classifies Silence/Speech/Noise and maps to 1024-bit Hypervectors.
+  - **Acoustic Intents**: Classifies Silence/Speech/Noise and maps to `ConceptID`.
 - **Virtual Sensors**: For testing and simulation.
 
 ---
 
-## Hyperdimensional Memory System
- 
- The kernel implements a **Hyperdimensional Computing (HDC)** architecture, also known as Vector Symbolic Architecture (VSA). This is a paradigm shift from traditional "Deep Learning" dense vectors to high-dimensional binary spaces.
- 
- ### 1024-bit Hypervectors
- Memory blocks are tagged with a **Hypervector** (1024-bit binary pattern) instead of a floating-point embedding.
- 
- ```rust
- pub struct SemanticBlock {
-     pub concept_id: ConceptID,
-     pub hypervector: [u64; 16], // 1024 bits
-     // ...
- }
- ```
- 
- ### Hamming Similarity & Indexing
- Retrieval is based on **Hamming Distance** (number of differing bits).
- 
- - **HNSW Index**: **O(log N)** graph-based retrieval for scalable performance.
-   - Replaced linear scan with Hierarchical Navigable Small World graph.
-   - Layers of linked lists allow skipping over large sections of the graph.
-  - **LSH (Locality Sensitive Hashing)**:
-    - Implemented via **Random Projection Matrix** (1024 x N).
-    - Projects continuous sensor data (Vision/Audio) into binary hypervectors.
-    - Preserves semantic similarity (similar inputs -> similar hypervectors).
- 
- ```rust
- // Sim(A, B) = 1.0 - (HammingDist(A, B) / 1024)
- // Search HNSW graph for nearest neighbor
- let ptr = allocator.retrieve_nearest(&query_hv);
- ```
- 
- ### Cognitive Algebra
- HDC allows for algebraic manipulation of concepts directly in memory:
- 
- - **Bind (`*`)**: `A * B` (XOR). Creates a new concept orthogonal to both inputs. Used for variable binding (e.g., `Color * Red`).
- - **Bundle (`+`)**: `A + B` (Majority). Creates a concept similar to both inputs. Used for sets/superposition.
- - **Permute (`Π`)**: `Π(A)` (Cyclic Shift). Creates an orthogonal concept. Used for sequences/order.
- 
- **Example**:
- ```rust
- let running_cat = bind(CAT, ACTION_RUN);
- // running_cat is distinct from CAT and RUN, but can be unbound:
- let cat = bind(running_cat, ACTION_RUN); // Recovers CAT
- ```
+## Semantic Memory System
+
+The kernel implements a **Semantic Memory** architecture indexed by `ConceptID`. This replaces the previous experimental Hyperdimensional Computing (HDC) system with a deterministic, efficient, and type-safe approach.
+
+### ConceptID-Native Memory
+Memory blocks are tagged strictly with a `ConceptID`, ensuring 1:1 mapping between intents/objects and memory.
+
+```rust
+pub struct SemanticBlock {
+    pub concept_id: ConceptID,
+    pub size: usize,
+    pub access_count: u64,
+    // Data follows immediately
+}
+```
+
+### Allocation & Retrieval
+- **BTreeMap Index**: Provides **O(log N)** lookup for precise retrieval by `ConceptID`.
+- **Payload Data**: Stores the actual auxiliary data (e.g., `DetectedObject` payload) associated with the concept.
+- **Efficiency**: Eliminates the 43x memory overhead of the previous HNSW/Hypervector implementation.
+
+```rust
+// O(log N) Retrieval
+let ptr = allocator.retrieve(concept_id);
+```
 
 ---
 
@@ -1036,7 +954,7 @@ let dict_data = serialize_dictionary();
 sdhci::write_blocks(0, num_blocks, &dict_data)?;
 
 // Save neural memory index
-let neural_index = export_hnsw_graph();
+let neural_index = export_memory_index();
 sdhci::write_blocks(1024, blocks, &neural_index)?;
 
 // Session logs

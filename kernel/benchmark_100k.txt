@@ -1,0 +1,1273 @@
+╔═══════════════════════════════════════════════════════════════╗
+║  Building Intent Kernel (Rust)                               ║
+╚═══════════════════════════════════════════════════════════════╝
+cd kernel && \
+	RUSTFLAGS="-C link-arg=-T../boot/linker_qemu.ld -C link-arg=../build/boot.o" cargo build --release --target aarch64-unknown-none
+warning: unused import: `alloc::vec::Vec`
+ --> src/benchmarks.rs:7:5
+  |
+7 | use alloc::vec::Vec;
+  |     ^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `ConceptID` and `Intent`
+   --> src/benchmarks.rs:539:25
+    |
+539 |     use crate::intent::{Intent, ConceptID};
+    |                         ^^^^^^  ^^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> src/benchmarks.rs:987:9
+    |
+987 |     let mut limiter = RateLimiter::new();
+    |         ----^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `limiter`
+   --> src/benchmarks.rs:987:9
+    |
+987 |     let mut limiter = RateLimiter::new();
+    |         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_limiter`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `packet_size`
+    --> src/benchmarks.rs:1574:9
+     |
+1574 |     let packet_size = 1500;
+     |         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_packet_size`
+
+warning: function `bench_syscall_user` is never used
+  --> src/benchmarks.rs:97:4
+   |
+97 | fn bench_syscall_user() {
+   |    ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `bench_syscall_latency` is never used
+   --> src/benchmarks.rs:147:4
+    |
+147 | fn bench_syscall_latency() {
+    |    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `bench_context_switch` is never used
+   --> src/benchmarks.rs:178:4
+    |
+178 | fn bench_context_switch() {
+    |    ^^^^^^^^^^^^^^^^^^^^
+
+warning: static `BENCH_COUNTER` is never used
+   --> src/benchmarks.rs:207:8
+    |
+207 | static BENCH_COUNTER: core::sync::atomic::AtomicU64 = ...
+    |        ^^^^^^^^^^^^^
+
+warning: function `bench_worker` is never used
+   --> src/benchmarks.rs:209:4
+    |
+209 | fn bench_worker() {
+    |    ^^^^^^^^^^^^
+
+warning: function `bench_intent_security` is never used
+   --> src/benchmarks.rs:277:4
+    |
+277 | fn bench_intent_security() {
+    |    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `bench_scheduler_latency` is never used
+   --> src/benchmarks.rs:325:4
+    |
+325 | fn bench_scheduler_latency() {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `bench_deadlock_detection` is never used
+   --> src/benchmarks.rs:372:4
+    |
+372 | fn bench_deadlock_detection() {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `bench_smp_overhead` is never used
+   --> src/benchmarks.rs:390:4
+    |
+390 | fn bench_smp_overhead() {
+    |    ^^^^^^^^^^^^^^^^^^
+
+warning: function `bench_timer_read` is never used
+   --> src/benchmarks.rs:928:4
+    |
+928 | fn bench_timer_read() {
+    |    ^^^^^^^^^^^^^^^^
+
+warning: function `user_bench_entry` is never used
+   --> src/benchmarks.rs:102:12
+    |
+102 |         fn user_bench_entry();
+    |            ^^^^^^^^^^^^^^^^
+
+warning: `intent-kernel` (lib) generated 16 warnings (run `cargo fix --lib -p intent-kernel` to apply 5 suggestions)
+   Compiling intent-kernel v0.1.0 (/Users/sutraworkslab/Projects/sutraworks-kernel/kernel)
+    Finished `release` profile [optimized] target(s) in 2.42s
+cp kernel/target/aarch64-unknown-none/release/kernel build/kernel.elf
+╔═══════════════════════════════════════════════════════════════╗
+║  Creating Bootable Image                                     ║
+╚═══════════════════════════════════════════════════════════════╝
+/Users/sutraworkslab/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/bin/llvm-objcopy -O binary build/kernel.elf build/kernel8.img
+
+  ✓ Kernel image created: build/kernel8.img
+  ✓ Size: 3.1M
+
+╔═══════════════════════════════════════════════════════════════╗
+║            INTENT KERNEL BUILD COMPLETE                      ║
+╠═══════════════════════════════════════════════════════════════╣
+║  Where humans speak and silicon listens                      ║
+╚═══════════════════════════════════════════════════════════════╝
+Starting QEMU (Note: Pi 5 emulation is limited)...
+qemu-system-aarch64 -M virt -cpu cortex-a72 -m 2G -serial stdio -display none -semihosting -kernel build/kernel8.img
+Kernel Entry
+
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║   ██╗███╗   ██╗████████╗███████╗███╗   ██╗████████╗               ║
+║   ██║████╗  ██║╚══██╔══╝██╔════╝████╗  ██║╚══██╔══╝               ║
+║   ██║██╔██╗ ██║   ██║   █████╗  ██╔██╗ ██║   ██║                  ║
+║   ██║██║╚██╗██║   ██║   ██╔══╝  ██║╚██╗██║   ██║                  ║
+║   ██║██║ ╚████║   ██║   ███████╗██║ ╚████║   ██║                  ║
+║   ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═══╝   ╚═╝                  ║
+║                                                                   ║
+║   ██╗  ██╗███████╗██████╗ ███╗   ██╗███████╗██╗                   ║
+║   ██║ ██╔╝██╔════╝██╔══██╗████╗  ██║██╔════╝██║                   ║
+║   █████╔╝ █████╗  ██████╔╝██╔██╗ ██║█████╗  ██║                   ║
+║   ██╔═██╗ ██╔══╝  ██╔══██╗██║╚██╗██║██╔══╝  ██║                   ║
+║   ██║  ██╗███████╗██║  ██║██║ ╚████║███████╗███████╗              ║
+║   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝              ║
+║                                                                   ║
+║      A Perceptual Computing Platform               v0.2      ║
+║                                                                   ║
+║   Hardware: Raspberry Pi 5 (BCM2712)                              ║
+║   CPU:      ARM Cortex-A76 x4 @ 2.4GHz                            ║
+║   RAM:      8GB LPDDR4X                                           ║
+║   GPU:      VideoCore VII                                         ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+[BOOT] Initializing Intent Kernel...
+
+[DEBUG] BSS: 0x40590000 - 0x405d5880 (Size: 284800)
+[DEBUG] NEURAL_ALLOCATOR: 0x40392190
+[DEBUG] BSS[0]: 0x0
+[DEBUG] BSS[1]: 0x0
+[CPU]  Core 0 running at EL1
+[INIT] System timer...
+       Frequency: 62 MHz
+[INIT] Interrupt controller...
+[INIT] Security Subsystem...
+       RNG Seed: 0x0005138f0005119b
+[SEC] Pointer Guard initialized
+[INIT] Memory allocator...
+[MEM] Memory Init Done (Lock held)
+[MEM] Alloc Pages: 1
+[MEM] Initializing VMM...
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] MMU Enabled!
+[MEM] VMM Done
+       Heap: 127 MB available
+[INIT] Machine Detection: QemuVirt
+[INIT] GPIO...
+       Display: Not available (serial only mode)
+[INIT] Capability system...
+[INIT] Enabling interrupts...
+
+╔═══════════════════════════════════════════════════════════╗
+║              INTENT KERNEL READY                          ║
+║                                                           ║
+║  Type 'help' for commands, or just say what you want.     ║
+╚═══════════════════════════════════════════════════════════╝
+
+[INIT] Semantic Intent Engine...
+[INTENT] Executor initialized
+[INIT] Input Engine (Steno Path)...
+[STENO] Steno Input Engine initialized
+[STENO] Fastest input path: 23 keys, <0.1μs latency.
+[INIT] Visual Projection Layer...
+[VISUAL] Visual Layer initialized
+
+╔═══════════════════════════════════════════════════════════╗
+║             INTENT KERNEL BENCHMARKS                      ║
+║     Complete 40-Benchmark Suite for Perceptual Computing  ║
+╚═══════════════════════════════════════════════════════════╝
+
+[BENCH] Running comprehensive benchmark suite...
+
+═══ 1. Intent Engine (5 benchmarks) ═══
+[BENCH] Intent Handler Dispatch (Raw)...
+  -> Avg Handler Match: 0 cycles
+[BENCH] Handler Registry Lookup...
+  -> Avg Lookup Latency: 0 cycles
+[BENCH] Intent Queue Throughput...
+  -> Avg Queue Op: 0 cycles
+[BENCH] ConceptID Hash (FNV-1a)...
+  -> Avg Hash Latency: 1 cycles
+[BENCH] Security Pipeline (Rate+Privilege+HDC)...
+  -> Avg Security Check: 1 cycles
+
+═══ 2. Hyperdimensional Computing (7 benchmarks) ═══
+[BENCH] Hamming Similarity (1024-bit)...
+  -> Avg Similarity Calc: 0 cycles
+[BENCH] HDC Bind (XOR)...
+  -> Avg Bind (XOR): 0 cycles
+[BENCH] HDC Bundle (Majority)...
+  -> Avg Bundle (Majority): 0 cycles
+[BENCH] HDC Permute (Cyclic Shift)...
+  -> Avg Permute (Shift): 0 cycles
+[BENCH] HNSW Nearest Neighbor Search...
+[MEM] Alloc Pages: 1
+  -> Avg HNSW Search: 806 cycles
+[BENCH] Neural Memory Alloc...
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+  -> Avg Neural Alloc: 19802 cycles
+[BENCH] LSH Feature Projection...
+  -> Avg LSH Projection: 1 cycles
+
+═══ 3. Perception Pipeline (4 benchmarks) ═══
+[BENCH] Sensor Fusion (N:1)...
+  -> Avg Fusion: 0 cycles
+[BENCH] Perceive → Store Pipeline...
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+  -> Avg Perceive+Store: 16443 cycles
+[BENCH] Visual Hypervector Generation...
+  -> Avg Visual HV: 1 cycles
+[BENCH] Object → ConceptID Mapping...
+  -> Avg Object→Concept: 0 cycles
+
+═══ 4. Multi-Modal Input (5 benchmarks) ═══
+[BENCH] Steno Stroke Processing...
+  -> Avg Stroke Process: 44 cycles
+[BENCH] Multi-Stroke Buffer...
+  -> Avg Multi-Stroke: 0 cycles
+[BENCH] English Phrase Parse...
+  -> Avg English Parse: 189 cycles
+[BENCH] Synonym Expansion...
+  -> Avg Synonym Lookup: 0 cycles
+[BENCH] Dictionary Lookup...
+  -> Avg Dictionary Lookup: 0 cycles
+
+═══ 5. Process & Agent (6 benchmarks) ═══
+[BENCH] Kernel Agent Spawn...
+  -> Avg Spawn Overhead: 1 cycles (simulated)
+[BENCH] User Agent Spawn...
+  -> Avg User Spawn: 2 cycles (simulated)
+[BENCH] Context Switch (Full)...
+  -> Avg Context Switch: 413 cycles
+[BENCH] Preemption Latency...
+  -> Avg Preemption Trigger: 17 cycles
+[BENCH] Fork (Address Space)...
+  -> Avg Fork Overhead: 10 cycles (page table access)
+[BENCH] Exec (ELF Parse)...
+  -> Avg ELF Check: 1 cycles
+
+═══ 6. Lock & Synchronization (5 benchmarks) ═══
+[BENCH] SpinLock (Uncontended)...
+  -> Avg Lock/Unlock: 20 cycles
+[BENCH] SpinLock (Contended, simulated)...
+  -> Avg Contended Lock: 18 cycles
+[BENCH] Atomic CAS...
+  -> Avg CAS: 0 cycles
+[BENCH] IPI Latency...
+  -> Avg IPI Send: 129 cycles
+[BENCH] Deadlock Detection...
+  -> Avg Detection: 258 cycles
+
+═══ 7. Interrupt & Timer (4 benchmarks) ═══
+[BENCH] IRQ Latency (GIC read)...
+  -> Avg IRQ Check: 0 cycles
+[BENCH] Timer Jitter...
+  -> Max Jitter: 125 cycles
+[BENCH] GIC Acknowledge/EOI...
+  -> Avg GIC Overhead: 0 cycles
+[BENCH] Syscall Entry/Exit...
+  -> Avg Syscall Dispatch: 0 cycles
+
+═══ 8. I/O & Networking (4 benchmarks) ═══
+[BENCH] UART Throughput...
+  -> Cycles/Byte: 0
+[BENCH] Ethernet TX...
+  -> Avg TX Prep: 1 cycles
+[BENCH] TCP Checksum...
+  -> Avg Checksum: 8 cycles
+[BENCH] SD Card Read (simulated)...
+  -> Avg Block Calc: 1 cycles
+
+═══ 9. Memory Allocator Benchmarks ═══
+[BENCH] Running Memory Allocation Benchmark...
+  -> Slab Alloc/Free (8 bytes)
+  -> Total Cycles: 293625
+  -> Avg Cycles:   29
+  -> Buddy Alloc/Free (4KB)
+  -> Total Cycles: 39250
+  -> Avg Cycles:   39
+[BENCH] Running Allocator Performance Benchmark...
+  -> Avg Alloc/Dealloc (Vec<u64>): 34 cycles
+
+═══ 10. Extreme Stress Test (180k Operations) ═══
+[BENCH] Running Extreme Allocator Stress Test...
+  -> This will take ~30 seconds...
+
+  [1/4] Testing 100k small allocations (8 bytes each)...
+     -> Total Cycles: 3141313
+     -> Avg Cycles: 31
+     -> Operations/sec: 1973696
+
+  [2/4] Testing 50k Vec operations (100 elements each)...
+     -> Total Cycles: 1524125
+     -> Avg Cycles: 30
+
+  [3/4] Testing 10k page allocations (4KB each)...
+     -> Total Cycles: 348125
+     -> Avg Cycles: 34
+
+  [4/4] Testing 20k mixed allocations (varying sizes)...
+     -> Total Cycles: 706750
+     -> Avg Cycles: 35
+
+  ══════════════════════════════════════════════
+  SUMMARY:
+  -> Total Operations: 180000
+  -> Total Cycles: 5720313
+  -> Average Cycles/Op: 31
+  -> Status: ✅ ALL TESTS PASSED
+  ══════════════════════════════════════════════
+
+╔═══════════════════════════════════════════════════════════╗
+║  ALL 40 BENCHMARKS COMPLETED SUCCESSFULLY ✅             ║
+╚═══════════════════════════════════════════════════════════╝
+
+[INIT] Neural Memory Stress Test (100k Concepts)...
+       Allocating 100000 concepts...
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+       Progress: 10/100k concepts allocated
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Buddy OOM
+
+╔═══════════════════════════════════════════════════════════╗
+║                    KERNEL PANIC                           ║
+╚═══════════════════════════════════════════════════════════╝
+
+Location: library/alloc/src/alloc.rs:439
+PANIC: memory allocation of 0 bytes failed
+Core 0, EL1
+Uptime: 4448 ms
+
+System halted. Reset to restart.
+make: *** [run] Killed: 9

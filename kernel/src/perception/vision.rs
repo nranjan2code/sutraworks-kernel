@@ -12,63 +12,6 @@ pub struct DetectedObject {
     pub y: f32,
     pub width: f32,
     pub height: f32,
-    pub hypervector: VisualHypervector,
-}
-
-/// Represents a semantic hypervector of an image (1024-bit).
-/// This replaces the old floating-point embedding.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct VisualHypervector {
-    pub data: [u64; 16], // 1024-bit binary hypervector
-}
-
-/// A projection layer to convert continuous visual features into binary hypervectors.
-/// Uses Random Projection (LSH) logic.
-pub struct RandomProjection {
-    // In a real implementation, this would hold the projection matrix.
-    // For now, it's a marker struct for the architecture.
-}
-
-impl RandomProjection {
-    /// Project a float vector into the hyperdimensional space.
-    /// Returns a 1024-bit binary hypervector.
-    ///
-    /// This implements Locality Sensitive Hashing (LSH) via Random Projection.
-    /// We simulate a fixed random matrix `R` (1024 x N) where each element is -1 or +1.
-    /// The result bit `i` is `sign(dot(features, R[i]))`.
-    pub fn project(features: &[f32]) -> VisualHypervector {
-        let mut hv = [0u64; 16];
-        
-        // We need 1024 bits. Each bit is the sign of the dot product of the feature vector
-        // with a random vector. To ensure stability, the random vectors must be deterministic.
-        // We use a seeded Xorshift RNG to generate the weights on the fly.
-        
-        for i in 0..1024 {
-            let mut dot_product = 0.0;
-            let mut rng_state = 0x12345678 ^ (i as u32); // Seed depends on bit index
-            
-            for &feat in features {
-                // Xorshift32
-                let mut x = rng_state;
-                x ^= x << 13;
-                x ^= x >> 17;
-                x ^= x << 5;
-                rng_state = x;
-                
-                // Weight is -1.0 or 1.0 based on LSB
-                let weight = if (x & 1) == 0 { -1.0 } else { 1.0 };
-                dot_product += feat * weight;
-            }
-            
-            if dot_product > 0.0 {
-                let word_idx = i / 64;
-                let bit_idx = i % 64;
-                hv[word_idx] |= 1 << bit_idx;
-            }
-        }
-        
-        VisualHypervector { data: hv }
-    }
 }
 
 /// Trait for Object Detection capabilities.
@@ -157,16 +100,6 @@ impl ObjectDetector for ColorBlobDetector {
             let center_y = min_y as f32 / height as f32 + obj_height / 2.0;
             let avg_confidence = total_confidence / count as f32;
 
-            // Generate Semantic Hypervector
-            // Features: [x, y, width, height, r, g, b]
-            let features = [
-                center_x, center_y, obj_width, obj_height,
-                self.target_r as f32 / 255.0,
-                self.target_g as f32 / 255.0,
-                self.target_b as f32 / 255.0
-            ];
-            let hv = RandomProjection::project(&features);
-
             let _ = objects.push(DetectedObject {
                 class_id: 1, // "Target Color"
                 confidence: avg_confidence,
@@ -174,13 +107,13 @@ impl ObjectDetector for ColorBlobDetector {
                 y: center_y,
                 width: obj_width,
                 height: obj_height,
-                hypervector: hv,
             });
         }
 
         Ok(objects)
     }
 }
+
 /// Sobel Edge Detector
 pub struct EdgeDetector;
 
@@ -243,21 +176,9 @@ impl ObjectDetector for EdgeDetector {
             // Feature Extraction
             let center_x_norm = (center_x as f32) / (edge_pixels as f32) / (width as f32);
             let center_y_norm = (center_y as f32) / (edge_pixels as f32) / (height as f32);
-            let density = (edge_pixels as f32) / ((width * height) as f32);
+            // let density = (edge_pixels as f32) / ((width * height) as f32);
             let intensity = (max_grad as f32) / 255.0;
             
-            // Features: [x, y, density, intensity, 0...] (padded to match projection dim if needed)
-            // Our RandomProjection expects a slice. We'll provide key features.
-            // Note: In a real system we'd pad this to 64 or whatever INPUT_DIM is.
-            // For now, let's provide a fixed size array.
-            let mut features = [0.0f32; 64];
-            features[0] = center_x_norm;
-            features[1] = center_y_norm;
-            features[2] = density;
-            features[3] = intensity;
-            
-            let hv = RandomProjection::project(&features);
-
             let _ = objects.push(DetectedObject {
                 class_id: 2, // "Edge/Shape"
                 confidence: intensity.min(1.0),
@@ -265,7 +186,6 @@ impl ObjectDetector for EdgeDetector {
                 y: center_y_norm,
                 width: 0.0, // Unknown for edge detection
                 height: 0.0, // Unknown for edge detection
-                hypervector: hv,
             });
         }
         
