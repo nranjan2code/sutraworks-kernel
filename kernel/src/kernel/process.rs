@@ -35,6 +35,8 @@ pub enum AgentState {
 
 /// CPU Context (Callee-saved registers)
 /// This matches the layout expected by `switch_to` in assembly.
+/// CRITICAL: Field order must match assembly offsets exactly!
+/// Assembly stores: x19-x28 at 0-72, x29 at 80, x30/LR at 88, SP at 96, TTBR0 at 104
 #[repr(C)]
 #[derive(Debug, Default)]
 pub struct Context {
@@ -48,19 +50,20 @@ pub struct Context {
     pub x26: u64,
     pub x27: u64,
     pub x28: u64,
-    pub x29: u64, // Frame Pointer
-    pub sp: u64,  // Stack Pointer
-    pub lr: u64,  // Link Register
-    pub ttbr0: u64, // Page Table Base (User/Process space)
+    pub x29: u64,   // Frame Pointer (offset 80)
+    pub lr: u64,    // Link Register x30 (offset 88) - stored by "stp x29, x30, [x0, #80]"
+    pub sp: u64,    // Stack Pointer (offset 96) - stored by "str x9, [x0, #96]"
+    pub ttbr0: u64, // Page Table Base (offset 104)
 }
 
 /// Agent Control Block
 /// 
 /// An Agent is a lightweight execution unit.
+#[repr(C)]
 pub struct Agent {
+    pub context: Context,
     pub id: AgentId,
     pub state: AgentState,
-    pub context: Context,
     pub capabilities: Vec<Capability>,
     pub vmm: Option<UserAddressSpace>,
     pub kernel_stack: Stack,
@@ -130,19 +133,32 @@ impl Agent {
         // We should map from bottom (inclusive) to top (exclusive).
         let _ustack_phys = user_stack.bottom - 4096; // Include guard page? No, user shouldn't access guard.
         // Actually, let's just map the usable stack pages.
-        let ustack_start = user_stack.bottom;
+        let ustack_phys_start = user_stack.bottom;
         let ustack_size = (user_stack.top - user_stack.bottom) as usize;
         
-        space.map_user(ustack_start, ustack_start, ustack_size).map_err(|_| "Failed to map user stack")?;
+        // Map at high memory (same as new_user_elf)
+        let ustack_virt_top = 0x0000_FFFF_FFFF_0000;
+        let ustack_virt_bottom = ustack_virt_top - ustack_size as u64;
         
-        // 4. Map User Code (The entry point)
-        // We assume the entry point is in the kernel binary, so it's already mapped as EL1.
-        // We need to remap that specific page as User Accessible.
-        // This is tricky because it might overlap with kernel code we want to protect.
-        // For this "Simple" prototype, we'll just map the page containing the function.
-        let entry_phys = entry as u64;
-        let entry_page = entry_phys & !0xFFF;
-        space.map_user(entry_page, entry_page, 4096).map_err(|_| "Failed to map user code")?;
+        space.map_user(ustack_virt_bottom, ustack_phys_start, ustack_size).map_err(|_| "Failed to map user stack")?;
+        
+        // 4. Map User Code (Copy to separate page to avoid Huge Page conflict)
+        // Allocate a new page for user code
+        let code_page = alloc_stack(0).ok_or("Failed to alloc code page")?;
+        
+        // Copy code from entry to code_page.bottom (usable start)
+        let code_phys = code_page.bottom;
+        
+        unsafe {
+            core::ptr::copy_nonoverlapping(entry as *const u8, code_phys as *mut u8, 4096);
+        }
+        
+        let code_virt = 0x2_0000_0000; // 8GB mark (above kernel identity map)
+        
+        space.map_user(code_virt, code_phys, 4096).map_err(|_| "Failed to map user code")?;
+        
+        // Leak the code page so it persists
+        core::mem::forget(code_page);
 
         let mut agent = Agent {
             id: AgentId::new(),
@@ -166,14 +182,13 @@ impl Agent {
         let kstack_top = kstack_top & !0xF;
         agent.context.sp = kstack_top;
 
-        // User Stack Setup (passed to jump_to_userspace)
-        let ustack_top = agent.user_stack.as_ref().unwrap().top;
-        let ustack_top = ustack_top & !0xF;
+        // User Stack Setup (Virtual Address)
+        let ustack_top = 0x0000_FFFF_FFFF_0000 & !0xF;
 
         // Set up trampoline
         // switch_to restores x19..x29. We use them to pass args to jump_to_userspace.
         agent.context.lr = user_trampoline as *const () as u64;
-        agent.context.x19 = entry as u64;      // Entry point
+        agent.context.x19 = 0x2_0000_0000;      // Entry point (code_virt)
         agent.context.x20 = ustack_top;        // User Stack
         agent.context.x21 = arg;               // Argument
 

@@ -1,0 +1,202 @@
+   Compiling intent-kernel v0.1.0 (/Users/sutraworkslab/Projects/sutraworks-kernel/kernel)
+warning: unreachable statement
+   --> src/drivers/uart.rs:155:9
+    |
+151 |             return;
+    |             ------ any code following this expression is unreachable
+...
+155 |         self.write(CR, 0);
+    |         ^^^^^^^^^^^^^^^^^^ unreachable statement
+    |
+    = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unreachable statement
+   --> src/drivers/gpio.rs:136:5
+    |
+133 |       return;
+    |       ------ any code following this expression is unreachable
+...
+136 | /     if !rp1::read_reg(RIO_BASE + RIO_OE) == 0 && !rp1::RP1.lock().is_active() {
+137 | |         return; 
+138 | |     }
+    | |_____^ unreachable statement
+
+warning: unreachable expression
+  --> src/drivers/rng.rs:43:9
+   |
+41 |           return;
+   |           ------ any code following this expression is unreachable
+42 |
+43 | /         unsafe {
+44 | |             // Enable RNG
+45 | |             let ctrl = arch::read32(self.base + RNG_CTRL);
+46 | |             arch::write32(self.base + RNG_CTRL, ctrl | RNG_CTRL_ENABLE);
+47 | |         }
+   | |_________^ unreachable expression
+
+warning: unreachable expression
+  --> src/drivers/rng.rs:60:9
+   |
+57 |               return cnt as u32;
+   |               ----------------- any code following this expression is unreachable
+...
+60 | /         unsafe {
+...  |
+69 | |             arch::read32(self.base + RNG_DATA)
+70 | |         }
+   | |_________^ unreachable expression
+
+warning: unused variable: `config`
+   --> src/drivers/uart.rs:143:28
+    |
+143 |     pub fn init(&mut self, config: &UartConfig) {
+    |                            ^^^^^^ help: if this is intentional, prefix it with an underscore: `_config`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `on`
+   --> src/drivers/gpio.rs:131:21
+    |
+131 | pub fn activity_led(on: bool) {
+    |                     ^^ help: if this is intentional, prefix it with an underscore: `_on`
+
+warning: `intent-kernel` (lib) generated 6 warnings (run `cargo fix --lib -p intent-kernel` to apply 2 suggestions)
+warning: unused import: `alloc::sync::Arc`
+  --> src/main.rs:19:5
+   |
+19 | use alloc::sync::Arc;
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `intent-kernel` (bin "kernel") generated 1 warning (run `cargo fix --bin "kernel" -p intent-kernel` to apply 1 suggestion)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.91s
+     Running `/Users/sutraworkslab/Projects/sutraworks-kernel/kernel/./run_test.sh target/aarch64-unknown-none/debug/kernel`
+=== INTENT KERNEL UNIT TESTS ===
+Timeout: 60s
+
+Kernel Entry
+
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║   ██╗███╗   ██╗████████╗███████╗███╗   ██╗████████╗               ║
+║   ██║████╗  ██║╚══██╔══╝██╔════╝████╗  ██║╚══██╔══╝               ║
+║   ██║██╔██╗ ██║   ██║   █████╗  ██╔██╗ ██║   ██║                  ║
+║   ██║██║╚██╗██║   ██║   ██╔══╝  ██║╚██╗██║   ██║                  ║
+║   ██║██║ ╚████║   ██║   ███████╗██║ ╚████║   ██║                  ║
+║   ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═══╝   ╚═╝                  ║
+║                                                                   ║
+║   ██╗  ██╗███████╗██████╗ ███╗   ██╗███████╗██╗                   ║
+║   ██║ ██╔╝██╔════╝██╔══██╗████╗  ██║██╔════╝██║                   ║
+║   █████╔╝ █████╗  ██████╔╝██╔██╗ ██║█████╗  ██║                   ║
+║   ██╔═██╗ ██╔══╝  ██╔══██╗██║╚██╗██║██╔══╝  ██║                   ║
+║   ██║  ██╗███████╗██║  ██║██║ ╚████║███████╗███████╗              ║
+║   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝              ║
+║                                                                   ║
+║      A Perceptual Computing Platform               v0.2      ║
+║                                                                   ║
+║   Hardware: Raspberry Pi 5 (BCM2712)                              ║
+║   CPU:      ARM Cortex-A76 x4 @ 2.4GHz                            ║
+║   RAM:      8GB LPDDR4X                                           ║
+║   GPU:      VideoCore VII                                         ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+[BOOT] Initializing Intent Kernel...
+
+[CPU]  Core 0 running at EL1
+[INIT] System timer...
+       Frequency: 62 MHz
+[INIT] Interrupt controller...
+[INIT] Security Subsystem...
+       RNG Seed: 0x00085e5500085dd8
+[SEC] Pointer Guard initialized
+[INIT] Memory allocator...
+[MEM] Memory Init Done (Lock held)
+[MEM] Alloc Pages: 1
+[MEM] Initializing VMM...
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] MMU Enabled!
+[MEM] VMM Done
+       Heap: 127 MB available
+[INIT] Capability system...
+[INIT] Enabling interrupts...
+
+╔═══════════════════════════════════════════════════════════╗
+║              INTENT KERNEL READY                          ║
+║                                                           ║
+║  Type 'help' for commands, or just say what you want.     ║
+╚═══════════════════════════════════════════════════════════╝
+
+[INIT] Semantic Intent Engine...
+[INTENT] Executor initialized
+[INIT] Input Engine (Steno Path)...
+[STENO] Steno Input Engine initialized
+[STENO] Fastest input path: 23 keys, <0.1μs latency.
+[INIT] Visual Projection Layer...
+[VISUAL] Visual Layer initialized
+
+╔═══════════════════════════════════════════════════════════╗
+║                 KERNEL BENCHMARKS                         ║
+╚═══════════════════════════════════════════════════════════╝
+
+[BENCH] Running Syscall Latency Benchmark...
+  -> Total Cycles: 96000
+  -> Avg Cycles:   9
+  -> Iterations:   10000
+[BENCH] Running Context Switch Benchmark...
+  -> Context Switches so far: 0
+  -> (Run a stress test to measure latency accurately)
+[BENCH] Running Memory Allocation Benchmark...
+  -> Slab Alloc/Free (8 bytes)
+  -> Total Cycles: 255875
+  -> Avg Cycles:   25
+  -> Buddy Alloc/Free (4KB)
+  -> Total Cycles: 33000
+  -> Avg Cycles:   33
+
+[BENCH] All benchmarks completed.
+
+[INIT] Neural Memory Demo (HDC)...
+[MEM] Alloc Pages: 1
+       Allocated: CAT, DOG, CAR
+       Query: 'Kitten' (Hypervector similar to CAT)
+       Result: Found Concept 0xca12 (Sim: 1.0000)
+       Demo: Binding (Cognitive Algebra)
+       Bound 'Running Cat' similarity to Cat: 0.5000 (Should be ~0.5)
+       Bound 'Running Cat' similarity to Action: 0.5000 (Should be ~0.5)
+       Unbound 'Running Cat' * 'Action' -> Cat Sim: 1.0000 (Should be 1.0)
+
+[KERNEL] Spawning Syscall Test Task...
+
+[KERNEL] Spawning Syscall Test Task...
+[MEM] Alloc Pages: 5
+[INIT] Scheduler...
+[MEM] Alloc Pages: 5
+       Spawned Async Executor Agent
+[INIT] Loading /init.elf...
+       Failed to open /init.elf
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 5
+[MEM] Alloc Pages: 5
+       Spawned Fallback User Task (EL0)
+[INIT] Enabling Preemption...
+
+╔═══════════════════════════════════════════════════════════╗
+║              INTENT KERNEL READY (USER MODE)              ║
+╚═══════════════════════════════════════════════════════════╝
+
+
+ERROR: Test timed out after 60s - killing QEMU

@@ -191,7 +191,7 @@ impl BuddyAllocator {
     
     /// Allocate a block
     pub unsafe fn allocate(&mut self, size: usize) -> Option<NonNull<u8>> {
-        crate::kprintln!("[MEM] Buddy Allocate: {}", size);
+        // crate::kprintln!("[MEM] Buddy Allocate: {}", size);
         let order = self.order_for_size(size);
         
         // Find a free block (may need to split larger blocks)
@@ -377,6 +377,8 @@ impl SlabCache {
         // Find the slab header by masking the pointer (slabs are page-aligned)
         let page_start = (ptr.as_ptr() as usize) & !(PAGE_SIZE - 1);
         let header = page_start as *mut SlabHeader;
+        
+        crate::kprintln!("[SLAB] Dealloc ptr={:p}, header={:p}", ptr.as_ptr(), header);
         
         // Add to free list
         *(ptr.as_ptr() as *mut Option<NonNull<u8>>) = (*header).free_list;

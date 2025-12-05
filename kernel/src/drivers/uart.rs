@@ -4,7 +4,7 @@
 #![allow(dead_code)]
 
 use crate::arch::{self, SpinLock};
-use super::UART0_BASE;
+use crate::drivers;
 use core::fmt::{self, Write};
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -96,6 +96,9 @@ impl Default for UartConfig {
     }
 }
 
+///// Base address is now dynamic
+// const UART_BASE: usize = drivers::UART0_BASE;
+
 /// UART driver instance
 pub struct Uart {
     base: usize,
@@ -103,10 +106,17 @@ pub struct Uart {
 }
 
 impl Uart {
-    /// Create a new UART instance
-    pub const fn new(base: usize) -> Self {
+    /// Create a new instance of the UART driver
+    pub const fn new() -> Self {
         Uart {
-            base,
+            // We can't call drivers::uart_base() here because it's not const.
+            // We'll set it to 0 and initialize it properly in init() or use a lazy_static approach.
+            // But wait, we need it for read/write.
+            // For now, let's just store 0 and update it in init?
+            // Or better, make read/write use the dynamic function if base is 0?
+            // No, that's slow.
+            // Let's rely on init() to set the base.
+            base: 0, 
             initialized: false,
         }
     }
@@ -114,13 +124,15 @@ impl Uart {
     /// Read a register
     #[inline]
     fn read(&self, offset: usize) -> u32 {
-        unsafe { arch::read32(self.base + offset) }
+        let base = if self.base == 0 { drivers::uart_base() } else { self.base };
+        unsafe { arch::read32(base + offset) }
     }
     
     /// Write a register
     #[inline]
     fn write(&self, offset: usize, value: u32) {
-        unsafe { arch::write32(self.base + offset, value) }
+        let base = if self.base == 0 { drivers::uart_base() } else { self.base };
+        unsafe { arch::write32(base + offset, value) }
     }
     
     /// Wait for transmit FIFO to have space
@@ -141,6 +153,20 @@ impl Uart {
     
     /// Initialize with configuration
     pub fn init(&mut self, config: &UartConfig) {
+        // Ensure base is set
+        if self.base == 0 {
+            self.base = drivers::uart_base();
+        }
+
+        if crate::dtb::machine_type() == crate::dtb::MachineType::QemuVirt {
+            // On QEMU virt, UART is pre-initialized.
+            // We just need to ensure it's enabled.
+            // And we shouldn't wait for TX complete as it might hang if status is weird.
+            self.write(CR, CR_UARTEN | CR_TXE | CR_RXE);
+            self.initialized = true;
+            return;
+        }
+
         // Disable UART
         self.write(CR, 0);
         
@@ -319,7 +345,7 @@ unsafe impl Send for Uart {}
 // GLOBAL UART INSTANCE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-static UART0: SpinLock<Uart> = SpinLock::new(Uart::new(UART0_BASE));
+static UART0: SpinLock<Uart> = SpinLock::new(Uart::new());
 static UART_WAKER: SpinLock<Option<core::task::Waker>> = SpinLock::new(None);
 
 /// UART Interrupt Handler

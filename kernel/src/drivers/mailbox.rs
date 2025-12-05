@@ -17,7 +17,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // Mailbox base for RPi5 (BCM2712)
-const MAILBOX_BASE: usize = 0x1_0000_B880;
+use crate::drivers::MBOX_BASE as MAILBOX_BASE;
 
 // Register offsets
 const MBOX_READ: usize = 0x00;

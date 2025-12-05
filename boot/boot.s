@@ -19,6 +19,9 @@
 // ENTRY POINT - First instruction executed
 // ════════════════════════════════════════════════════════════════════════════
 _start:
+    // Save potential DTB pointer from x0 to x21
+    mov     x21, x0
+
     // Immediately disable all interrupts
     msr     daifset, #0xf
     
@@ -31,11 +34,10 @@ _start:
 // PRIMARY CORE INITIALIZATION
 // ════════════════════════════════════════════════════════════════════════════
 _primary_entry:
-    // Save DTB pointer (firmware passes it in x0, but we got core ID there)
-    // Re-read it from x21 where firmware also stores it
+    // Save DTB pointer (saved in x21 at _start)
     adrp    x1, __dtb_ptr
     add     x1, x1, :lo12:__dtb_ptr
-    str     xzr, [x1]               // Clear for now
+    str     x21, [x1]
     
     // Determine current exception level
     mrs     x0, CurrentEL
@@ -126,11 +128,18 @@ _at_el1:
     adr     x0, _vectors
     msr     vbar_el1, x0
     isb
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Timer Access - Allow EL0 to read virtual counter
+    // ─────────────────────────────────────────────────────────────────────────
+    mrs     x0, cntkctl_el1
+    orr     x0, x0, #3          // Enable EL0VCTEN and EL0PCTEN
+    msr     cntkctl_el1, x0
     
     // ─────────────────────────────────────────────────────────────────────────
     // Stack Setup - Core 0 gets stack at top
     // ─────────────────────────────────────────────────────────────────────────
-    ldr     x0, =0x80000            // Stack top (grows down)
+    ldr     x0, =__stack_top        // Stack top (grows down)
     mov     sp, x0
     
     // ─────────────────────────────────────────────────────────────────────────
@@ -193,7 +202,7 @@ _secondary_wait:
     
     // We've been released! Set up our stack
     // Each core gets 64KB of stack space
-    ldr     x3, =0x80000
+    ldr     x3, =__stack_top
     mov     x4, #0x10000            // 64KB
     mul     x4, x0, x4
     sub     sp, x3, x4

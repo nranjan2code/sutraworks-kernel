@@ -384,8 +384,6 @@ core::arch::global_asm!(
     // Restore TTBR0
     "ldr x9, [x1, #104]",
     "msr ttbr0_el1, x9",
-    
-    // Invalidate TLB for TTBR0 change (ASID-based invalidation is better, but full flush for now)
     "tlbi vmalle1",
     "dsb nsh",
     "isb",

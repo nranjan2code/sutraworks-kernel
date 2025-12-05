@@ -48,7 +48,7 @@ cd intent-kernel
 # Build the kernel
 make kernel
 
-# Run in QEMU (for testing)
+# Run in QEMU (virt machine)
 make run
 
 # Run 90 unit tests (host)

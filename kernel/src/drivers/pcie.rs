@@ -17,13 +17,9 @@ use crate::arch::{self, SpinLock};
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/// PCIe Configuration Space Base Address (ECAM)
-/// On BCM2712, the PCIe0 (connected to RP1) ECAM is at 0x10_0000_0000 + offset.
-/// The exact offset for ECAM on Pi 5 is 0x10_0010_0000 (BRCM_PCIE_ECAM).
-pub const PCIE_ECAM_BASE: usize = 0x1_0000_0000 + 0x0010_0000;
-
-/// PCIe Register Base (Control Registers)
-pub const PCIE_REG_BASE: usize = 0x1_0000_0000 + 0x0011_0000;
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONFIGURATION
+// ═══════════════════════════════════════════════════════════════════════════════
 
 // Vendor IDs
 pub const VENDOR_ID_BROADCOM: u16 = 0x14E4;
@@ -32,6 +28,8 @@ pub const VENDOR_ID_HAILO: u16 = 0x1E60;    // Hailo AI
 
 // Device IDs
 pub const DEVICE_ID_RP1_C0: u16 = 0x0001;   // RP1 PCIe Bridge
+
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -56,8 +54,8 @@ pub struct PcieController {
 impl PcieController {
     pub const fn new() -> Self {
         Self {
-            ecam_base: PCIE_ECAM_BASE,
-            _reg_base: PCIE_REG_BASE,
+            ecam_base: 0,
+            _reg_base: 0,
             devices: [None; 32],
             device_count: 0,
         }
@@ -146,7 +144,10 @@ impl PcieController {
         // Bits 15-19: Device Number
         // Bits 12-14: Function Number
         // Bits 00-11: Register Offset
-        let addr = self.ecam_base 
+        
+        let base = if self.ecam_base == 0 { crate::drivers::pcie_ecam_base() } else { self.ecam_base };
+        
+        let addr = base 
             | ((bus as usize) << 20) 
             | ((dev as usize) << 15) 
             | ((func as usize) << 12) 
@@ -157,7 +158,9 @@ impl PcieController {
 
     /// Write 32-bit value to Configuration Space
     pub fn write_config(&self, bus: u8, dev: u8, func: u8, offset: usize, value: u32) {
-        let addr = self.ecam_base 
+        let base = if self.ecam_base == 0 { crate::drivers::pcie_ecam_base() } else { self.ecam_base };
+        
+        let addr = base 
             | ((bus as usize) << 20) 
             | ((dev as usize) << 15) 
             | ((func as usize) << 12) 

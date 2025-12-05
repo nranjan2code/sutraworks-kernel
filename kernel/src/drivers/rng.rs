@@ -36,7 +36,15 @@ impl Rng {
     }
 
     /// Initialize the RNG
-    pub fn init(&self) {
+    pub fn init(&mut self) {
+        if crate::dtb::machine_type() == crate::dtb::MachineType::QemuVirt {
+            return;
+        }
+        
+        if self.base == 0 {
+            self.base = crate::drivers::rng_base();
+        }
+
         unsafe {
             // Enable RNG
             let ctrl = arch::read32(self.base + RNG_CTRL);
@@ -46,6 +54,13 @@ impl Rng {
 
     /// Get a random 32-bit integer
     pub fn next_u32(&self) -> u32 {
+        if crate::dtb::machine_type() == crate::dtb::MachineType::QemuVirt {
+            // Use cycle counter as simple entropy source for QEMU
+            let mut cnt: u64;
+            unsafe { core::arch::asm!("mrs {}, cntpct_el0", out(reg) cnt) };
+            return cnt as u32;
+        }
+
         unsafe {
             // Wait for data (status register indicates availability, 
             // but usually we can just read on these chips as it fills FIFO)
@@ -55,7 +70,9 @@ impl Rng {
             // Wait for some entropy (simplified)
             for _ in 0..100 { core::hint::spin_loop(); }
             
-            arch::read32(self.base + RNG_DATA)
+            // Ensure base is valid (if init wasn't called, we might crash, but init() is called in main)
+            let base = if self.base == 0 { crate::drivers::rng_base() } else { self.base };
+            arch::read32(base + RNG_DATA)
         }
     }
 
@@ -71,10 +88,9 @@ impl Rng {
 // GLOBAL INSTANCE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-use super::RNG_BASE;
 use crate::arch::SpinLock;
 
-static RNG_DEV: SpinLock<Rng> = SpinLock::new(Rng::new(RNG_BASE));
+static RNG_DEV: SpinLock<Rng> = SpinLock::new(Rng::new(0));
 
 /// Initialize RNG
 pub fn init() {

@@ -24,3 +24,10 @@ Thumbs.db
 
 # Kernel specific
 kernel/target/
+
+# Test and Debug Logs
+test_*.txt
+run_log_*.txt
+*.log
+debug_output.txt
+verification_*.txt

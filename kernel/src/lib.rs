@@ -27,6 +27,9 @@ pub mod perception;
 pub mod visual;    // Semantic Visual Interface - intent-reactive GUI layer
 pub mod fs;
 pub mod net;
+pub mod profiling;
+pub mod benchmarks;
+pub mod dtb;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TESTING FRAMEWORK
@@ -89,10 +92,18 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 #[inline(always)]
 pub fn raw_uart(c: u8) {
     unsafe {
-        #[cfg(any(test, feature = "qemu"))]
+        #[cfg(test)]
         core::ptr::write_volatile(0x0900_0000 as *mut u32, c as u32);
-        #[cfg(not(any(test, feature = "qemu")))]
-        core::ptr::write_volatile(0x1_0020_1000 as *mut u32, c as u32);
+
+        #[cfg(not(test))]
+        {
+            if crate::dtb::machine_type() == crate::dtb::MachineType::QemuVirt {
+                core::ptr::write_volatile(0x0900_0000 as *mut u32, c as u32);
+            } else {
+                // Default to Pi 5 address (0x10_0000_0000 + 0x201000 = 0x100201000)
+                core::ptr::write_volatile(0x1_0020_1000 as *mut u32, c as u32);
+            }
+        }
     }
 }
 

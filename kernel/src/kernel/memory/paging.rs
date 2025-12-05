@@ -538,7 +538,12 @@ impl UserAddressSpace {
         let mut p = phys;
         
         while v < end {
-            unsafe { self.vmm.map_page(v, p, flags)?; }
+            unsafe { 
+                if let Err(e) = self.vmm.map_page(v, p, flags) {
+                    crate::kprintln!("[MEM] map_page failed at virt={:#x} phys={:#x}: {}", v, p, e);
+                    return Err(e);
+                }
+            }
             v += 4096;
             p += 4096;
         }
@@ -572,11 +577,13 @@ pub unsafe fn init() {
     if let Some(vmm) = vmm.as_mut() {
         crate::kprintln!("[MEM] Initializing VMM...");
         
-        #[cfg(not(any(test, feature = "qemu")))]
-        {
+
             // 1. Identity map Kernel Code/Data (Normal Memory)
             // From 0x0 to 0x2_0000_0000 (8GB)
             // This covers the entire physical RAM of the Pi 5
+        if crate::dtb::machine_type() == crate::dtb::MachineType::RaspberryPi5 {
+            // 1. Identity Map Kernel Code/Data (Normal Memory)
+            // Map 0x0000_0000 to 0x2_0000_0000 (8GB) - Covering all RAM
             vmm.identity_map(0, 0x2_0000_0000, EntryFlags::ATTR_NORMAL | EntryFlags::AP_RW_EL1 | EntryFlags::SH_INNER)
                 .expect("Failed to map kernel");
                 
@@ -597,8 +604,7 @@ pub unsafe fn init() {
                 .expect("Failed to map peripherals");
         }
 
-        #[cfg(any(test, feature = "qemu"))]
-        {
+        if crate::dtb::machine_type() == crate::dtb::MachineType::QemuVirt {
             // Map QEMU virt peripherals (UART at 0x09000000)
             // Map 0x08000000 to 0x10000000 (128MB) covering GIC and UART
             vmm.identity_map(0x0800_0000, 0x1000_0000, EntryFlags::ATTR_DEVICE | EntryFlags::AP_RW_EL1 | EntryFlags::PXN | EntryFlags::UXN)
@@ -607,6 +613,10 @@ pub unsafe fn init() {
             // Map RAM (Normal Memory) - 0x4000_0000 to 0x8000_0000 (1GB)
             vmm.identity_map(0x4000_0000, 0x8000_0000, EntryFlags::ATTR_NORMAL | EntryFlags::AP_RW_EL1 | EntryFlags::SH_INNER)
                 .expect("Failed to map RAM");
+
+            // Map PCIe ECAM (0x3f00_0000) - 16MB
+            vmm.identity_map(0x3f00_0000, 0x4000_0000, EntryFlags::ATTR_DEVICE | EntryFlags::AP_RW_EL1 | EntryFlags::PXN | EntryFlags::UXN)
+                .expect("Failed to map PCIe ECAM");
         }
             
         // 3. Configure MAIR

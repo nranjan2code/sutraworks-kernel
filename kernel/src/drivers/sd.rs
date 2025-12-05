@@ -74,7 +74,7 @@ pub struct SdCardDriver {
 impl SdCardDriver {
     pub const fn new() -> Self {
         Self {
-            base: 0x100110000, // Default BCM2712 EMMC2 base
+            base: 0,
             rca: 0,
             initialized: false,
         }
@@ -83,6 +83,14 @@ impl SdCardDriver {
     pub fn init(&mut self) -> Result<(), &'static str> {
         if self.initialized {
             return Ok(());
+        }
+        
+        if crate::dtb::machine_type() != crate::dtb::MachineType::RaspberryPi5 {
+            return Err("SD Card not supported on this machine");
+        }
+        
+        if self.base == 0 {
+            self.base = 0x1_0011_0000; // BCM2712 EMMC2 Base
         }
 
         kprintln!("[SD] Initializing SD Card Driver...");
@@ -325,4 +333,12 @@ pub fn init() {
     if let Err(e) = driver.init() {
         kprintln!("[SD] Init failed: {}", e);
     }
+}
+
+pub fn read_block(sector: u32, buf: &mut [u8]) -> Result<(), &'static str> {
+    SD_DRIVER.lock().read_sector(sector, buf)
+}
+
+pub fn write_block(sector: u32, buf: &[u8]) -> Result<(), &'static str> {
+    SD_DRIVER.lock().write_sector(sector, buf)
 }

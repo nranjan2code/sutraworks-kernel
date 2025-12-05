@@ -1,0 +1,175 @@
+╔═══════════════════════════════════════════════════════════════╗
+║  Building Intent Kernel (Rust)                               ║
+╚═══════════════════════════════════════════════════════════════╝
+cd kernel && \
+	RUSTFLAGS="-C link-arg=-T../boot/linker_qemu.ld -C link-arg=../build/boot.o" cargo build --release --target aarch64-unknown-none
+warning: function `bench_syscall_user` is never used
+  --> src/benchmarks.rs:21:4
+   |
+21 | fn bench_syscall_user() {
+   |    ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `user_bench_entry` is never used
+  --> src/benchmarks.rs:26:12
+   |
+26 |         fn user_bench_entry();
+   |            ^^^^^^^^^^^^^^^^
+
+warning: `intent-kernel` (lib) generated 2 warnings
+    Finished `release` profile [optimized] target(s) in 0.01s
+cp kernel/target/aarch64-unknown-none/release/kernel build/kernel.elf
+╔═══════════════════════════════════════════════════════════════╗
+║  Creating Bootable Image                                     ║
+╚═══════════════════════════════════════════════════════════════╝
+/Users/sutraworkslab/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/bin/llvm-objcopy -O binary build/kernel.elf build/kernel8.img
+
+  ✓ Kernel image created: build/kernel8.img
+  ✓ Size: 3.1M
+
+╔═══════════════════════════════════════════════════════════════╗
+║            INTENT KERNEL BUILD COMPLETE                      ║
+╠═══════════════════════════════════════════════════════════════╣
+║  Where humans speak and silicon listens                      ║
+╚═══════════════════════════════════════════════════════════════╝
+Starting QEMU (Note: Pi 5 emulation is limited)...
+qemu-system-aarch64 -M virt -cpu cortex-a72 -m 2G -serial stdio -display none -semihosting -kernel build/kernel8.img
+Kernel Entry
+
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║   ██╗███╗   ██╗████████╗███████╗███╗   ██╗████████╗               ║
+║   ██║████╗  ██║╚══██╔══╝██╔════╝████╗  ██║╚══██╔══╝               ║
+║   ██║██╔██╗ ██║   ██║   █████╗  ██╔██╗ ██║   ██║                  ║
+║   ██║██║╚██╗██║   ██║   ██╔══╝  ██║╚██╗██║   ██║                  ║
+║   ██║██║ ╚████║   ██║   ███████╗██║ ╚████║   ██║                  ║
+║   ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═══╝   ╚═╝                  ║
+║                                                                   ║
+║   ██╗  ██╗███████╗██████╗ ███╗   ██╗███████╗██╗                   ║
+║   ██║ ██╔╝██╔════╝██╔══██╗████╗  ██║██╔════╝██║                   ║
+║   █████╔╝ █████╗  ██████╔╝██╔██╗ ██║█████╗  ██║                   ║
+║   ██╔═██╗ ██╔══╝  ██╔══██╗██║╚██╗██║██╔══╝  ██║                   ║
+║   ██║  ██╗███████╗██║  ██║██║ ╚████║███████╗███████╗              ║
+║   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝              ║
+║                                                                   ║
+║      A Perceptual Computing Platform               v0.2      ║
+║                                                                   ║
+║   Hardware: Raspberry Pi 5 (BCM2712)                              ║
+║   CPU:      ARM Cortex-A76 x4 @ 2.4GHz                            ║
+║   RAM:      8GB LPDDR4X                                           ║
+║   GPU:      VideoCore VII                                         ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+[BOOT] Initializing Intent Kernel...
+
+[DEBUG] BSS: 0x40590000 - 0x405d55c0 (Size: 284096)
+[DEBUG] NEURAL_ALLOCATOR: 0x40392018
+[DEBUG] BSS[0]: 0x0
+[DEBUG] BSS[1]: 0x0
+[CPU]  Core 0 running at EL1
+[INIT] System timer...
+       Frequency: 62 MHz
+[INIT] Interrupt controller...
+[INIT] Security Subsystem...
+       RNG Seed: 0x0008e4db0008e325
+[SEC] Pointer Guard initialized
+[INIT] Memory allocator...
+[MEM] Memory Init Done (Lock held)
+[MEM] Alloc Pages: 1
+[MEM] Initializing VMM...
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] MMU Enabled!
+[MEM] VMM Done
+       Heap: 127 MB available
+[INIT] Machine Detection: QemuVirt
+[INIT] GPIO...
+       Display: Not available (serial only mode)
+[INIT] Capability system...
+[INIT] Enabling interrupts...
+
+╔═══════════════════════════════════════════════════════════╗
+║              INTENT KERNEL READY                          ║
+║                                                           ║
+║  Type 'help' for commands, or just say what you want.     ║
+╚═══════════════════════════════════════════════════════════╝
+
+[INIT] Semantic Intent Engine...
+[INTENT] Executor initialized
+[INIT] Input Engine (Steno Path)...
+[STENO] Steno Input Engine initialized
+[STENO] Fastest input path: 23 keys, <0.1μs latency.
+[INIT] Visual Projection Layer...
+[VISUAL] Visual Layer initialized
+
+╔═══════════════════════════════════════════════════════════╗
+║                 KERNEL BENCHMARKS                         ║
+╚═══════════════════════════════════════════════════════════╝
+
+[BENCH] Running Syscall Latency Benchmark...
+  -> Total Cycles: 114937
+  -> Avg Cycles:   11
+  -> Iterations:   10000
+[BENCH] Running Context Switch Stress Test...
+[MEM] Alloc Pages: 5
+  -> Total Switches: 10000
+  -> Total Cycles:   2839313
+  -> Avg Cycles/Switch: 283
+[BENCH] Running Memory Allocation Benchmark...
+  -> Slab Alloc/Free (8 bytes)
+  -> Total Cycles: 316125
+  -> Avg Cycles:   31
+  -> Buddy Alloc/Free (4KB)
+  -> Total Cycles: 44687
+  -> Avg Cycles:   44
+
+[BENCH] All benchmarks completed.
+
+[INIT] Neural Memory Demo (HDC)...
+[MEM] Alloc Pages: 1
+       Allocated: CAT, DOG, CAR
+       Query: 'Kitten' (Hypervector similar to CAT)
+       Result: Found Concept 0xca12 (Sim: 1.0000)
+       Demo: Binding (Cognitive Algebra)
+       Bound 'Running Cat' similarity to Cat: 0.5000 (Should be ~0.5)
+       Bound 'Running Cat' similarity to Action: 0.5000 (Should be ~0.5)
+       Unbound 'Running Cat' * 'Action' -> Cat Sim: 1.0000 (Should be 1.0)
+
+[KERNEL] Spawning Syscall Test Task...
+
+[KERNEL] Spawning Syscall Test Task...
+[MEM] Alloc Pages: 5
+[INIT] Scheduler...
+[MEM] Alloc Pages: 5
+       Spawned Async Executor Agent
+[INIT] Loading /init.elf...
+       Failed to open /init.elf
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 5
+[MEM] Alloc Pages: 5
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+[MEM] Alloc Pages: 1
+       Spawned Fallback User Task (EL0)
+[INIT] Enabling Preemption...
+
+╔═══════════════════════════════════════════════════════════╗
+║              INTENT KERNEL READY (USER MODE)              ║
+╚═══════════════════════════════════════════════════════════╝
+

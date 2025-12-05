@@ -114,16 +114,18 @@ install: image
 # EMULATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# QEMU emulation (limited - Pi 5 not fully supported)
+# QEMU emulation (using 'virt' machine for best compatibility)
 QEMU = qemu-system-aarch64
-QEMU_FLAGS = -M raspi4b -cpu cortex-a76 -m 8G \
-             -serial stdio -display none \
+QEMU_FLAGS = -M virt -cpu cortex-a72 -m 2G \
+             -serial stdio -display none -semihosting \
              -kernel $(KERNEL_IMG)
 
+run: LINKER := $(BOOT_DIR)/linker_qemu.ld
 run: image
 	@echo "Starting QEMU (Note: Pi 5 emulation is limited)..."
 	$(QEMU) $(QEMU_FLAGS)
 
+debug: LINKER := $(BOOT_DIR)/linker_qemu.ld
 debug: image
 	@echo "Starting QEMU in debug mode..."
 	$(QEMU) $(QEMU_FLAGS) -s -S
@@ -208,7 +210,7 @@ test-unit: $(BUILD_DIR)
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
 	clang --target=aarch64-none-elf -c -o $(BUILD_DIR)/boot_test.o $(BOOT_DIR)/boot_test.s
 	cd $(KERNEL_DIR) && \
-	RUSTFLAGS="-C link-arg=-T../boot/linker_test.ld -C link-arg=../$(BUILD_DIR)/boot_test.o" cargo test --target $(TARGET) --features qemu --test kernel_tests
+	RUSTFLAGS="-C link-arg=-T../boot/linker_test.ld -C link-arg=../$(BUILD_DIR)/boot_test.o" cargo test --target $(TARGET) --test kernel_tests
 	@echo ""
 	@echo "✓ All unit tests passed!"
 
@@ -218,7 +220,7 @@ test-integration:
 	@echo "║  Running Integration Tests (QEMU)                            ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
 	cd $(KERNEL_DIR) && \
-	RUSTFLAGS="-C link-arg=-Ttest_linker.ld" cargo test --target $(TARGET) --features qemu --test integration_tests
+	RUSTFLAGS="-C link-arg=-Ttest_linker.ld" cargo test --target $(TARGET) --test integration_tests
 	@echo ""
 	@echo "✓ All integration tests passed!"
 

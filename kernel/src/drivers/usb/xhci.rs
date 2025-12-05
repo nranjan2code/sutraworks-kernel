@@ -279,8 +279,12 @@ impl XhciController {
             }
         } else {
              // Fallback to known RP1 address for Pi 5
-             kprintln!("[USB] No PCIe xHCI found, trying RP1 fallback address");
-             self.base_addr = 0x1F_0012_0000; // RP1 xHCI base
+             if crate::dtb::machine_type() == crate::dtb::MachineType::RaspberryPi5 {
+                 kprintln!("[USB] No PCIe xHCI found, trying RP1 fallback address");
+                 self.base_addr = 0x1F_0012_0000; // RP1 xHCI base
+             } else {
+                 return Err("No xHCI controller found");
+             }
         }
         
         kprintln!("[USB] xHCI Base: {:#x}", self.base_addr);

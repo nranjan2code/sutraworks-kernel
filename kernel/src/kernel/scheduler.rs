@@ -33,14 +33,16 @@ impl IntentScheduler {
 
     /// Spawn a new user agent (simple, no embedding)
     pub fn spawn_user_simple(&mut self, entry: fn(), arg: u64) -> Result<(), &'static str> {
-        let agent = Agent::new_user_simple(entry, arg)?;
+        let mut agent = Agent::new_user_simple(entry, arg)?;
+        agent.parent_id = self.current_agent_id; // Set parent to current running agent
         self.agents.push_back(Box::new(agent));
         Ok(())
     }
 
     /// Spawn a new user agent from ELF binary
     pub fn spawn_user_elf(&mut self, elf_data: &[u8]) -> Result<(), &'static str> {
-        let agent = Agent::new_user_elf(elf_data)?;
+        let mut agent = Agent::new_user_elf(elf_data)?;
+        agent.parent_id = self.current_agent_id; // Set parent
         self.agents.push_back(Box::new(agent));
         Ok(())
     }
@@ -117,25 +119,9 @@ impl IntentScheduler {
             return None;
         }
 
-        // If we have a running agent, move it to the back
-        if let Some(mut prev) = self.agents.pop_front() {
-            if prev.state == AgentState::Running {
-                prev.state = AgentState::Ready;
-                self.agents.push_back(prev);
-            } else if prev.state == AgentState::Terminated {
-                // Keep it for wait()
-                self.agents.push_back(prev);
-            } else {
-                // Blocked, Sleeping, or Ready, put it back
-                self.agents.push_back(prev);
-            }
-        }
-
-        // Simple round-robin scheduling
-        // Find first Ready agent
+        // Find a Ready agent (excluding current at index 0)
         let mut best_index = None;
-
-        for (i, agent) in self.agents.iter().enumerate() {
+        for (i, agent) in self.agents.iter().enumerate().skip(1) {
             if agent.state == AgentState::Ready {
                 best_index = Some(i);
                 break;
@@ -143,39 +129,52 @@ impl IntentScheduler {
         }
 
         if let Some(index) = best_index {
-            // Remove the best agent from its current position
+            // Found a new task to run!
+            
+            // 1. Move Next to Front
+            // Remove 'next' from its current position
             let mut next = self.agents.remove(index).unwrap();
             
+            // 2. Move Current (Prev) to Back
+            let mut prev = self.agents.pop_front().unwrap();
+            
+            // Update Prev state
+            if prev.state == AgentState::Running {
+                prev.state = AgentState::Ready;
+            }
+            
+            // Update Next state
             next.state = AgentState::Running;
             self.current_agent_id = Some(next.id.0);
             
-            // Put it at the FRONT (Running position)
+            // Push Prev to Back
+            self.agents.push_back(prev);
+            
+            // Push Next to Front
             self.agents.push_front(next);
             
-            // Get pointers
+            // 3. Get pointers
             let next_agent = self.agents.front().unwrap();
             let next_ctx = &next_agent.context as *const Context;
             
-            // For the PREVIOUS context:
-            // If we just rotated/moved, the previous agent is now at the BACK (or wherever we put it).
-            // Unless it was the ONLY agent.
+            let prev_agent = self.agents.back_mut().unwrap();
+            let prev_ctx = &mut prev_agent.context as *mut Context;
             
-            // Note: We need to be careful about where 'prev' went.
-            // In the beginning of this function, we popped 'prev' and pushed it to back.
-            // So 'prev' is at self.agents.back().
-            
-            let prev_ctx = if self.agents.len() > 1 {
-                let prev_agent = self.agents.back_mut().unwrap();
-                &mut prev_agent.context as *mut Context
-            } else {
-                // Only one agent (ourselves), so prev == next
-                let prev_agent = self.agents.front_mut().unwrap();
-                &mut prev_agent.context as *mut Context
-            };
-
+            crate::profiling::PROFILER.context_switches.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
             return Some((prev_ctx, next_ctx));
         }
         
+        // No other task is Ready.
+        // Check if current task can continue.
+        let current = self.agents.front().unwrap();
+        if current.state == AgentState::Running || current.state == AgentState::Ready {
+             // Continue running current
+             return None;
+        }
+        
+        // Current is Blocked/Terminated, and no other task is Ready.
+        // We must return None (CPU will loop in idle/exit).
+        // Queue state is preserved (Current at front).
         None
     }
     /// Execute a closure with mutable access to the current agent

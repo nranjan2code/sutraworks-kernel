@@ -173,6 +173,9 @@ pub extern "C" fn handle_exception(frame: *mut ExceptionFrame) {
             let wnr = (iss >> 6) & 1;
             let dfsc = DataFaultStatusCode::from(iss);
             
+            // Increment page fault counter
+            crate::profiling::PROFILER.page_faults.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+            
             crate::kprintln!("Data Abort:");
             crate::kprintln!("  Operation: {}", if wnr == 1 { "WRITE" } else { "READ" });
             crate::kprintln!("  Status:    {:?}", dfsc);

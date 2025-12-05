@@ -129,6 +129,10 @@ pub fn init() {
 /// Actually on Pi 5, ACT LED is controlled by the PMIC or a specific GPIO.
 /// It is often GPIO 42 on the RP1.
 pub fn activity_led(on: bool) {
+    if crate::dtb::machine_type() != crate::dtb::MachineType::RaspberryPi5 {
+        return;
+    }
+
     // Check if RP1 is ready
     if !rp1::read_reg(RIO_BASE + RIO_OE) == 0 && !rp1::RP1.lock().is_active() {
         return; 

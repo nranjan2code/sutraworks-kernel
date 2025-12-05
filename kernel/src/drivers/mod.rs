@@ -27,17 +27,52 @@ pub use console::Console;
 pub use rng::Rng;
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// BCM2712 MEMORY MAP
+// DYNAMIC HARDWARE CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/// Raspberry Pi 5 uses BCM2712 with a different peripheral base
-/// Raspberry Pi 5 uses BCM2712 with a different peripheral base
-#[cfg(not(any(test, feature = "qemu")))]
-pub const PERIPHERAL_BASE: usize = 0x1_0000_0000;
+use crate::dtb::{self, MachineType};
 
-/// QEMU 'virt' machine uses 0x0900_0000 for UART
-#[cfg(any(test, feature = "qemu"))]
-pub const PERIPHERAL_BASE: usize = 0x0900_0000;
+pub fn uart_base() -> usize {
+    match dtb::machine_type() {
+        MachineType::QemuVirt => 0x0900_0000,
+        _ => 0x1_0000_0000 + 0x0020_1000, // Pi 5 PL011
+    }
+}
+
+pub fn gicd_base() -> usize {
+    match dtb::machine_type() {
+        MachineType::QemuVirt => 0x0800_0000,
+        _ => 0x1_0004_0000 + 0x1000, // Pi 5 GICD
+    }
+}
+
+pub fn gicc_base() -> usize {
+    match dtb::machine_type() {
+        MachineType::QemuVirt => 0x0801_0000,
+        _ => 0x1_0004_0000 + 0x2000, // Pi 5 GICC
+    }
+}
+
+pub fn rng_base() -> usize {
+    // Pi 5 RNG
+    0x1_0000_0000 + 0x0010_4000
+}
+
+pub fn pcie_ecam_base() -> usize {
+    match dtb::machine_type() {
+        MachineType::QemuVirt => 0x3f00_0000, // Highmem ECAM on virt
+        _ => 0x1_0000_0000, // Pi 5 PCIe
+    }
+}
+
+// Legacy constants (deprecated, but kept if needed for specific Pi 5 drivers)
+pub const PERIPHERAL_BASE_PI5: usize = 0x1_0000_0000;
+pub const GPIO_BASE: usize = PERIPHERAL_BASE_PI5 + 0x0020_0000;
+pub const MBOX_BASE: usize = PERIPHERAL_BASE_PI5 + 0x0000_B880;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BCM2712 MEMORY MAP
+// ═══════════════════════════════════════════════════════════════════════════════
 
 /// Legacy peripheral base (for backward compatibility checks)
 pub const LEGACY_PERIPHERAL_BASE: usize = 0xFE00_0000;
@@ -46,33 +81,17 @@ pub const LEGACY_PERIPHERAL_BASE: usize = 0xFE00_0000;
 pub const _PADS_BANK0: usize = 0x00f0_0000;
 pub const GPIO_OFFSET: usize = 0x0020_0000;
 
-#[cfg(not(any(test, feature = "qemu")))]
-pub const UART0_OFFSET: usize = 0x0020_1000;      // PL011 UART on Pi 5
-
-#[cfg(any(test, feature = "qemu"))]
-pub const UART0_OFFSET: usize = 0x0000_0000;      // PL011 UART on virt machine
-
 pub const AUX_OFFSET: usize = 0x0021_5000;        // Mini UART, SPI1, SPI2
 pub const _HAILO_STATUS: usize = 0x04;
 const _HAILO_IRQ_STATUS: usize = 0x10;
 const _HAILO_IRQ_MASK: usize = 0x14;
 pub const TIMER_OFFSET: usize = 0x0000_3000;      // System timer
 pub const IRQ_OFFSET: usize = 0x0000_B200;        // Interrupt controller
-pub const MBOX_OFFSET: usize = 0x0000_B880;       // Mailbox
 pub const PM_OFFSET: usize = 0x0010_0000;         // Power management
 pub const RNG_OFFSET: usize = 0x0010_4000;        // Hardware RNG
 
 // Absolute addresses
-pub const GPIO_BASE: usize = PERIPHERAL_BASE + GPIO_OFFSET;
-pub const UART0_BASE: usize = PERIPHERAL_BASE + UART0_OFFSET;
-pub const AUX_BASE: usize = PERIPHERAL_BASE + AUX_OFFSET;
-pub const TIMER_BASE: usize = PERIPHERAL_BASE + TIMER_OFFSET;
-pub const IRQ_BASE: usize = PERIPHERAL_BASE + IRQ_OFFSET;
-pub const MBOX_BASE: usize = PERIPHERAL_BASE + MBOX_OFFSET;
-pub const PM_BASE: usize = PERIPHERAL_BASE + PM_OFFSET;
-pub const RNG_BASE: usize = PERIPHERAL_BASE + RNG_OFFSET;
-
-// GIC-400 for Pi 5
-pub const GIC_BASE: usize = 0x1_0004_0000;
-pub const GICD_BASE: usize = GIC_BASE + 0x1000;   // Distributor
-pub const GICC_BASE: usize = GIC_BASE + 0x2000;   // CPU interface
+pub const AUX_BASE: usize = PERIPHERAL_BASE_PI5 + AUX_OFFSET;
+pub const TIMER_BASE: usize = PERIPHERAL_BASE_PI5 + TIMER_OFFSET;
+pub const IRQ_BASE: usize = PERIPHERAL_BASE_PI5 + IRQ_OFFSET;
+pub const PM_BASE: usize = PERIPHERAL_BASE_PI5 + PM_OFFSET;

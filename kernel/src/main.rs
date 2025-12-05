@@ -32,6 +32,8 @@ pub extern "C" fn kernel_main() -> ! {
     #[cfg(test)]
     test_main();
 
+    kprintln!("Kernel Entry");
+
     // Phase 1: Early initialization (serial for debugging)
     drivers::uart::early_init();
     
@@ -41,6 +43,24 @@ pub extern "C" fn kernel_main() -> ! {
     // Phase 2: Core system initialization
     kprintln!("[BOOT] Initializing Intent Kernel...");
     kprintln!();
+    
+    unsafe {
+        extern "C" {
+            static __bss_start: u8;
+            static __bss_end: u8;
+        }
+        let bss_start = &__bss_start as *const u8 as usize;
+        let bss_end = &__bss_end as *const u8 as usize;
+        kprintln!("[DEBUG] BSS: {:#x} - {:#x} (Size: {})", bss_start, bss_end, bss_end - bss_start);
+        
+        let neural_addr = &kernel::memory::neural::NEURAL_ALLOCATOR as *const _ as usize;
+        kprintln!("[DEBUG] NEURAL_ALLOCATOR: {:#x}", neural_addr);
+        
+        // Check first few words of BSS
+        let ptr = bss_start as *const u64;
+        kprintln!("[DEBUG] BSS[0]: {:#x}", *ptr);
+        kprintln!("[DEBUG] BSS[1]: {:#x}", *ptr.add(1));
+    }
     
     // Get boot info
     let core_id = arch::core_id();
@@ -72,31 +92,49 @@ pub extern "C" fn kernel_main() -> ! {
     let heap_avail = kernel::memory::heap_available();
     kprintln!("       Heap: {} MB available", heap_avail / (1024 * 1024));
     
+    // Detect Machine Type
+    let machine = dtb::machine_type();
+    kprintln!("[INIT] Machine Detection: {:?}", machine);
+
     // Initialize PCIe (Root Complex)
-    kprintln!("[INIT] PCIe Subsystem...");
-    drivers::pcie::init();
+    if machine == dtb::MachineType::RaspberryPi5 {
+        kprintln!("[INIT] PCIe Subsystem...");
+        drivers::pcie::init();
+    }
 
     // Initialize RP1 (I/O Controller)
-    kprintln!("[INIT] RP1 I/O Controller...");
-    drivers::rp1::init();
+    if machine == dtb::MachineType::RaspberryPi5 {
+        kprintln!("[INIT] RP1 I/O Controller...");
+        drivers::rp1::init();
+    }
 
     // Initialize GPIO (via RP1)
     kprintln!("[INIT] GPIO...");
-    drivers::gpio::init();
+    if machine == dtb::MachineType::RaspberryPi5 {
+        drivers::gpio::init();
+    }
     
     // Initialize mailbox (GPU communication)
-    kprintln!("[INIT] VideoCore mailbox...");
-    drivers::mailbox::init();
-    
-    // Get hardware info via mailbox
-    if let Some(info) = drivers::mailbox::get_board_info() {
-        kprintln!("       Board: {:08x}, Rev: {:08x}", info.board_model, info.board_revision);
-        kprintln!("       Memory: {} MB", info.arm_memory / (1024 * 1024));
+    if machine == dtb::MachineType::RaspberryPi5 {
+        kprintln!("[INIT] VideoCore mailbox...");
+        drivers::mailbox::init();
+        
+        // Get hardware info via mailbox
+        if let Some(info) = drivers::mailbox::get_board_info() {
+            kprintln!("       Board: {:08x}, Rev: {:08x}", info.board_model, info.board_revision);
+            kprintln!("       Memory: {} MB", info.arm_memory / (1024 * 1024));
+        }
     }
     
     // Initialize framebuffer
-    kprintln!("[INIT] Framebuffer...");
-    if drivers::framebuffer::init(1920, 1080, 32).is_ok() {
+    if machine == dtb::MachineType::RaspberryPi5 {
+        kprintln!("[INIT] Framebuffer...");
+        // drivers::framebuffer::init(); // Uncomment when ready
+    }
+    
+    // Try to init framebuffer (works on QEMU if ramfb is supported, but here we check machine)
+    // Actually, QEMU virt might have a framebuffer if configured, but let's stick to Pi 5 logic for now.
+    if machine == dtb::MachineType::RaspberryPi5 && drivers::framebuffer::init(1920, 1080, 32).is_ok() {
         kprintln!("       Display: 1920x1080x32");
         // Initialize console on framebuffer
         drivers::console::init();
@@ -140,6 +178,9 @@ pub extern "C" fn kernel_main() -> ! {
     visual::init();
     // Register as a wildcard listener (Priority 10 = Normal)
     intent::register_wildcard(visual::create_handler(), "VisualLayer", 10);
+
+    // Run Benchmarks (Sprint 11)
+    benchmarks::run_all();
 
     // Demo Neural Memory (HDC Edition)
     kprintln!("[INIT] Neural Memory Demo (HDC)...");
@@ -200,15 +241,15 @@ pub extern "C" fn kernel_main() -> ! {
     }
 
     // Initialize Perception Layer (Adaptive Hardware Support)
-    kprintln!("[INIT] Perception Cortex...");
-    // Initialize Perception Layer (Adaptive Hardware Support)
-    kprintln!("[INIT] Perception Cortex...");
-    perception::init();
-    
-    let perception_mgr = perception::PERCEPTION_MANAGER.lock();
-    kprintln!("       Active Sensors:");
-    for sensor in perception_mgr.sensors() {
-        kprintln!("       - {}", sensor.backend_name());
+    if machine == dtb::MachineType::RaspberryPi5 {
+        kprintln!("[INIT] Perception Cortex...");
+        perception::init();
+        
+        let perception_mgr = perception::PERCEPTION_MANAGER.lock();
+        kprintln!("       Active Sensors:");
+        for sensor in perception_mgr.sensors() {
+            kprintln!("       - {}", sensor.backend_name());
+        }
     }
 
     // Initialize HUD (Legacy - now handled by Visual Layer)
@@ -216,16 +257,19 @@ pub extern "C" fn kernel_main() -> ! {
     // perception::hud::init();
 
     // Initialize Filesystem
-    kprintln!("[INIT] Filesystem...");
-    fs::init();
+    if machine == dtb::MachineType::RaspberryPi5 {
+        kprintln!("[INIT] Filesystem...");
+        fs::init();
+        
+        // Initialize SD Card
+        kprintln!("[INIT] SD Card Driver...");
+        drivers::sd::init();
+        
+        // Mount FAT32 on SD
+        kprintln!("[INIT] Mounting FAT32 on SD...");
+    }
     
-    // Initialize SD Card
-    kprintln!("[INIT] SD Card Driver...");
-    drivers::sd::init();
-    
-    // Mount FAT32 on SD
-    kprintln!("[INIT] Mounting FAT32 on SD...");
-    {
+    if machine == dtb::MachineType::RaspberryPi5 {
         // Get SD Driver instance
         // Note: In a real system we'd have a BlockDevice registry.
         // Here we just use the static instance wrapped in an Arc-like adapter or just pass it if we change Fat32 to take a reference?
@@ -236,38 +280,32 @@ pub extern "C" fn kernel_main() -> ! {
         
         struct SdWrapper;
         impl fs::vfs::BlockDevice for SdWrapper {
-            fn read_sector(&self, sector: u32, buf: &mut [u8]) -> Result<(), &'static str> {
-                drivers::sd::SD_DRIVER.lock().read_sector(sector, buf)
+            fn read_sector(&self, sector: u32, buffer: &mut [u8]) -> Result<(), &'static str> {
+                if drivers::sd::read_block(sector, buffer).is_ok() {
+                    Ok(())
+                } else {
+                    Err("IO Error")
+                }
             }
-            fn write_sector(&self, sector: u32, buf: &[u8]) -> Result<(), &'static str> {
-                drivers::sd::SD_DRIVER.lock().write_sector(sector, buf)
+            
+            fn write_sector(&self, sector: u32, buffer: &[u8]) -> Result<(), &'static str> {
+                if drivers::sd::write_block(sector, buffer).is_ok() {
+                    Ok(())
+                } else {
+                    Err("IO Error")
+                }
             }
         }
         
-        let sd_dev = Arc::new(SdWrapper);
+        let device = Arc::new(SdWrapper);
         // Wrap in Cache (512 sectors = 256KB cache)
-        let cached_dev = Arc::new(fs::cache::CachedDevice::new(sd_dev, 512));
+        let cached_dev = Arc::new(fs::cache::CachedDevice::new(device, 512));
         
-        match fs::fat32::Fat32FileSystem::new(cached_dev) {
-            Ok(fat32) => {
-                let mut vfs = fs::VFS.lock();
-                if let Err(e) = vfs.mount("/sd", fat32.clone()) {
-                    kprintln!("       Mount failed: {}", e);
-                } else {
-                    kprintln!("       Mounted FAT32 at /sd");
-                    
-                    // Test: List Root Directory
-                    kprintln!("       Listing /sd:");
-                    if let Ok(entries) = vfs.read_dir("/sd") {
-                        for entry in entries {
-                            kprintln!("       - {} ({})", entry.name, entry.size);
-                        }
-                    } else {
-                        kprintln!("       Failed to read directory");
-                    }
-                }
-            },
-            Err(e) => kprintln!("       Failed to initialize FAT32: {}", e),
+        if let Ok(fs) = fs::fat32::Fat32FileSystem::mount(cached_dev) {
+            let _ = fs::mount("/sd", fs);
+            kprintln!("       Mounted FAT32 at /sd");
+        } else {
+            kprintln!("       Failed to mount SD card");
         }
     }
 
@@ -279,12 +317,14 @@ pub extern "C" fn kernel_main() -> ! {
     let _ = crate::kernel::scheduler::SCHEDULER.lock().spawn_simple(syscall_test_task);
     
 
-    // Initialize PCIe
-    drivers::pcie::init();
+    // Initialize PCIe (Already initialized earlier)
+    // drivers::pcie::init();
 
     // Initialize USB
-    kprintln!("[INIT] USB Subsystem...");
-    drivers::usb::init();
+    if machine == dtb::MachineType::RaspberryPi5 {
+        kprintln!("[INIT] USB Subsystem...");
+        drivers::usb::init();
+    }
 
     // Initialize Scheduler
     kprintln!("[INIT] Scheduler...");
@@ -327,7 +367,6 @@ pub extern "C" fn kernel_main() -> ! {
                 kprintln!("       /init.elf is empty");
             }
         } else {
-            kprintln!("       Failed to open /init.elf");
             kprintln!("       Failed to open /init.elf");
             // Fallback to internal test
             let _ = kernel::scheduler::SCHEDULER.lock().spawn_user_simple(user_task, 0);

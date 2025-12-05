@@ -116,6 +116,10 @@ impl Fat32FileSystem {
             data_start_sector,
         }))
     }
+
+    pub fn mount(device: Arc<dyn BlockDevice>) -> Result<Arc<Self>, &'static str> {
+        Self::new(device)
+    }
     
     /// Convert Cluster Number to Sector Number
     fn cluster_to_sector(&self, cluster: u32) -> u32 {

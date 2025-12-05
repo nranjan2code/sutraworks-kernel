@@ -86,20 +86,24 @@ impl Gic {
     
     // GICD register access
     fn gicd_read(&self, offset: usize) -> u32 {
-        unsafe { arch::read32(self.gicd_base + offset) }
+        let base = if self.gicd_base == 0 { crate::drivers::gicd_base() } else { self.gicd_base };
+        unsafe { arch::read32(base + offset) }
     }
     
     fn gicd_write(&self, offset: usize, value: u32) {
-        unsafe { arch::write32(self.gicd_base + offset, value) }
+        let base = if self.gicd_base == 0 { crate::drivers::gicd_base() } else { self.gicd_base };
+        unsafe { arch::write32(base + offset, value) }
     }
     
     // GICC register access
     fn gicc_read(&self, offset: usize) -> u32 {
-        unsafe { arch::read32(self.gicc_base + offset) }
+        let base = if self.gicc_base == 0 { crate::drivers::gicc_base() } else { self.gicc_base };
+        unsafe { arch::read32(base + offset) }
     }
     
     fn gicc_write(&self, offset: usize, value: u32) {
-        unsafe { arch::write32(self.gicc_base + offset, value) }
+        let base = if self.gicc_base == 0 { crate::drivers::gicc_base() } else { self.gicc_base };
+        unsafe { arch::write32(base + offset, value) }
     }
     
     /// Initialize the GIC
@@ -247,6 +251,9 @@ pub fn unregister_handler(irq: u32) {
 
 /// Dispatch an interrupt to its handler
 pub fn dispatch(irq: u32) {
+    // Increment interrupt counter
+    crate::profiling::PROFILER.interrupts.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+
     if irq < MAX_IRQ {
         // We need to be careful here. The lock is reentrant-safe ONLY because
         // we disabled interrupts in SpinLock::lock().
@@ -272,11 +279,9 @@ pub fn is_initialized() -> bool {
 // INTERRUPT CONTROLLER SINGLETON
 // ═══════════════════════════════════════════════════════════════════════════════
 
-use crate::drivers::{GICD_BASE, GICC_BASE};
-
 /// Get the global GIC instance
 pub fn gic() -> Gic {
-    unsafe { Gic::new(GICD_BASE, GICC_BASE) }
+    unsafe { Gic::new(0, 0) }
 }
 
 /// Initialize the interrupt controller

@@ -78,7 +78,11 @@ impl From<u64> for SyscallNumber {
 pub fn dispatcher(num: u64, arg0: u64, arg1: u64, arg2: u64, frame: &mut crate::kernel::exception::ExceptionFrame) -> u64 {
     let syscall = SyscallNumber::from(num);
     
-    match syscall {
+    // Start profiling
+    let start_cycles = crate::profiling::rdtsc();
+    crate::profiling::PROFILER.syscalls.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+
+    let result = match syscall {
         SyscallNumber::Exit => {
             sys_exit(arg0 as i32);
             0 // Should not return
@@ -154,10 +158,17 @@ pub fn dispatcher(num: u64, arg0: u64, arg1: u64, arg2: u64, frame: &mut crate::
             kprintln!("Unknown syscall: {}", num);
             u64::MAX
         }
-    }
+    };
+
+    // End profiling
+    let end_cycles = crate::profiling::rdtsc();
+    let cycles = end_cycles.wrapping_sub(start_cycles);
+    crate::profiling::PROFILER.total_syscall_cycles.fetch_add(cycles, core::sync::atomic::Ordering::Relaxed);
+
+    result
 }
 
-fn sys_exit(code: i32) {
+fn sys_exit(code: i32) -> ! {
     kprintln!("Process exited with code {}", code);
     
     // Set state to Terminated and wake parent
@@ -165,9 +176,56 @@ fn sys_exit(code: i32) {
     scheduler.exit_current(code);
     drop(scheduler);
     
-    // Yield CPU (Scheduler will drop this agent)
-    loop {
-        scheduler::yield_task();
+    // Try to yield to another task
+    scheduler::yield_task();
+    
+    // If we reach here, yield_task() returned without switching.
+    // This means there are no other Ready tasks.
+    // CRITICAL: We are STILL in the terminated task's context with USER registers!
+    // If an IRQ fires now, it will save these USER registers into kernel state.
+    // We MUST clear all registers to prevent leakage.
+    
+    kprintln!("[WARN] No tasks to schedule after exit, halting with clean state");
+    
+    unsafe {
+        core::arch::asm!(
+            // Clear all general purpose registers to prevent USER value leakage
+            "mov x0, #0",
+            "mov x1, #0",
+            "mov x2, #0",
+            "mov x3, #0",
+            "mov x4, #0",
+            "mov x5, #0",
+            "mov x6, #0",
+            "mov x7, #0",
+            "mov x8, #0",
+            "mov x9, #0",
+            "mov x10, #0",
+            "mov x11, #0",
+            "mov x12, #0",
+            "mov x13, #0",
+            "mov x14, #0",
+            "mov x15, #0",
+            "mov x16, #0",
+            "mov x17, #0",
+            "mov x18, #0",
+            "mov x19, #0",  // CRITICAL: Clear x19 (contained cntvct_el0 from benchmark)
+            "mov x20, #0",
+            "mov x21, #0",
+            "mov x22, #0",
+            "mov x23, #0",
+            "mov x24, #0",
+            "mov x25, #0",
+            "mov x26, #0",
+            "mov x27, #0",
+            "mov x28, #0",
+            "mov x29, #0",
+            "mov x30, #0",
+            // Wait for interrupts in a clean state
+            "1: wfi",
+            "b 1b",
+            options(noreturn)
+        );
     }
 }
 
