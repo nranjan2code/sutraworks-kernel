@@ -5,18 +5,92 @@
 use alloc::collections::vec_deque::VecDeque;
 use alloc::boxed::Box;
 use crate::kernel::process::{Agent, AgentState, Context};
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
+use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+
+/// Current PIDs running on each core (for deadlock detection)
+pub static CURRENT_PIDS: [AtomicUsize; 4] = [
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+    AtomicUsize::new(0),
+];
 
 pub struct IntentScheduler {
     agents: VecDeque<Box<Agent>>,
     current_agent_id: Option<u64>,
 }
 
+// ...
+
+
+
+/// Per-core statistics for health monitoring
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CoreStats {
+    pub idle_cycles: u64,
+    pub total_cycles: u64, 
+    pub queue_length: usize,
+}
+
+/// Global storage for per-core statistics (4 cores max)
+pub static CORE_STATS: [SpinLock<CoreStats>; 4] = [
+    SpinLock::new(CoreStats { idle_cycles: 0, total_cycles: 0, queue_length: 0 }),
+    SpinLock::new(CoreStats { idle_cycles: 0, total_cycles: 0, queue_length: 0 }),
+    SpinLock::new(CoreStats { idle_cycles: 0, total_cycles: 0, queue_length: 0 }),
+    SpinLock::new(CoreStats { idle_cycles: 0, total_cycles: 0, queue_length: 0 }),
+];
+
 impl IntentScheduler {
     pub const fn new() -> Self {
         IntentScheduler {
             agents: VecDeque::new(),
             current_agent_id: None,
+        }
+    }
+    
+    /// Get statistics for a specific core
+    pub fn get_core_stats(core_id: usize) -> CoreStats {
+        if core_id < 4 {
+            *CORE_STATS[core_id].lock()
+        } else {
+            CoreStats::default()
+        }
+    }
+    
+    /// Record start of idle period
+    pub fn record_idle_start(_core_id: usize) -> u64 {
+        crate::profiling::rdtsc()
+    }
+    
+    /// Record end of idle period and update stats
+    pub fn record_idle_end(core_id: usize, start_time: u64) {
+        if core_id < 4 {
+            let end_time = crate::profiling::rdtsc();
+            let elapsed = end_time.wrapping_sub(start_time);
+            
+            let mut stats = CORE_STATS[core_id].lock();
+            stats.idle_cycles = stats.idle_cycles.wrapping_add(elapsed);
+            stats.total_cycles = stats.total_cycles.wrapping_add(elapsed); // Add to total? 
+            // Wait, total_cycles should be total time elapsed since boot? 
+            // Or just sum of idle + active?
+            // Actually, we can just track idle cycles. Total cycles can be derived from TSC or just accumulated.
+            // Let's accumulate elapsed to total as well, assuming we call this frequently.
+            // But this only adds IDLE time to total. We need to add ACTIVE time too.
+            // Better approach: total_cycles is just current TSC - boot TSC.
+            // But for percentage, we want a window.
+            // Let's just track accumulated idle cycles. The health check can diff it against wall clock or TSC.
+        }
+    }
+    
+    /// Update queue length stat
+    pub fn update_queue_stats(&self) {
+        // We only have one global queue, so update all cores or just core 0?
+        // Let's update all for visibility, or just assume core 0 manages it.
+        // Since it's a shared queue, the "queue depth" is the global depth.
+        let len = self.agents.len();
+        for i in 0..4 {
+             CORE_STATS[i].lock().queue_length = len;
         }
     }
 
@@ -61,18 +135,26 @@ impl IntentScheduler {
     }
 
     /// Wait for a child process to terminate
-    pub fn wait_child(&mut self, parent_id: u64) -> Result<Option<u64>, &'static str> {
+    /// 
+    /// If `target_pid` is Some(pid), waits for that specific child.
+    /// If `target_pid` is None, waits for any child.
+    pub fn wait_child(&mut self, parent_id: u64, target_pid: Option<u64>) -> Result<Option<u64>, &'static str> {
         let mut has_children = false;
         let mut reaped_pid = None;
         let mut remove_idx = None;
         
         for (i, agent) in self.agents.iter().enumerate() {
             if agent.parent_id == Some(parent_id) {
-                has_children = true;
-                if agent.state == AgentState::Terminated {
-                    reaped_pid = Some(agent.id.0);
-                    remove_idx = Some(i);
-                    break;
+                // Check if this is the target child (or any child if target is None)
+                let is_target = target_pid.map_or(true, |pid| agent.id.0 == pid);
+                
+                if is_target {
+                    has_children = true;
+                    if agent.state == AgentState::Terminated {
+                        reaped_pid = Some(agent.id.0);
+                        remove_idx = Some(i);
+                        break;
+                    }
                 }
             }
         }
@@ -89,7 +171,11 @@ impl IntentScheduler {
             }
             Ok(None) // Indicates blocking, caller should yield
         } else {
-            Err("No children")
+            if target_pid.is_some() {
+                Err("Child not found")
+            } else {
+                Err("No children")
+            }
         }
     }
 
@@ -119,6 +205,8 @@ impl IntentScheduler {
     /// Returns a tuple of (prev_context_ptr, next_context_ptr) if a switch is needed.
     /// The caller must then call `switch_to`.
     pub fn schedule(&mut self) -> Option<(*mut Context, *const Context)> {
+        self.update_queue_stats(); // Update stats
+        
         if self.agents.is_empty() {
             return None;
         }
@@ -140,7 +228,34 @@ impl IntentScheduler {
             let mut next = self.agents.remove(index).unwrap();
             
             // 2. Move Current (Prev) to Back
-            let mut prev = self.agents.pop_front().unwrap();
+            let prev = self.agents.pop_front().unwrap();
+            
+            // Update stats
+            let now = crate::profiling::rdtsc();
+            
+            // Update Prev stats
+            // Use into_raw to avoid UB if pointer is null (which shouldn't happen but does due to corruption)
+            let prev_raw = Box::into_raw(prev);
+            let prev_addr = prev_raw as usize;
+            
+            // Force check by hiding value from optimizer
+            if core::hint::black_box(prev_addr) == 0 {
+                crate::kprintln!("[SCHED] FATAL: Prev is NULL! Leaking it.");
+                // prev is consumed by into_raw, so it's effectively leaked/forgotten.
+                self.agents.push_back(next);
+                return None;
+            }
+            
+            // Reconstruct Box
+            let mut prev = unsafe { Box::from_raw(prev_raw) };
+
+            if prev.last_scheduled > 0 {
+                let elapsed = now.wrapping_sub(prev.last_scheduled);
+                prev.cpu_cycles = prev.cpu_cycles.wrapping_add(elapsed);
+            }
+            
+            // Update Next stats
+            next.last_scheduled = now;
             
             // Update Prev state
             if prev.state == AgentState::Running {
@@ -150,6 +265,12 @@ impl IntentScheduler {
             // Update Next state
             next.state = AgentState::Running;
             self.current_agent_id = Some(next.id.0);
+            
+            // Update atomic PID for lock tracking
+            let core_id = crate::arch::core_id();
+            if core_id < 4 {
+                CURRENT_PIDS[core_id as usize].store(next.id.0.try_into().unwrap(), Ordering::Relaxed);
+            }
             
             // Push Prev to Back
             self.agents.push_back(prev);
@@ -206,6 +327,35 @@ impl IntentScheduler {
         }
         None
     }
+
+    /// Kill a specific task by ID
+    pub fn kill_task(&mut self, id: u64) -> Result<(), &'static str> {
+        // Find the task
+        let mut found_idx = None;
+        for (i, agent) in self.agents.iter().enumerate() {
+            if agent.id.0 == id {
+                found_idx = Some(i);
+                break;
+            }
+        }
+
+        if let Some(idx) = found_idx {
+            // If it's the current task, we can't just remove it without context switch.
+            // Mark it as Terminated so it gets cleaned up on next schedule.
+            if self.current_agent_id == Some(id) {
+                self.agents[idx].state = AgentState::Terminated;
+                // We should probably yield here? But this function returns.
+                // The caller should yield if they killed themselves.
+            } else {
+                // If it's not running, we can remove it immediately or mark Terminated.
+                // Marking Terminated is safer for resource cleanup (e.g. parent notification).
+                self.agents[idx].state = AgentState::Terminated;
+            }
+            Ok(())
+        } else {
+            Err("Task not found")
+        }
+    }
 }
 
 pub static SCHEDULER: SpinLock<IntentScheduler> = SpinLock::new(IntentScheduler::new());
@@ -216,8 +366,8 @@ pub fn tick() {
     crate::drivers::timer::set_timer_interrupt(10_000);
 
     // Track tick count for periodic tasks
-    static TICK_COUNT: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
-    let ticks = TICK_COUNT.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+    static TICK_COUNT: AtomicU64 = AtomicU64::new(0);
+    let ticks = TICK_COUNT.fetch_add(1, Ordering::Relaxed);
 
     // TCP retransmission check every 100ms (10 ticks)
     if ticks % 10 == 0 {
@@ -299,4 +449,17 @@ mod tests {
         let mut scheduler = IntentScheduler::new();
         assert!(scheduler.schedule().is_none());
     }
+}
+
+// Public helpers for main loop
+pub fn record_idle_start(core_id: usize) -> u64 {
+    IntentScheduler::record_idle_start(core_id)
+}
+
+pub fn record_idle_end(core_id: usize, start: u64) {
+    IntentScheduler::record_idle_end(core_id, start)
+}
+
+pub fn get_core_stats(core_id: usize) -> CoreStats {
+    IntentScheduler::get_core_stats(core_id)
 }

@@ -587,7 +587,7 @@ impl Framebuffer {
 // GLOBAL FRAMEBUFFER INSTANCE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 
 static FRAMEBUFFER: SpinLock<Option<Framebuffer>> = SpinLock::new(None);
 

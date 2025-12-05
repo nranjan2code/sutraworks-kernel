@@ -132,7 +132,7 @@ impl Ipv4Header {
         };
         bytes.push(proto_u8);
         
-        // Checksum placeholder (calculated later if needed, or 0)
+        // Checksum initialized to 0 for calculation
         bytes.extend_from_slice(&self.checksum.to_be_bytes());
         
         bytes.extend_from_slice(&self.src.0);

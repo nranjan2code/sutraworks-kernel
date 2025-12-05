@@ -7,8 +7,9 @@ use crate::fs::vfs;
 use crate::kprintln;
 use crate::kernel::signal::{Signal, SigAction};
 use alloc::sync::Arc;
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 use crate::fs::pipe;
+use crate::kernel::memory::paging::UserAddressSpace;
 
 /// System Call Numbers
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -261,7 +262,7 @@ fn sys_print(ptr: u64, len: u64) -> u64 {
             let end = ptr + len as u64;
             let mut curr = start & !0xFFF;
             while curr < end {
-                if !vmm.is_mapped(curr) { return false; }
+                if !UserAddressSpace::is_mapped(vmm, curr) { return false; }
                 curr += 4096;
             }
             true
@@ -290,7 +291,7 @@ fn sys_open(path_ptr: u64, flags: u64) -> u64 {
     let mut scheduler = SCHEDULER.lock();
     let valid = scheduler.with_current_agent(|agent| {
         if let Some(vmm) = &agent.vmm {
-            vmm.is_mapped(path_ptr)
+            UserAddressSpace::is_mapped(vmm, path_ptr)
         } else {
             crate::kernel::memory::validate_read_ptr(ptr, 1).is_ok()
         }
@@ -355,7 +356,7 @@ fn sys_read(fd: u64, buf_ptr: u64, len: u64) -> u64 {
              let end = buf_ptr + len as u64;
              let mut curr = start & !0xFFF;
              while curr < end {
-                 if !vmm.is_mapped(curr) { return false; }
+                 if !UserAddressSpace::is_mapped(vmm, curr) { return false; }
                  curr += 4096;
              }
              true
@@ -404,7 +405,7 @@ fn sys_write(fd: u64, buf_ptr: u64, len: u64) -> u64 {
              let end = buf_ptr + len as u64;
              let mut curr = start & !0xFFF;
              while curr < end {
-                 if !vmm.is_mapped(curr) { return false; }
+                 if !UserAddressSpace::is_mapped(vmm, curr) { return false; }
                  curr += 4096;
              }
              true
@@ -460,18 +461,18 @@ fn sys_sigaction(sig: i32, act_ptr: u64, oldact_ptr: u64) -> u64 {
     let mut scheduler = SCHEDULER.lock();
     
     // Check if we can access the memory
-    let valid = scheduler.with_current_agent(|agent| {
+    let valid = scheduler.with_current_agent(|agent: &mut crate::kernel::process::Agent| {
         let mut ok = true;
         if oldact_ptr != 0 {
             if let Some(vmm) = &agent.vmm {
-                if !vmm.is_mapped(oldact_ptr) { ok = false; }
+                if !UserAddressSpace::is_mapped(vmm, oldact_ptr) { ok = false; }
             } else {
                 if crate::kernel::memory::validate_write_ptr(oldact_ptr as *mut u8, core::mem::size_of::<SigAction>()).is_err() { ok = false; }
             }
         }
         if act_ptr != 0 {
             if let Some(vmm) = &agent.vmm {
-                if !vmm.is_mapped(act_ptr) { ok = false; }
+                if !UserAddressSpace::is_mapped(vmm, act_ptr) { ok = false; }
             } else {
                 if crate::kernel::memory::validate_read_ptr(act_ptr as *const u8, core::mem::size_of::<SigAction>()).is_err() { ok = false; }
             }
@@ -566,7 +567,7 @@ fn sys_mmap(len: u64, perms: u64, flags: u64) -> u64 {
     let vma_flags = VmaFlags { private, anonymous, fixed };
     
     let mut scheduler = SCHEDULER.lock();
-    let res = scheduler.with_current_agent(|agent| {
+    let res = scheduler.with_current_agent(|agent: &mut crate::kernel::process::Agent| {
         // 1. Allocate VMA
         let addr = agent.vma_manager.mmap(len, vma_perms, vma_flags)?;
         
@@ -582,7 +583,7 @@ fn sys_mmap(len: u64, perms: u64, flags: u64) -> u64 {
                 if let Some(ptr) = unsafe { crate::kernel::memory::alloc_pages(pages as usize) } {
                     let phys = ptr.as_ptr() as u64;
                     // Map to user space
-                    if vmm.map_user(addr, phys, size as usize).is_err() {
+                    if UserAddressSpace::map_user(vmm, addr, phys, size as usize).is_err() {
                         // Rollback VMA
                         agent.vma_manager.munmap(addr, len);
                         return None;
@@ -603,7 +604,7 @@ fn sys_mmap(len: u64, perms: u64, flags: u64) -> u64 {
 
 fn sys_munmap(addr: u64, len: u64) -> u64 {
     let mut scheduler = SCHEDULER.lock();
-    let success = scheduler.with_current_agent(|agent| {
+    let success = scheduler.with_current_agent(|agent: &mut crate::kernel::process::Agent| {
         // 1. Remove VMA
         if let Some(vma) = agent.vma_manager.munmap(addr, len) {
             // 2. Unmap pages
@@ -615,7 +616,7 @@ fn sys_munmap(addr: u64, len: u64) -> u64 {
                 
                 while curr < end {
                     // Unmap from page table
-                    if let Ok(Some(phys)) = vmm.unmap_page(curr) {
+                    if let Ok(Some(phys)) = UserAddressSpace::unmap_page(vmm, curr) {
                         // If anonymous, free the physical page
                         if vma.flags.anonymous {
                             unsafe {
@@ -702,7 +703,7 @@ fn sys_bind(fd: u64, addr_ptr: u64, addr_len: u64) -> u64 {
     // let addr = u32::from_be_bytes([buf[4], buf[5], buf[6], buf[7]]);
     
     let mut scheduler = SCHEDULER.lock();
-    let res = scheduler.with_current_agent(|agent| {
+    let res = scheduler.with_current_agent(|agent: &mut crate::kernel::process::Agent| {
         if let Ok(desc) = agent.file_table.get_fd(fd as usize) {
             let mut file = desc.file.lock();
             // Downcast to Socket
@@ -749,7 +750,7 @@ fn sys_connect(fd: u64, addr_ptr: u64, addr_len: u64) -> u64 {
     let addr = crate::net::ip::Ipv4Addr(addr_bytes);
     
     let mut scheduler = SCHEDULER.lock();
-    let res = scheduler.with_current_agent(|agent| {
+    let res = scheduler.with_current_agent(|agent: &mut crate::kernel::process::Agent| {
         if let Ok(desc) = agent.file_table.get_fd(fd as usize) {
             let mut file = desc.file.lock();
             if let Some(socket) = file.as_any().downcast_mut::<crate::net::socket::Socket>() {
@@ -793,36 +794,48 @@ fn sys_fork(frame: &crate::kernel::exception::ExceptionFrame) -> u64 {
 }
 
 fn sys_wait(pid: i32) -> u64 {
-    // Only support wait(-1) for now (any child)
-    if pid != -1 {
-        return u64::MAX; // TODO: Support specific PID  
-    }
+    let target_pid = if pid == -1 {
+        None
+    } else if pid > 0 {
+        Some(pid as u64)
+    } else {
+        return u64::MAX; // Invalid PID
+    };
 
-    loop {
-        let mut scheduler = SCHEDULER.lock();
-        let current_pid = match scheduler.current_pid() {
-            Some(p) => p,
-            None => return u64::MAX,
-        };
-        
-        match scheduler.wait_child(current_pid) {
-            Ok(Some(child_pid)) => {
-                // Successfully reaped a terminated child
-                return child_pid;
-            }
+    let mut scheduler = SCHEDULER.lock();
+    if let Some(current_pid) = scheduler.current_pid() {
+        match scheduler.wait_child(current_pid, target_pid) {
+            Ok(Some(reaped)) => reaped,
             Ok(None) => {
-                // Children exist but none terminated - task is now blocked
-                // wait_child already set state to Blocked
+                // Blocked, yield
                 drop(scheduler);
-                crate::kernel::scheduler::yield_task();
-                // Task will be woken when child exits, retry wait
+                scheduler::yield_task();
+                
+                // Loop until child is reaped or error
+                loop {
+                    let mut scheduler = SCHEDULER.lock();
+                    match scheduler.wait_child(current_pid, target_pid) {
+                        Ok(Some(reaped)) => return reaped,
+                        Ok(None) => {
+                             // Still waiting, ensure blocked
+                             if let Some(agent) = scheduler.get_agent_mut(current_pid) {
+                                 agent.state = crate::kernel::process::AgentState::Blocked;
+                             }
+                             drop(scheduler);
+                             scheduler::yield_task();
+                        }
+                        Err(_) => return u64::MAX
+                    }
+                }
             }
-            Err(_) => {
-                return u64::MAX; // ECHILD (no children)
-            }
+            Err(_) => u64::MAX // ECHILD
         }
+    } else {
+        u64::MAX
     }
 }
+
+
 
 fn sys_exec(path_ptr: u64, frame: &mut crate::kernel::exception::ExceptionFrame) -> u64 {
     // Validate pointer
@@ -843,7 +856,7 @@ fn sys_exec(path_ptr: u64, frame: &mut crate::kernel::exception::ExceptionFrame)
     let path = core::str::from_utf8(&path_buf[0..len]).unwrap_or("");
     
     let mut scheduler = SCHEDULER.lock();
-    let res = scheduler.with_current_agent(|agent| {
+    let res = scheduler.with_current_agent(|agent: &mut crate::kernel::process::Agent| {
         match agent.exec(path, frame) {
             Ok(_) => 0,
             Err(e) => {

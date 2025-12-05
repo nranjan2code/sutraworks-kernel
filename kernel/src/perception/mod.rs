@@ -17,7 +17,7 @@ use vision::{ObjectDetector, DetectedObject};
 use crate::kernel::memory::neural::NEURAL_ALLOCATOR;
 use crate::intent::ConceptID;
 
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 
 /// Wrapper to make HailoDriver implement ObjectDetector
 struct HailoSensor {

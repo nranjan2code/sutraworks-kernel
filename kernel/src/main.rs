@@ -392,7 +392,13 @@ pub extern "C" fn kernel_main() -> ! {
 
     // Main loop (Idle task)
     loop {
-        arch::wfi();
+        let core_id = arch::core_id();
+        let start = kernel::scheduler::record_idle_start(core_id as usize);
+        
+        // Wait for interrupt
+        unsafe { crate::arch::wait_for_interrupt(); }
+        
+        kernel::scheduler::record_idle_end(core_id as usize, start);
     }
 }
 
@@ -525,10 +531,10 @@ fn user_task() {
                 in(reg) msg.len(),
             );
             
-            // Syscall 3: Sleep 100ms
+            // Syscall 3: Sleep 5000ms
             core::arch::asm!(
                 "mov x8, #3",
-                "mov x0, #100",
+                "mov x0, #5000",
                 "svc #0",
             );
         }

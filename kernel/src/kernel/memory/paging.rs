@@ -189,7 +189,7 @@ impl Not for EntryFlags {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 use core::ptr::NonNull;
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 
 /// Virtual Memory Manager
 pub struct VMM {

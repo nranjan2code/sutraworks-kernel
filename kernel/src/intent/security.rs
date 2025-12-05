@@ -70,7 +70,17 @@ impl RateLimiter {
             sources: BTreeMap::new(),
             max_tokens: 10,
             refill_rate: 10,
-            refill_interval_ms: 1000 / 10 as u64, // 100ms interval
+            refill_interval_ms: 100, // 100ms interval
+        }
+    }
+
+    #[cfg(test)]
+    pub fn new_test(refill_rate: u32, max_tokens: u32) -> Self {
+        Self {
+            sources: BTreeMap::new(),
+            max_tokens,
+            refill_rate,
+            refill_interval_ms: if refill_rate > 0 { 1000 / refill_rate as u64 } else { 1000 },
         }
     }
     
@@ -586,7 +596,7 @@ mod tests {
 
     #[test]
     fn test_rate_limiting_basic() {
-        let mut limiter = RateLimiter::new(10, 10);
+        let mut limiter = RateLimiter::new_test(10, 10); // 10/sec, burst 10
         let source_id = 1;
         let mut timestamp = 0;
 
@@ -606,7 +616,7 @@ mod tests {
 
     #[test]
     fn test_rate_limiting_burst() {
-        let mut limiter = RateLimiter::new(5, 10);
+        let mut limiter = RateLimiter::new_test(10, 5); // 10/sec, burst 5
         let source_id = 1;
         let timestamp = 0;
 
@@ -678,7 +688,7 @@ mod tests {
 
     #[test]
     fn test_anomaly_detection() {
-        let mut detector = AnomalyDetector::new(0.3);
+        let mut detector = AnomalyDetector::new(0.6);
         
         // Train with normal patterns
         let normal1 = [0xAAAA_AAAA_AAAA_AAAA; 16];

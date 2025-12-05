@@ -11,7 +11,7 @@ use core::ptr::NonNull;
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 use crate::intent::ConceptID;
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 use super::hnsw::HnswIndex;
 use super::matrix::Matrix;
 
@@ -146,7 +146,17 @@ impl NeuralAllocator {
     /// Allocate a new page and link it
     unsafe fn grow_heap(&mut self) -> Option<()> {
         // Allocate 1 page (4KB)
+        #[cfg(not(feature = "test_mocks"))]
         let ptr = crate::kernel::memory::alloc_pages(1)?;
+
+        #[cfg(feature = "test_mocks")]
+        let ptr = {
+            use alloc::alloc::{alloc, Layout};
+            let layout = Layout::from_size_align(4096, 4096).ok()?;
+            let raw = alloc(layout);
+            if raw.is_null() { return None; }
+            NonNull::new(raw)?
+        };
         let page = ptr.as_ptr() as *mut SemanticPage;
         
         // Initialize Header

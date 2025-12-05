@@ -4,7 +4,7 @@
 
 use alloc::collections::vec_deque::VecDeque;
 use alloc::sync::Arc;
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 use crate::fs::vfs::{FileOps, SeekFrom, FileStat};
 
 use alloc::vec::Vec;

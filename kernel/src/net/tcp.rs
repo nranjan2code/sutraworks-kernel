@@ -9,7 +9,7 @@ use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 use core::convert::TryInto;
 
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 use crate::drivers::timer;
 use crate::net::ip::Ipv4Addr;
 use crate::net::ipv4;

@@ -4,7 +4,7 @@
 
 use crate::steno::{Stroke, StrokeProducer};
 use crate::drivers::usb::xhci::CONTROLLER;
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 use crate::kprintln;
 use alloc::vec::Vec;
 

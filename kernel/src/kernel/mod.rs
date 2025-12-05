@@ -11,6 +11,7 @@ pub mod memory;
 pub mod capability;
 pub mod exception;
 pub mod async_core;
+pub mod sync;
 pub mod process;
 pub mod scheduler;
 pub mod syscall;

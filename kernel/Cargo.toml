@@ -50,4 +50,5 @@ default = []
 debug = []          # Enable debug output
 multicore = []      # Enable multi-core support
 gpu = []           # Enable GPU/display support
+test_mocks = []    # Enable mocks for testing
 

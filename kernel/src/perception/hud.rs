@@ -218,7 +218,7 @@ fn u64_to_str(mut num: u64, buf: &mut [u8]) -> Result<&str, ()> {
 // GLOBAL HUD
 // ═══════════════════════════════════════════════════════════════════════════════
 
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 
 static HUD: SpinLock<Option<Hud>> = SpinLock::new(None);
 

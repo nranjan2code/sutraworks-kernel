@@ -84,14 +84,21 @@ pub fn handle_packet(data: &[u8], src_ip: Ipv4Addr) -> Result<(), &'static str> 
             let reply = IcmpPacket {
                 icmp_type: IcmpType::EchoReply,
                 code: 0,
-                checksum: 0, // TODO: Calculate checksum
+                checksum: 0,
                 rest_of_header: packet.rest_of_header, // Keep same ID/Seq
                 payload: packet.payload,
             };
             
             // Calculate checksum
-            let reply_bytes = reply.to_bytes();
-            let _checksum = crate::net::checksum(&reply_bytes);
+            // 1. Serialize with checksum 0
+            let mut reply_bytes = reply.to_bytes();
+            
+            // 2. Calculate checksum over serialized bytes
+            let checksum = crate::net::checksum(&reply_bytes);
+            
+            // 3. Insert checksum into bytes (offset 2)
+            reply_bytes[2] = (checksum >> 8) as u8;
+            reply_bytes[3] = (checksum & 0xFF) as u8;
             
             // Send via IP layer (protocol 1 = ICMP)
             crate::net::ipv4::send_packet(src_ip, 1, &reply_bytes)?;

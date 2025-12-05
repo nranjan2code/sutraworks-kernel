@@ -20,8 +20,13 @@ const GICD_ICPENDR: usize = 0x280;   // Interrupt Clear-Pending Registers
 const GICD_IPRIORITYR: usize = 0x400; // Interrupt Priority Registers
 const GICD_ITARGETSR: usize = 0x800; // Interrupt Processor Targets
 const GICD_ICFGR: usize = 0xC00;     // Interrupt Configuration Registers
+const GICD_SGIR: usize = 0xF00;     // Software Generated Interrupt Register
 
-// GIC CPU Interface (GICC) registers
+// ... (existing constants)
+
+
+    
+
 const GICC_CTLR: usize = 0x000;      // CPU Interface Control Register
 const GICC_PMR: usize = 0x004;       // Interrupt Priority Mask Register
 const GICC_IAR: usize = 0x00C;       // Interrupt Acknowledge Register
@@ -62,8 +67,8 @@ static GIC_INITIALIZED: AtomicBool = AtomicBool::new(false);
 pub type IrqHandler = fn(irq: u32);
 
 // Handler table (protected by SpinLock)
-static IRQ_HANDLERS: crate::arch::SpinLock<[Option<IrqHandler>; MAX_IRQ as usize]> = 
-    crate::arch::SpinLock::new([None; MAX_IRQ as usize]);
+static IRQ_HANDLERS: crate::kernel::sync::SpinLock<[Option<IrqHandler>; MAX_IRQ as usize]> = 
+    crate::kernel::sync::SpinLock::new([None; MAX_IRQ as usize]);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GIC CONTROLLER
@@ -82,6 +87,30 @@ impl Gic {
     /// Caller must ensure the base addresses are correct for the hardware
     pub const unsafe fn new(gicd_base: usize, gicc_base: usize) -> Self {
         Gic { gicd_base, gicc_base }
+    }
+
+    /// Send a Software Generated Interrupt (SGI) to specific cores
+    /// 
+    /// # Arguments
+    /// * `irq` - SGI number (0-15)
+    /// * `target_list_filter` - 0=List, 1=All others, 2=Self
+    /// * `cpu_target_list` - Bitmask of target CPUs (if filter=0)
+    pub fn send_sgi(&self, irq: u32, target_list_filter: u8, cpu_target_list: u8) {
+        if irq > 15 {
+            return;
+        }
+        
+        // SGI Register Format:
+        // Bits [25:24] - TargetListFilter (0=List, 1=All others, 2=Self)
+        // Bits [23:16] - CPUTargetList (Bitmask of target CPUs)
+        // Bits [15]    - NSATT (Security)
+        // Bits [3:0]   - SGIINTID (Interrupt ID)
+        
+        let mut value = irq & 0xF;
+        value |= ((target_list_filter as u32) & 0x3) << 24;
+        value |= ((cpu_target_list as u32) & 0xFF) << 16;
+        
+        self.gicd_write(GICD_SGIR, value);
     }
     
     // GICD register access
@@ -297,4 +326,11 @@ pub fn enable(irq: u32) {
 /// Disable a specific interrupt
 pub fn disable(irq: u32) {
     gic().disable_irq(irq);
+}
+
+/// Send an IPI (SGI) to a specific core
+pub fn send_ipi(core_id: usize, irq: u32) {
+    // TargetListFilter = 0 (List)
+    // CPUTargetList = 1 << core_id
+    gic().send_sgi(irq, 0, 1 << core_id);
 }

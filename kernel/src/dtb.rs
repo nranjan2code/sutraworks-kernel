@@ -5,9 +5,14 @@
 use core::slice;
 use core::str;
 
+#[cfg(not(feature = "test_mocks"))]
 extern "C" {
     static __dtb_ptr: u64;
 }
+
+#[cfg(feature = "test_mocks")]
+#[no_mangle]
+static __dtb_ptr: u64 = 0;
 
 /// Machine Type detected from DTB
 #[derive(Debug, Clone, Copy, PartialEq)]

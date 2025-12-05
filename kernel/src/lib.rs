@@ -28,6 +28,7 @@ pub mod visual;    // Semantic Visual Interface - intent-reactive GUI layer
 pub mod fs;
 pub mod net;
 pub mod profiling;
+#[cfg(not(test))]
 pub mod benchmarks;
 pub mod dtb;
 
@@ -165,14 +166,7 @@ macro_rules! serial_println {
 // TEST MOCKS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-#[cfg(test)]
-#[no_mangle]
-pub extern "C" fn disable_interrupts() {}
 
-#[cfg(test)]
-#[no_mangle]
-pub extern "C" fn restore_interrupts(_: u64) {}
 
-#[cfg(test)]
-#[no_mangle]
-pub extern "C" fn switch_to(_prev: *mut u8, _next: *mut u8) {}
+
+

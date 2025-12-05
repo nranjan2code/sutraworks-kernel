@@ -88,9 +88,9 @@ impl Rng {
 // GLOBAL INSTANCE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-use crate::arch::SpinLock;
+use crate::kernel::sync::RawSpinLock;
 
-static RNG_DEV: SpinLock<Rng> = SpinLock::new(Rng::new(0));
+static RNG_DEV: RawSpinLock<Rng> = RawSpinLock::new(Rng::new(0));
 
 /// Initialize RNG
 pub fn init() {

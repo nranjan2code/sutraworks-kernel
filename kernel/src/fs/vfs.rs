@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use alloc::string::String;
 use alloc::sync::Arc;
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 use crate::kprintln;
 
 /// File Open Flags
@@ -158,6 +158,11 @@ impl ProcessFileTable {
         self.fds[newfd] = Some(fd_struct);
         
         Ok(newfd)
+    }
+    pub fn clone(&self) -> Self {
+        ProcessFileTable {
+            fds: self.fds.clone(),
+        }
     }
 }
 

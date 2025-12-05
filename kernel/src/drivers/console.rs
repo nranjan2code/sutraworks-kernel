@@ -11,7 +11,7 @@ const FONT_HEIGHT: u32 = 8;
 const PADDING: u32 = 4;
 
 /// Global console instance
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 static CONSOLE: SpinLock<Option<Console>> = SpinLock::new(None);
 
 /// Text console

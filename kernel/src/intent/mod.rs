@@ -468,7 +468,7 @@ impl IntentExecutor {
 // GLOBAL EXECUTOR
 // ═══════════════════════════════════════════════════════════════════════════════
 
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 
 static EXECUTOR: SpinLock<IntentExecutor> = SpinLock::new(IntentExecutor::new());
 

@@ -75,6 +75,8 @@ pub struct Agent {
     pub pending_signals: u32,
     pub blocked_signals: u32,
     pub parent_id: Option<u64>,
+    pub cpu_cycles: u64,
+    pub last_scheduled: u64,
 }
 
 impl Agent {
@@ -97,6 +99,8 @@ impl Agent {
             pending_signals: 0,
             blocked_signals: 0,
             parent_id: None,
+            cpu_cycles: 0,
+            last_scheduled: 0,
         };
 
         let stack_top = agent.kernel_stack.top;
@@ -175,6 +179,8 @@ impl Agent {
             pending_signals: 0,
             blocked_signals: 0,
             parent_id: None,
+            cpu_cycles: 0,
+            last_scheduled: 0,
         };
 
         // Kernel Stack Setup (for when we are in kernel mode handling this process)
@@ -254,6 +260,8 @@ impl Agent {
             pending_signals: 0,
             blocked_signals: 0,
             parent_id: None,
+            cpu_cycles: 0,
+            last_scheduled: 0,
         };
 
         // Kernel Stack Setup
@@ -370,27 +378,19 @@ impl Agent {
             vmm: Some(space),
             kernel_stack,
             user_stack: None, // Managed by VMM/sp_el0
-            file_table: ProcessFileTable::new(), // TODO: Clone file table
+            file_table: ProcessFileTable::new(),
             wake_time: 0,
             sig_actions: self.sig_actions.clone(),
             vma_manager: self.vma_manager.clone(),
             pending_signals: 0,
             blocked_signals: self.blocked_signals,
             parent_id: Some(self.id.0),
+            cpu_cycles: 0,
+            last_scheduled: 0,
         };
         
         // Clone File Table (dup)
-        // For now, just copy the vector of FDs (shared Arc).
-        // This means they share the same offset!
-        // Standard fork() shares file description (offset), so this is correct.
-        // We just need to clone the Arc.
-        for fd in &self.file_table.fds {
-            if let Some(desc) = fd {
-                agent.file_table.fds.push(Some(desc.clone()));
-            } else {
-                agent.file_table.fds.push(None);
-            }
-        }
+        agent.file_table = self.file_table.clone();
 
         // 6. Setup Context for Switch
         let kstack_ptr = frame_ptr; // SP points to the frame

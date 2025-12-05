@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use alloc::collections::BTreeMap;
 use core::convert::TryInto;
 use crate::net::ip::Ipv4Addr;
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 
 /// UDP Packet
 #[derive(Debug, Clone)]

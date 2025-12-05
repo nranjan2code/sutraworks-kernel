@@ -14,6 +14,8 @@ const CORE_MAILBOX_BASE: u64 = 0x400000E0;
 
 /// Read the current core ID from MPIDR_EL1
 #[inline(always)]
+#[cfg(not(feature = "test_mocks"))]
+
 pub fn core_id() -> usize {
     let mpidr: u64;
     unsafe {
@@ -25,6 +27,11 @@ pub fn core_id() -> usize {
     }
     // Extract Aff0 (bits 0-7) - core ID within cluster
     (mpidr & 0xFF) as usize
+}
+
+#[cfg(feature = "test_mocks")]
+pub fn core_id() -> usize {
+    0
 }
 
 /// Boot a secondary core
@@ -65,9 +72,8 @@ pub fn send_ipi(target_core: usize) -> Result<(), &'static str> {
         return Err("Invalid target core");
     }
 
-    // TODO: Implement GIC SGI (Software Generated Interrupt)
-    // For now, this is a stub - will be implemented when we add
-    // GIC driver integration
+    // Use SGI 0 for generic IPI
+    crate::drivers::interrupts::send_ipi(target_core, 0);
     
     Ok(())
 }
@@ -151,3 +157,4 @@ mod tests {
         assert!(send_ipi(100).is_err());
     }
 }
+

@@ -7,7 +7,7 @@
 //! transferable, revocable capabilities.
 
 use core::sync::atomic::{AtomicU64, Ordering};
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPABILITY TYPES

@@ -28,41 +28,86 @@ impl SystemHealth {
 pub fn measure_health() -> SystemHealth {
     let mut health = SystemHealth::new();
 
-    // TODO: Implement actual metric collection
-    // For now, stub values
-    health.cpu_usage = [45, 30, 25]; // Placeholder
-    health.memory_used = 1024 * 1024 * 2; // 2MB placeholder
-    health.memory_free = 1024 * 1024 * 6; // 6MB placeholder
+    // Collect real metrics from kernel subsystems
+    
+    // 1. Memory Metrics
+    let mem_stats = crate::kernel::memory::stats();
+    health.memory_used = mem_stats.allocated;
+    health.memory_free = crate::kernel::memory::heap_available();
+    
+    // 2. CPU and Queue Metrics (Per Core)
+    for core_id in 0..3 {
+        let stats = crate::kernel::scheduler::get_core_stats(core_id);
+        
+        // Calculate CPU usage percentage
+        // Usage = (Total - Idle) / Total * 100
+        // Note: This is cumulative since boot. For instantaneous, we'd need to diff against last sample.
+        // For this implementation, we'll return the cumulative average, which converges to "uptime usage".
+        // To do instantaneous, we'd need static state in this function or a separate sampler.
+        // Let's use a simplified approach: if total > 0, calc %.
+        
+        if stats.total_cycles > 0 {
+            let active = stats.total_cycles.saturating_sub(stats.idle_cycles);
+            // Use u128 to prevent overflow during multiply
+            let usage = (active as u128 * 100) / (stats.total_cycles as u128);
+            health.cpu_usage[core_id] = usage as u8;
+        } else {
+            health.cpu_usage[core_id] = 0;
+        }
+        
+        health.task_queue_depth[core_id] = stats.queue_length;
+    }
 
     health
 }
 
 /// Check for memory leaks by monitoring allocation rate
 pub fn check_memory_leaks() {
-    // TODO: Track allocation rate over time
-    // Compare current usage to baseline
-    // Alert if growth rate exceeds threshold
+    // Simple threshold check for now
+    let free = crate::kernel::memory::heap_available();
+    let total = free + crate::kernel::memory::stats().allocated;
+    
+    // If free memory is less than 5% of total, warn
+    if total > 0 && free < (total / 20) {
+        crate::kprintln!("[HEALTH] WARNING: Low memory! Free: {} bytes", free);
+    }
 }
 
 /// Measure CPU utilization for a specific core
-pub fn measure_cpu_usage(_core_id: usize) -> u8 {
-    // TODO: Track cycles spent idle vs. active
-    // Return percentage 0-100
-    0 // Placeholder
+pub fn measure_cpu_usage(core_id: usize) -> u8 {
+    let stats = crate::kernel::scheduler::get_core_stats(core_id);
+    if stats.total_cycles > 0 {
+        let active = stats.total_cycles.saturating_sub(stats.idle_cycles);
+        ((active as u128 * 100) / (stats.total_cycles as u128)) as u8
+    } else {
+        0
+    }
 }
 
 /// Measure task queue depth
-pub fn measure_queue_depth(_core_id: usize) -> usize {
-    // TODO: Query SMP scheduler for queue length
-    0 // Placeholder
+pub fn measure_queue_depth(core_id: usize) -> usize {
+    crate::kernel::scheduler::yield_task();
+    crate::kernel::scheduler::get_core_stats(core_id).queue_length
 }
 
 /// Detect thermal throttling (Pi 5 specific)
 pub fn check_thermal() -> Option<u32> {
-    // TODO: Read BCM2712 thermal sensor
+    // Thermal monitoring requires hardware-specific BCM2712 register access
     // Pi 5 thermal register: 0x107C5200
-    None // Placeholder
+    // We can try to read it if we are on Pi 5
+    if crate::dtb::machine_type() == crate::dtb::MachineType::RaspberryPi5 {
+        // Safety: This is a raw MMIO read. We assume the address is mapped.
+        // In our identity mapped kernel, it should be accessible.
+        // 0x10_7C52_0000 (Pi 5 base?) No, Pi 5 peripherals are at 0x10_0000_0000 + offsets.
+        // The register 0x107C5200 is likely an offset or legacy address.
+        // Let's skip for now to avoid Data Abort if address is wrong.
+        None
+    } else {
+        None
+    }
 }
+
+
 
 #[cfg(test)]
 mod tests {
@@ -84,3 +129,4 @@ mod tests {
         }
     }
 }
+

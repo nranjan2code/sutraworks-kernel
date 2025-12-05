@@ -9,18 +9,34 @@
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::NonNull;
 use core::sync::atomic::{AtomicUsize, Ordering};
-use crate::arch::SpinLock;
+use crate::kernel::sync::RawSpinLock;
+use crate::kernel::scheduler::CoreStats;
 
 pub mod paging;
+pub mod vma;
 pub mod neural;
 pub mod hnsw;
 pub mod matrix;
-pub mod vma;
+
+// ...
+
+/// Global storage for per-core statistics (4 cores max)
+// Note: We use RawSpinLock for allocator to avoid recursion with LockRegistry
+pub static CORE_STATS: [RawSpinLock<CoreStats>; 4] = [
+    RawSpinLock::new(CoreStats { idle_cycles: 0, total_cycles: 0, queue_length: 0 }),
+    RawSpinLock::new(CoreStats { idle_cycles: 0, total_cycles: 0, queue_length: 0 }),
+    RawSpinLock::new(CoreStats { idle_cycles: 0, total_cycles: 0, queue_length: 0 }),
+    RawSpinLock::new(CoreStats { idle_cycles: 0, total_cycles: 0, queue_length: 0 }),
+];
+
+// ...
+
+
+// ...
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MEMORY REGIONS (from linker script)
-// ═══════════════════════════════════════════════════════════════════════════════
 
+#[cfg(not(feature = "test_mocks"))]
 extern "C" {
     static __heap_start: u8;
     static __heap_end: u8;
@@ -29,6 +45,25 @@ extern "C" {
     static __gpu_start: u8;
     static __gpu_end: u8;
 }
+
+#[cfg(feature = "test_mocks")]
+mod mocks {
+    #[no_mangle]
+    pub static __heap_start: u8 = 0;
+    #[no_mangle]
+    pub static __heap_end: u8 = 0;
+    #[no_mangle]
+    pub static __dma_start: u8 = 0;
+    #[no_mangle]
+    pub static __dma_end: u8 = 0;
+    #[no_mangle]
+    pub static __gpu_start: u8 = 0;
+    #[no_mangle]
+    pub static __gpu_end: u8 = 0;
+}
+
+#[cfg(feature = "test_mocks")]
+use mocks::*;
 
 /// Get heap region bounds
 pub fn heap_region() -> (usize, usize) {
@@ -304,12 +339,14 @@ struct SlabHeader {
 /// Slab cache for fixed-size objects
 pub struct SlabCache {
     slabs: [Option<NonNull<SlabHeader>>; 8],
+    allocated_bytes: usize,
 }
 
 impl SlabCache {
     pub const fn new() -> Self {
         SlabCache {
             slabs: [None; 8],
+            allocated_bytes: 0,
         }
     }
     
@@ -321,6 +358,11 @@ impl SlabCache {
             }
         }
         None
+    }
+    
+    /// Get total allocated bytes
+    pub fn allocated(&self) -> usize {
+        self.allocated_bytes
     }
     
     /// Allocate from slab cache
@@ -336,6 +378,8 @@ impl SlabCache {
                 // Get object from free list
                 header.free_list = *(obj.as_ptr() as *mut Option<NonNull<u8>>);
                 header.allocated += 1;
+                self.allocated_bytes += object_size;
+                // crate::kprintln!("[SLAB] Alloc size={} ptr={:p} (reuse)", object_size, obj.as_ptr());
                 return Some(obj);
             }
         }
@@ -355,20 +399,22 @@ impl SlabCache {
         (*header).capacity = capacity;
         (*header).object_size = object_size;
         
-        // Build free list
-        let mut addr = data_start;
-        for i in 1..capacity {
-            let next_addr = data_start + i * object_size;
-            *(addr as *mut usize) = next_addr;
-            addr = next_addr;
-        }
-        *(addr as *mut usize) = 0;  // End of list
         
-        (*header).free_list = NonNull::new((data_start + object_size) as *mut u8);
+        (*header).free_list = None;
+        
+        // Build free list (from end to beginning, so first allocation gets first object)
+        let mut next_ptr: Option<NonNull<u8>> = None;
+        for i in (1..capacity).rev() {
+            let obj_addr = (data_start + i * object_size) as *mut u8;
+            *(obj_addr as *mut Option<NonNull<u8>>) = next_ptr;
+            next_ptr = NonNull::new(obj_addr);
+        }
+        (*header).free_list = next_ptr;
         
         // Link slab
         self.slabs[index] = NonNull::new(header);
         
+        self.allocated_bytes += object_size;
         NonNull::new(data_start as *mut u8)
     }
     
@@ -378,9 +424,11 @@ impl SlabCache {
         let page_start = (ptr.as_ptr() as usize) & !(PAGE_SIZE - 1);
         let header = page_start as *mut SlabHeader;
         
-        crate::kprintln!("[SLAB] Dealloc ptr={:p}, header={:p}", ptr.as_ptr(), header);
+        // crate::kprintln!("[SLAB] Dealloc ptr={:p}, header={:p}", ptr.as_ptr(), header);
         
-        // Add to free list
+        self.allocated_bytes -= (*header).object_size;
+        
+        // Free the object (add to free list)
         *(ptr.as_ptr() as *mut Option<NonNull<u8>>) = (*header).free_list;
         (*header).free_list = Some(ptr);
         
@@ -411,13 +459,13 @@ struct AllocatorInner {
 unsafe impl Send for AllocatorInner {}
 
 pub struct KernelAllocator {
-    inner: SpinLock<AllocatorInner>,
+    inner: RawSpinLock<AllocatorInner>,
 }
 
 impl KernelAllocator {
     pub const fn new() -> Self {
         KernelAllocator {
-            inner: SpinLock::new(AllocatorInner {
+            inner: RawSpinLock::new(AllocatorInner {
                 buddy: BuddyAllocator::new(),
                 slab: SlabCache::new(),
                 initialized: false,
@@ -456,18 +504,23 @@ impl KernelAllocator {
     }
     
     /// Get statistics
-    pub fn stats(&self) -> (usize, usize) {
+    pub fn stats(&self) -> AllocatorStats {
         let inner = self.inner.lock();
         if !inner.initialized {
-            return (0, 0);
+            return AllocatorStats { allocated: 0, slab_allocated: 0, total_allocations: 0 };
         }
-        (inner.buddy.size(), inner.buddy.allocated())
+        AllocatorStats {
+            allocated: inner.buddy.allocated(),
+            slab_allocated: inner.slab.allocated(),
+            total_allocations: 0,
+        }
     }
 }
 
 /// Allocator statistics
 pub struct AllocatorStats {
     pub allocated: usize,
+    pub slab_allocated: usize,
     pub total_allocations: usize,
 }
 
@@ -482,18 +535,14 @@ pub unsafe fn init(seed: u64) {
 
 /// Get allocator statistics
 pub fn stats() -> AllocatorStats {
-    let (_total_bytes, used_bytes) = GLOBAL.stats();
-    AllocatorStats {
-        allocated: used_bytes,
-        total_allocations: 0, // Not easily available without locking again or changing return type
-    }
+    GLOBAL.stats()
 }
 
 /// Get available heap memory
 pub fn heap_available() -> usize {
     let (start, end) = heap_region();
-    let (_total_bytes, used_bytes) = GLOBAL.stats();
-    (end - start).saturating_sub(used_bytes)
+    let stats = GLOBAL.stats();
+    (end - start).saturating_sub(stats.allocated)
 }
 
 /// Allocate memory and return a Capability (Forward-Looking API)
@@ -520,6 +569,14 @@ pub fn alloc_cap(size: usize) -> Option<crate::kernel::capability::Capability> {
     }
 }
 
+/// Force memory compaction (Recovery Action)
+pub fn force_compact() {
+    // The current Slab/Buddy allocator combination is non-moving, so we cannot compact.
+    // However, we could try to release empty slabs back to the buddy allocator.
+    // For this implementation, we log the attempt.
+    crate::kprintln!("[MEM] Force compaction triggered - Allocator is non-moving (No-op)");
+}
+
 // Global allocator implementation
 unsafe impl GlobalAlloc for KernelAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
@@ -536,6 +593,12 @@ unsafe impl GlobalAlloc for KernelAllocator {
         if size <= SLAB_SIZES[SLAB_SIZES.len() - 1] {
             if let Some(ptr) = inner_ref.slab.allocate(size, &mut inner_ref.buddy) {
                 return ptr.as_ptr();
+            } else {
+                // CRITICAL: Do NOT fall back to buddy allocator for small sizes.
+                // dealloc() uses size to decide between slab and buddy.
+                // If we allocate from buddy but dealloc via slab, we corrupt memory
+                // because slab expects a SlabHeader at the page start.
+                return core::ptr::null_mut();
             }
         }
         
@@ -586,7 +649,7 @@ static GLOBAL: KernelAllocator = KernelAllocator::new();
 // DMA ALLOCATOR
 // ═══════════════════════════════════════════════════════════════════════════════
 
-static DMA_ALLOCATOR: SpinLock<BuddyAllocator> = SpinLock::new(BuddyAllocator::new());
+static DMA_ALLOCATOR: RawSpinLock<BuddyAllocator> = RawSpinLock::new(BuddyAllocator::new());
 
 /// Initialize DMA allocator
 pub unsafe fn init_dma() {
@@ -613,9 +676,24 @@ pub unsafe fn free_dma(ptr: NonNull<u8>, size: usize) {
 
 /// Allocate pages
 pub unsafe fn alloc_pages(count: usize) -> Option<NonNull<u8>> {
-    crate::kprintln!("[MEM] Alloc Pages: {}", count);
-    let mut inner = GLOBAL.inner.lock();
-    inner.buddy.allocate(count * PAGE_SIZE)
+    #[cfg(feature = "test_mocks")]
+    {
+        use alloc::alloc::{alloc, Layout};
+        let size = count * PAGE_SIZE;
+        let layout = Layout::from_size_align(size, PAGE_SIZE).ok()?;
+        let ptr = alloc(layout);
+        if ptr.is_null() {
+            None
+        } else {
+            NonNull::new(ptr)
+        }
+    }
+    #[cfg(not(feature = "test_mocks"))]
+    {
+        crate::kprintln!("[MEM] Alloc Pages: {}", count);
+        let mut inner = GLOBAL.inner.lock();
+        inner.buddy.allocate(count * PAGE_SIZE)
+    }
 }
 
 /// Allocate pages for user space
@@ -654,12 +732,23 @@ impl Stack {
 
 impl Drop for Stack {
     fn drop(&mut self) {
-        // When stack is dropped, we should free the pages
-        // Note: We should also re-map the guard page before freeing?
-        // Or just free the physical pages.
-        // For now, we leak to avoid complexity in this prototype, 
-        // or we implement a proper free_stack.
         unsafe {
+            // 1. Re-map the Guard Page (the first page)
+            // We need to lock the Kernel VMM to restore the mapping so the allocator can write to it.
+            if let Some(vmm) = self::paging::KERNEL_VMM.lock().as_mut() {
+                let start_addr = self.ptr.as_ptr() as u64;
+                // Identity map it back to Normal Memory
+                // Flags: Normal, RW, EL1, Inner Shareable
+                let flags = paging::EntryFlags::ATTR_NORMAL | paging::EntryFlags::AP_RW_EL1 | paging::EntryFlags::SH_INNER;
+                
+                if let Err(e) = vmm.map_page(start_addr, start_addr, flags) {
+                    crate::kprintln!("[MEM] Failed to re-map stack guard page during drop: {}", e);
+                } else {
+                    crate::kprintln!("[MEM] Restored stack guard page at {:#x}", start_addr);
+                }
+            }
+            
+            // 2. Free the pages
             free_pages(self.ptr, (self.size / PAGE_SIZE) + 1);
         }
     }
@@ -679,9 +768,9 @@ pub fn alloc_stack(size_in_pages: usize) -> Option<Stack> {
         
         // 2. Unmap the Guard Page (the first page)
         // We need to lock the Kernel VMM
-        if let Some(vmm) = paging::KERNEL_VMM.lock().as_mut() {
+        if let Some(vmm) = self::paging::KERNEL_VMM.lock().as_mut() {
             // Unmap the bottom page
-            if let Err(e) = vmm.unmap_page(start_addr) {
+            if let Err(e) = paging::VMM::unmap_page(vmm, start_addr) {
                 crate::kprintln!("[MEM] Failed to unmap stack guard page: {}", e);
                 // Continue anyway? Or fail?
                 // If we fail to unmap, we just don't have a guard page.

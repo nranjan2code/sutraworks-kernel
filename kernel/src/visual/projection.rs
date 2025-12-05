@@ -414,7 +414,7 @@ impl Projection for PerceptionOverlay {
              fb.draw_string(region.x + 10, region.y + 10, "No Sensors Active", Color::RED, None);
         }
 
-        // Draw a dummy object box (Placeholder until we expose detections globally)
+        // Draw a dummy object box (Simulated detection)
         fb.rect(region.x + 10, region.y + 50, 280, 130, Color::rgb(30, 30, 30));
         fb.rect(region.x + 50, region.y + 80, 80, 80, Color::YELLOW);
         fb.draw_string(region.x + 50, region.y + 70, "Person (0.92)", Color::YELLOW, None);

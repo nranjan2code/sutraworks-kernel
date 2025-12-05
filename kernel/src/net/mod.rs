@@ -17,7 +17,7 @@ pub use ip::Ipv4Addr;
 pub use ethernet::MacAddress;
 pub use tcp::{TcpConnection, TcpState, TcpSegment, TCB_TABLE, tcp_tick};
 
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // NETWORK CONFIGURATION
@@ -98,16 +98,11 @@ pub fn checksum(data: &[u8]) -> u16 {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// IPv4 FORWARDING (stub - ipv4.rs will be updated)
+// IPv4 FORWARDING
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// Send an IPv4 packet (stub until full driver integration)
 /// This is called by tcp.rs for sending TCP segments
-pub fn send_ip_packet(_dst_ip: Ipv4Addr, _protocol: u8, _payload: &[u8]) -> Result<(), &'static str> {
-    // In a full implementation, this would:
-    // 1. Build IP header
-    // 2. Resolve dst MAC via ARP
-    // 3. Send via ethernet driver
-    // For now, this is a stub
-    Ok(())
+pub fn send_ip_packet(dst_ip: Ipv4Addr, protocol: u8, payload: &[u8]) -> Result<(), &'static str> {
+    ipv4::send_packet(dst_ip, protocol, payload)
 }

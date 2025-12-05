@@ -31,7 +31,7 @@ static HEARTBEATS: [AtomicU64; NUM_WORKER_CORES] = [
 /// Alert channel for watchdog notifications
 pub enum Alert {
     CoreHung(usize),
-    DeadlockDetected(Vec<usize>),
+    DeadlockDetected(Vec<u64>),
     MemoryLeak(usize),
     HighLoad(usize),
 }

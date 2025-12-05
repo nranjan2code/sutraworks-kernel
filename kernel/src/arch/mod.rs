@@ -2,30 +2,100 @@
 
 pub mod multicore;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// EXTERNAL ASSEMBLY FUNCTIONS
-// ═══════════════════════════════════════════════════════════════════════════════
+#[cfg(not(feature = "test_mocks"))]
+mod real {
+    extern "C" {
+        pub fn enable_interrupts();
+        pub fn disable_interrupts() -> u64;
+        pub fn enable_all_interrupts();
+        pub fn disable_all_interrupts() -> u64;
+        pub fn restore_interrupts(state: u64);
+        pub fn get_exception_level() -> u64;
+        pub fn get_core_id() -> u64;
+        pub fn memory_barrier();
+        pub fn data_sync_barrier();
+        pub fn instruction_barrier();
+        pub fn full_barrier();
+        pub fn send_event();
+        pub fn wait_for_event();
+        pub fn wait_for_interrupt();
 
-extern "C" {
-    pub fn enable_interrupts();
-    pub fn disable_interrupts() -> u64;
-    pub fn enable_all_interrupts();
-    pub fn disable_all_interrupts() -> u64;
-    pub fn restore_interrupts(state: u64);
-    pub fn get_exception_level() -> u64;
-    pub fn get_core_id() -> u64;
-    pub fn memory_barrier();
-    pub fn data_sync_barrier();
-    pub fn instruction_barrier();
-    pub fn full_barrier();
-    pub fn send_event();
-    pub fn wait_for_event();
-    pub fn wait_for_interrupt();
-    pub fn read_timer() -> u64;
-    pub fn read_timer_freq() -> u64;
-    pub fn wake_core(core: u64, entry: extern "C" fn());
-    pub fn halt_core() -> !;
+        pub fn wake_core(core: u64, entry: extern "C" fn());
+        pub fn halt_core() -> !;
+
+        pub fn read_timer() -> u64;
+        pub fn read_timer_freq() -> u64;
+
+        #[allow(dead_code)]
+        pub fn switch_to(prev: *mut u8, next: *const u8);
+    }
 }
+
+#[cfg(feature = "test_mocks")]
+mod mocks {
+    #[no_mangle]
+    pub unsafe extern "C" fn read_timer() -> u64 { 0 }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn read_timer_freq() -> u64 { 54_000_000 }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn wait_for_interrupt() {}
+
+    #[no_mangle]
+    pub unsafe extern "C" fn disable_interrupts() -> u64 { 0 }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn restore_interrupts(_state: u64) {}
+
+    #[no_mangle]
+    pub unsafe extern "C" fn get_core_id() -> u64 { 0 }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn enable_interrupts() {}
+
+    #[no_mangle]
+    pub unsafe extern "C" fn enable_all_interrupts() {}
+
+    #[no_mangle]
+    pub unsafe extern "C" fn disable_all_interrupts() -> u64 { 0 }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn get_exception_level() -> u64 { 1 }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn memory_barrier() {}
+
+    #[no_mangle]
+    pub unsafe extern "C" fn data_sync_barrier() {}
+
+    #[no_mangle]
+    pub unsafe extern "C" fn instruction_barrier() {}
+
+    #[no_mangle]
+    pub unsafe extern "C" fn full_barrier() {}
+
+    #[no_mangle]
+    pub unsafe extern "C" fn send_event() {}
+
+    #[no_mangle]
+    pub unsafe extern "C" fn wait_for_event() {}
+
+    #[no_mangle]
+    pub unsafe extern "C" fn wake_core(_core: u64, _entry: extern "C" fn()) {}
+
+    #[no_mangle]
+    pub unsafe extern "C" fn halt_core() -> ! { loop {} }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn switch_to(_prev: *mut u8, _next: *mut u8) {}
+}
+
+#[cfg(not(feature = "test_mocks"))]
+pub use real::*;
+
+#[cfg(feature = "test_mocks")]
+pub use mocks::*;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SAFE WRAPPERS

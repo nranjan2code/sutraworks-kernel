@@ -25,7 +25,7 @@
 //! Key: #  S- T- K- P- W- H- R- A- O- *  -E -U -F -R -P -B -L -G -T -S -D -Z
 //! ```
 
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 use crate::intent::Intent;
 
 pub mod stroke;

@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use core::convert::TryInto;
 use crate::net::ethernet::MacAddress;
 use crate::net::ip::Ipv4Addr;
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 
 /// ARP Operation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -4,7 +4,7 @@
 
 use alloc::vec::Vec;
 use alloc::sync::Arc;
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 use crate::fs::vfs::BlockDevice;
 
 /// Cache Entry

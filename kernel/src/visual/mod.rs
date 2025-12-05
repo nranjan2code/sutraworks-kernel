@@ -15,7 +15,7 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 
-use crate::arch::SpinLock;
+use crate::kernel::sync::SpinLock;
 use crate::drivers::framebuffer::{self, Color};
 use crate::intent::{Intent, HandlerResult, HandlerFn};
 

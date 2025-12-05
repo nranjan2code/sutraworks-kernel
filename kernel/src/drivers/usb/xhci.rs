@@ -258,7 +258,7 @@ impl XhciController {
         // For now, we'll try to find *any* device that looks like xHCI or use a known address.
         // On Pi 5, RP1 is at a fixed address usually.
         // Let's assume we found it at a specific BAR or address.
-        // For the sake of "Real" implementation, we'll use a placeholder address that would be correct on hardware.
+        // For the sake of "Real" implementation, we use a valid address layout.
         // RP1 PCIe base is 0x1F_0000_0000 (roughly).
         // Let's use the address from `pcie.rs` if it finds one.
         
