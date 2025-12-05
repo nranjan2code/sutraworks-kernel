@@ -18,9 +18,11 @@ pub mod handlers;
 pub mod queue;
 pub mod manifest;
 pub mod linker;
+pub mod security;
 
 pub use handlers::{HandlerRegistry, HandlerResult, HandlerFn, HandlerEntry};
 pub use queue::{IntentQueue, QueuedIntent, Priority};
+pub use security::{IntentSecurity, SecurityViolation, PrivilegeLevel};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CORE TYPES
@@ -118,6 +120,8 @@ pub struct IntentExecutor {
     handlers: HandlerRegistry,
     // Intent queue for deferred execution
     queue: IntentQueue,
+    // Security layer
+    security: security::IntentSecurity,
 }
 
 impl IntentExecutor {
@@ -129,6 +133,7 @@ impl IntentExecutor {
             compute_cap: None,
             handlers: HandlerRegistry::new(),
             queue: IntentQueue::new(),
+            security: security::IntentSecurity::new(),
         }
     }
     
@@ -155,7 +160,51 @@ impl IntentExecutor {
     
     /// Execute an intent
     pub fn execute(&mut self, intent: &Intent) {
-        // First, try user-defined handlers
+        // ═══════════════════════════════════════════════════════════════════════════
+        // SECURITY CHECKS (HDC-BASED)
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        // Get current process/source ID for rate limiting
+        let source_id = {
+            let scheduler = crate::kernel::scheduler::SCHEDULER.lock();
+            scheduler.current_pid().unwrap_or(0)
+        };
+        
+        // Get current timestamp
+        let timestamp = crate::drivers::timer::uptime_ms();
+        
+        // Convert ConceptID to Hypervector for anomaly detection
+        // Use the concept ID as a seed for a simple hypervector
+        let intent_hv = {
+            let id = intent.concept_id.0;
+            let mut hv = [0u64; 16];
+            // Simple deterministic hypervector generation from concept ID
+            for i in 0..16 {
+                hv[i] = id.wrapping_mul(0x517cc1b727220a95u64.wrapping_add(i as u64));
+            }
+            hv
+        };
+        
+        // Determine privilege level (kernel privilege assumed for now)
+        // In real implementation, this would check the current execution level
+        let privilege = security::PrivilegeLevel::Kernel;
+        
+        // CHECK SECURITY
+        if let Err(violation) = self.security.check_intent(
+            intent.concept_id,
+            source_id,
+            privilege,
+            &intent_hv,
+            timestamp,
+        ) {
+            crate::kprintln!("[SECURITY] Intent rejected: {:?}", violation);
+            return;
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // CAPABILITY-BASED DISPATCH
+        // ═══════════════════════════════════════════════════════════════════════════
+        
         // Pre-compute capability checks to avoid borrow issues
         let caps = [
             (CapabilityType::Display, self.has_capability(CapabilityType::Display)),
@@ -168,6 +217,7 @@ impl IntentExecutor {
             caps.iter().find(|(c, _)| *c == cap).map(|(_, v)| *v).unwrap_or(false)
         };
         
+        // First, try user-defined handlers
         if self.handlers.dispatch(intent, has_cap) {
             return; // Handled by user handler
         }

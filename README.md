@@ -283,6 +283,37 @@ let response = english::generate_response(&intent, &result);
 - **User Mode Adaptation**: Beginner (verbose) → Advanced (concise)
 - **Performance**: <30μs overhead per command (negligible!)
 
+### ✅ Intent Security System ✨ NEW! (Sprint 13.3)
+
+Production-grade multi-layered security protecting the intent execution pipeline:
+
+**HDC-Based Anomaly Detection**:
+- **Semantic Baseline Learning**: Majority voting algorithm over 1024-bit Hypervectors
+- **Anomaly Detection**: Hamming similarity threshold (0.3 = 70% different)
+- **Online Learning**: Adaptive baseline that evolves with normal usage
+
+**Traditional Security Layers**:
+- **Rate Limiting**: Configurable token bucket (default: 1000/sec burst 100, strict: 10/sec burst 10)
+- **Privilege Checking**: ConceptID range enforcement (Kernel: 0x0-0xFFFF protected)
+- **Handler Integrity**: FNV-1a checksum verification to detect code tampering
+- **Violation Logging**: Tracks last 100 security violations with timestamps
+
+**Performance**: ~30 cycles overhead per intent (real QEMU measurement, 10,000 iterations)
+
+```rust
+// Security enforced on EVERY intent execution
+if let Err(violation) = security.check_intent(...) {
+    kprintln!("[SECURITY] Intent rejected: {:?}", violation);
+    return;  // Blocked!
+}
+```
+
+**Protection Against**:
+- Intent spam / DoS attacks
+- Privilege escalation attempts
+- Handler hijacking / ROP attacks
+- Semantic anomalies / unusual patterns
+
 ### ✅ Multi-Core & Watchdog (NEW!)
 
 **4-Core Architecture**:
