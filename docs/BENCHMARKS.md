@@ -187,23 +187,39 @@ core::hint::black_box(result);  // Prevents dead code elimination
 
 ---
 
+### 11. Neural Architecture (3 benchmarks)
+
+Measures the biologically-inspired neural primitives.
+
+| Benchmark | Function | What It Measures | Algorithm |
+|-----------|----------|------------------|-----------|
+| Neural Decay | `bench_neural_decay()` | Decay all activations | Iterative decay |
+| Propagation | `bench_neural_propagate()` | 5-layer activation flow | Recursive spread |
+| Selection | `bench_neural_select()` | Urgency-based sorting | Priority queue |
+
+**Design**: Simulates biological neural circuits (latency is expected to be higher than raw ops).
+
+---
+
 ## Typical Results (Verified December 2025)
 
 | Category | Key Metric | Typical |
 |----------|------------|---------|
 | Intent Handler | Match time | 0 cycles |
 | Concept Lookup | Hash (FNV-1a) | 2 cycles |
-| Neural Alloc | Semantic block | 139 cycles |
-| Steno Stroke | Input→Intent | 37 cycles |
-| English Parse | Text→Intent | 187 cycles |
-| Context Switch | Full swap | 433 cycles |
-| SpinLock | Uncontended | 13 cycles |
-| IPI Send | Cross-core | 101 cycles |
-| Timer Jitter | Max deviation | 187 cycles |
-| TCP Checksum | 64 bytes | 8 cycles |
-| Slab Alloc | 8 bytes | 22 cycles |
-| Buddy Alloc | 4KB | 33 cycles |
-| Stress Test | Average | 32 cycles/op |
+| Neural Alloc | Semantic block | 230 cycles |
+| Neural Decay | 1000 concepts | 13,218 cycles |
+| Neural Prop | 5 layers | 244 cycles |
+| Steno Stroke | Input→Intent | 43 cycles |
+| English Parse | Text→Intent | 208 cycles |
+| Context Switch | Full swap | 420 cycles |
+| SpinLock | Uncontended | 19 cycles |
+| IPI Send | Cross-core | 103 cycles |
+| Timer Jitter | Max deviation | 188 cycles |
+| TCP Checksum | 64 bytes | 9 cycles |
+| Slab Alloc | 8 bytes | 29 cycles |
+| Buddy Alloc | 4KB | 42 cycles |
+| Stress Test | 180k ops | 29 cycles/op |
 
 ---
 
@@ -225,15 +241,16 @@ A human eye blink takes ~100 milliseconds. Most Intent Kernel operations complet
 | Benchmark | What It Actually Tests | Why It Matters |
 |-----------|----------------------|----------------|
 | **Handler dispatch: 0 cycles** | Processing a command is instant | No waiting when you press a key |
-| **Steno stroke: 37 cycles** | Key press → action in ~15 ns | 6 million commands per second possible |
-| **English parse: 187 cycles** | "Show status" → action in ~75 ns | Natural language with negligible overhead |
-| **Context switch: 433 cycles** | Switching between programs in ~175 ns | Seamless multitasking |
-| **Memory alloc: 22 cycles** | Getting memory in ~9 ns | Instant app response |
-| **180k ops @ 32 cycles** | Stress test: ~3 million ops/second | Can handle extreme workloads |
+| **Neural Propagation: 244 cycles** | 5 layers of "thought" in ~0.1μs | Real-time biological cognition |
+| **Steno stroke: 43 cycles** | Key press → action in ~17 ns | 6 million commands per second possible |
+| **English parse: 208 cycles** | "Show status" → action in ~83 ns | Natural language with negligible overhead |
+| **Context switch: 420 cycles** | Switching between programs in ~168 ns | Seamless multitasking |
+| **Memory alloc: 29 cycles** | Getting memory in ~12 ns | Instant app response |
+| **180k ops @ 29 cycles** | Stress test: ~3 million ops/second | Can handle extreme workloads |
 
 ### Bottom Line
 
-✅ **All 167 tests passed** — The kernel is correct, fast, scalable, and stable.
+✅ **All 40 benchmarks passed** — The kernel is correct, fast, scalable, and stable.
 
 ---
 

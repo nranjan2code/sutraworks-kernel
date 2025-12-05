@@ -401,6 +401,7 @@ mod tests {
             confidence: 1.0,
             data: IntentData::None,
             name: "HELP",
+            ..Intent::new(concepts::HELP)
         };
 
         let response = gen.error_response(&intent, Some("Test error"));

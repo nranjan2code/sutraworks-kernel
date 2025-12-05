@@ -194,6 +194,7 @@ impl StenoEngine {
                 confidence: 0.0,
                 data: IntentData::None,
                 name: "UNKNOWN",
+                ..Intent::new(ConceptID::UNKNOWN)
             });
         }
         
@@ -235,6 +236,7 @@ impl StenoEngine {
             confidence: 1.0,
             data: IntentData::None,
             name: "UNDO",
+            ..Intent::new(concepts::UNDO)
         })
     }
     
@@ -266,6 +268,7 @@ impl StenoEngine {
             confidence: 0.0,
             data: IntentData::None,
             name: "UNKNOWN",
+            ..Intent::new(ConceptID::UNKNOWN)
         })
     }
     
@@ -323,6 +326,7 @@ impl StenoEngine {
                     name: "REDO",
                     confidence: 1.0,
                     data: IntentData::None,
+                    ..Intent::new(ConceptID(id))
                 });
             }
         }

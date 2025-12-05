@@ -82,6 +82,13 @@
 - [x] **Performance Validation**: ~60M ops/sec, 1M concept stress test verified.
 - [x] **Architecture Documentation**: Full [BENCHMARKS.md](BENCHMARKS.md) with algorithms and methodology.
 
+### Phase 10: Neural Architecture Upgrade ✅
+- [x] **Core Neural Primitives**: Activation levels, spreading activation, lateral inhibition.
+- [x] **Temporal Dynamics**: Decay, summation, predictive priming.
+- [x] **Hierarchical Processing**: 5-layer propagation, top-down modulation, attention.
+- [x] **Feedback Loops**: Efference copy, expectation matching, surprise detection.
+- [x] **Neural Scheduler**: Urgency-based preemption, basal ganglia model.
+
 ## Test Coverage
 
 | Module | Tests | Status |
@@ -92,5 +99,9 @@
 | Concept | 22 | ✅ |
 | History | 12 | ✅ |
 | Queue | 12 | ✅ |
-| Handlers | 11 | ✅ |
-| **Total** | **122** | ✅ |
+| Handlers | 40 | ✅ |
+| Temporal | 3 | ✅ |
+| Hierarchy | 7 | ✅ |
+| Feedback | 9 | ✅ |
+| Scheduling | 9 | ✅ |
+| **Total** | **179** | ✅ |

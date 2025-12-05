@@ -70,3 +70,30 @@ Use this ONLY for:
 ### `kernel::net::checksum(data: &[u8]) -> u16`
 Calculates the Internet Checksum (RFC 1071) for a buffer.
 Used by IP, ICMP, UDP, and TCP.
+
+## 6. Neural Intent Architecture
+
+### `intent::temporal::summate(concept_id: ConceptID, strength: f32, timestamp: u64)`
+Accumulates weak activation signals over time for a concept.
+- `strength`: Signal strength (0.0-1.0).
+- If accumulated activation > 0.5, the concept fires.
+
+### `intent::temporal::predict(source: ConceptID, predicted: ConceptID, confidence: f32, timestamp: u64)`
+Registers a predictive priming link (Next-Token Prediction).
+- `source`: The concept currently active.
+- `predicted`: The concept expected to follow.
+
+### `intent::hierarchy::input_intent(intent: &Intent)`
+Injects an intent into the hierarchical processing system at its designated level.
+- Levels: Raw → Feature → Object → Semantic → Action.
+
+### `intent::scheduling::submit_intent(request: IntentRequest) -> bool`
+Submits an intent to the Neural Scheduler.
+- `request.urgency`: Dynamic urgency (0.0-1.0) from Basal Ganglia model.
+- `request.priority`: Static priority (admin/user).
+- `request.surprise_boost`: Boost from Feedback Loop (unexpected events).
+
+### `intent::feedback::process_input(concept_id: ConceptID, timestamp: u64) -> FeedbackResult`
+Processes an input through the feedback loop to check against predictions.
+- Returns `surprise` level (0.0 = predicted, 1.0 = unexpected).
+

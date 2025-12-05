@@ -9,7 +9,7 @@
 //! Fixed-size heap-free priority queue. Higher priority intents
 //! execute first. Same priority = FIFO order.
 
-use crate::intent::{ConceptID, Intent, IntentData};
+use crate::intent::{ConceptID, Intent, IntentData, IntentLevel};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -60,6 +60,11 @@ impl QueuedIntent {
             confidence: 0.0,
             data: IntentData::None,
             name: "",
+            // Neural fields
+            activation: 0.0,
+            timestamp: 0,
+            level: IntentLevel::Semantic,
+            source: None,
         },
         priority: Priority::Low,
         sequence: 0,

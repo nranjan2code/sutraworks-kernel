@@ -40,6 +40,21 @@ Intent Kernel is a **Perceptual Computing Platform**—a bare-metal operating sy
 - **Perception Mode**: Sensor data → ConceptID → semantic memory
 - **Hybrid Mode**: Mix any inputs freely (power users)
 
+### Neural Architecture
+
+The Intent Kernel uses a **biologically-inspired neural architecture** for intent processing:
+
+| Feature | Description |
+|---------|-------------|
+| **Spreading Activation** | Concepts activate related concepts |
+| **Lateral Inhibition** | Competing handlers suppress each other |
+| **Temporal Dynamics** | Activations decay, weak signals accumulate |
+| **Hierarchical Processing** | Raw → Feature → Object → Semantic → Action |
+| **Predictive Processing** | Predict outcomes, detect surprise |
+| **Basal Ganglia Model** | Urgency-based action selection |
+
+For complete details, see [NEURAL_ARCHITECTURE.md](NEURAL_ARCHITECTURE.md).
+
 ---
 
 ## Steno Input (Fastest Path)

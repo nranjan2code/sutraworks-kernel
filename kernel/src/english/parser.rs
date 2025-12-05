@@ -71,6 +71,7 @@ impl EnglishParser {
                 confidence: 1.0,
                 data: IntentData::None,
                 name: Self::concept_to_name(concept),
+                ..Intent::new(concept)
             });
         }
 
@@ -83,6 +84,7 @@ impl EnglishParser {
                     confidence: 0.95, // Slightly lower confidence due to synonym expansion
                     data: IntentData::None,
                     name: Self::concept_to_name(concept),
+                    ..Intent::new(concept)
                 });
             }
         }
@@ -128,6 +130,7 @@ impl EnglishParser {
                 confidence: 0.9,
                 data: IntentData::None,
                 name: "HELP",
+                ..Intent::new(concepts::HELP)
             });
         }
 
@@ -138,6 +141,7 @@ impl EnglishParser {
                 confidence: 0.9,
                 data: IntentData::None,
                 name: "STATUS",
+                ..Intent::new(concepts::STATUS)
             });
         }
 
@@ -148,6 +152,7 @@ impl EnglishParser {
                 confidence: 0.9,
                 data: IntentData::None,
                 name: "REBOOT",
+                ..Intent::new(concepts::REBOOT)
             });
         }
 
@@ -158,6 +163,7 @@ impl EnglishParser {
                 confidence: 0.9,
                 data: IntentData::None,
                 name: "CLEAR",
+                ..Intent::new(concepts::CLEAR)
             });
         }
 
@@ -168,6 +174,7 @@ impl EnglishParser {
                 confidence: 0.85,
                 data: IntentData::None,
                 name: "SHOW",
+                ..Intent::new(concepts::SHOW)
             });
         }
 
@@ -178,6 +185,7 @@ impl EnglishParser {
                 confidence: 0.85,
                 data: IntentData::None,
                 name: "HIDE",
+                ..Intent::new(concepts::HIDE)
             });
         }
 
@@ -188,6 +196,7 @@ impl EnglishParser {
                 confidence: 0.85,
                 data: IntentData::None,
                 name: "SAVE",
+                ..Intent::new(concepts::SAVE)
             });
         }
 
@@ -198,6 +207,7 @@ impl EnglishParser {
                 confidence: 0.85,
                 data: IntentData::None,
                 name: "SEARCH",
+                ..Intent::new(concepts::SEARCH)
             });
         }
 
@@ -208,6 +218,7 @@ impl EnglishParser {
                 confidence: 0.9,
                 data: IntentData::None,
                 name: "YES",
+                ..Intent::new(concepts::YES)
             });
         }
 
@@ -217,6 +228,7 @@ impl EnglishParser {
                 confidence: 0.9,
                 data: IntentData::None,
                 name: "NO",
+                ..Intent::new(concepts::NO)
             });
         }
 

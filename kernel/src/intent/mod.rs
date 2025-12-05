@@ -19,10 +19,43 @@ pub mod queue;
 pub mod manifest;
 pub mod linker;
 pub mod security;
+pub mod temporal;
+pub mod hierarchy;
+pub mod feedback;
+pub mod scheduling;
 
-pub use handlers::{HandlerRegistry, HandlerResult, HandlerFn, HandlerEntry};
+pub use handlers::{
+    HandlerRegistry, HandlerResult, HandlerFn, HandlerEntry, 
+    BroadcastResult, BroadcastStats, MAX_INHIBITS,
+    BroadcastScope, ConflictResolution, HandlerResponse, MAX_RESPONSES,
+};
 pub use queue::{IntentQueue, QueuedIntent, Priority};
 pub use security::{IntentSecurity, SecurityViolation, PrivilegeLevel};
+pub use temporal::{
+    TemporalDynamics, TemporalStats, TEMPORAL_DYNAMICS,
+    decay_tick, process_intent_activation, summate, is_primed,
+    DEFAULT_DECAY_RATE, DEFAULT_SUMMATION_WINDOW_MS,
+};
+pub use hierarchy::{
+    HierarchicalProcessor, HierarchicalStats, LayerBuffer,
+    AttentionFocus, GoalState, HIERARCHICAL_PROCESSOR,
+    input_intent, propagate_all, attend, set_goal, get_actions,
+    NUM_LAYERS, DEFAULT_ATTENTION_CAPACITY,
+};
+pub use feedback::{
+    FeedbackProcessor, FeedbackResult, FeedbackStats,
+    PredictionBuffer, Prediction, ExpectationMatcher, Expectation,
+    SurpriseDetector, SurpriseEvent, SurpriseType,
+    FEEDBACK_PROCESSOR, predict, expect, process_input, 
+    check_omissions, surprise_level, priority_boost,
+};
+pub use scheduling::{
+    NeuralScheduler, NeuralSchedulerStats, IntentRequest,
+    IntentCategory, CoreAffinity, UrgencyAccumulator,
+    DegradationPolicy, LoadLevel, NEURAL_SCHEDULER,
+    submit_intent, next_intent, next_intent_for_core,
+    update_load, scheduler_tick,
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CORE TYPES
@@ -69,23 +102,88 @@ pub enum IntentData {
     Raw(u64),
 }
 
-/// A semantic intent - the result of processing a stroke
+// ═══════════════════════════════════════════════════════════════════════════════
+// HIERARCHICAL PROCESSING (Cortex-Inspired)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Hierarchical processing level (cortex-inspired)
+/// 
+/// Intents flow through layers like signals through cortex:
+/// - **Raw**: Sensory input (pixels, audio samples, raw keystrokes)
+/// - **Feature**: Detected features (edges, phonemes, key patterns)
+/// - **Object**: Recognized objects (face, word, stroke sequence)
+/// - **Semantic**: Meaning (person=friend, word=command, intent recognized)
+/// - **Action**: Motor output (speak, move, display, execute)
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(u8)]
+pub enum IntentLevel {
+    Raw = 0,       // Sensory input (pixels, samples)
+    Feature = 1,   // Detected features (edges, phonemes)
+    Object = 2,    // Recognized objects (face, word)
+    Semantic = 3,  // Meaning (person=friend, word=command)
+    Action = 4,    // Motor output (speak, move, display)
+}
+
+impl Default for IntentLevel {
+    fn default() -> Self {
+        IntentLevel::Semantic  // Most intents start at semantic level
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INTENT (Neural-Enhanced)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// A semantic intent - the result of processing input
+/// 
+/// # Neural Dynamics
+/// 
+/// Intents now carry biological-inspired metadata:
+/// - **activation**: Current signal strength (decays over time)
+/// - **timestamp**: When this intent was created (for temporal processing)
+/// - **level**: Hierarchical layer in cortex-like processing
+/// - **source**: What triggered this (for feedback/prediction)
 #[derive(Clone, Debug)]
 pub struct Intent {
+    /// The semantic concept this intent represents
     pub concept_id: ConceptID,
+    /// Pattern matching confidence (0.0 - 1.0)
     pub confidence: f32,
+    /// Optional payload data
     pub data: IntentData,
+    /// Human-readable name
     pub name: &'static str,
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // Neural fields (new)
+    // ─────────────────────────────────────────────────────────────────────────
+    
+    /// Current activation level (like neural firing rate)
+    /// Starts at 1.0 and decays over time. High activation = high priority.
+    pub activation: f32,
+    /// Creation timestamp (milliseconds since boot)
+    /// Used for temporal dynamics (decay, refractory periods)
+    pub timestamp: u64,
+    /// Hierarchical processing level (Raw → Feature → Object → Semantic → Action)
+    pub level: IntentLevel,
+    /// What triggered this intent (for efference copy / prediction)
+    /// None for externally-generated intents (sensory input)
+    pub source: Option<ConceptID>,
 }
 
 impl Intent {
-    /// Create a new intent
+    /// Create a new intent with default neural fields
     pub const fn new(concept_id: ConceptID) -> Self {
         Self {
             concept_id,
             confidence: 1.0,
             data: IntentData::None,
             name: "UNKNOWN",
+            // Neural defaults
+            activation: 1.0,
+            timestamp: 0,
+            level: IntentLevel::Semantic,
+            source: None,
         }
     }
     
@@ -96,12 +194,69 @@ impl Intent {
             confidence,
             data: IntentData::None,
             name: "UNKNOWN",
+            activation: confidence,  // Match activation to confidence
+            timestamp: 0,
+            level: IntentLevel::Semantic,
+            source: None,
+        }
+    }
+    
+    /// Create with full neural context
+    pub const fn with_neural(
+        concept_id: ConceptID,
+        confidence: f32,
+        activation: f32,
+        timestamp: u64,
+        level: IntentLevel,
+        source: Option<ConceptID>,
+    ) -> Self {
+        Self {
+            concept_id,
+            confidence,
+            data: IntentData::None,
+            name: "UNKNOWN",
+            activation,
+            timestamp,
+            level,
+            source,
         }
     }
     
     /// Check if this is an unknown/unrecognized intent
     pub fn is_unknown(&self) -> bool {
         self.concept_id == ConceptID::UNKNOWN || self.confidence < 0.5
+    }
+    
+    /// Check if intent is still "alive" (activation above threshold)
+    pub fn is_active(&self) -> bool {
+        self.activation >= 0.1
+    }
+    
+    /// Apply decay to activation (call periodically)
+    pub fn decay(&mut self, factor: f32) {
+        self.activation *= factor;
+    }
+    
+    /// Boost activation (e.g., from attention or repeated input)
+    pub fn boost(&mut self, amount: f32) {
+        self.activation = (self.activation + amount).min(1.0);
+    }
+    
+    /// Escalate to next hierarchical level
+    pub fn escalate(&mut self) {
+        self.level = match self.level {
+            IntentLevel::Raw => IntentLevel::Feature,
+            IntentLevel::Feature => IntentLevel::Object,
+            IntentLevel::Object => IntentLevel::Semantic,
+            IntentLevel::Semantic => IntentLevel::Action,
+            IntentLevel::Action => IntentLevel::Action,  // Already at top
+        };
+    }
+}
+
+impl Default for Intent {
+    fn default() -> Self {
+        Self::new(ConceptID::UNKNOWN)
     }
 }
 

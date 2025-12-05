@@ -243,6 +243,7 @@ impl StenoDictionary {
                 confidence: 1.0,
                 data: IntentData::None,
                 name: entry.name,
+                ..Intent::new(entry.concept_id)
             }
         })
     }
@@ -492,6 +493,7 @@ impl MultiStrokeDictionary {
                 confidence: 1.0,
                 data: IntentData::None,
                 name: entry.name,
+                ..Intent::new(entry.concept_id)
             }
         })
     }

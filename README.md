@@ -378,6 +378,34 @@ The kernel can "hear" and classify sounds:
 - **Acoustic Intents**: Maps sounds (Speech, Noise, Silence) to `ConceptID`.
 - **Neural Integration**: Stores acoustic memories alongside visual ones.
 
+### ✅ Neural Architecture ✨ NEW!
+Biologically-inspired intent processing with 22 neural features:
+
+| Feature | Description |
+|---------|-------------|
+| **Spreading Activation** | Concepts activate related concepts automatically |
+| **Lateral Inhibition** | Competing handlers suppress each other |
+| **Temporal Dynamics** | Activations decay; weak signals accumulate over time |
+| **Hierarchical Processing** | Raw → Feature → Object → Semantic → Action layers |
+| **Predictive Processing** | Predict outcomes via efference copy, detect surprise |
+| **Basal Ganglia Model** | Urgency-based action selection with dopamine modulation |
+| **Attention Focus** | Limited-capacity selective enhancement |
+| **Goal Modulation** | Top-down goals affect perception |
+| **Graceful Degradation** | Load-based throttling under pressure |
+
+```rust
+// Temporal summation - weak signals accumulate
+summate(concept_id, 0.15, timestamp);  // 3 weak signals → fires
+
+// Predictive priming - pre-activate expected concepts  
+predict(source, expected, 0.9, timestamp);
+
+// Urgency-based scheduling (basal ganglia)
+submit_intent(IntentRequest { urgency: 0.9, ..default() });
+```
+
+See [NEURAL_ARCHITECTURE.md](docs/NEURAL_ARCHITECTURE.md) for complete documentation.
+
 ### ✅ Multi-Core SMP ✨ COMPLETE!
 Production-grade 4-core scheduler with advanced features:
 - **Per-Core Run Queues**: Minimizes lock contention
@@ -601,20 +629,21 @@ Raspberry Pi 5 - 4× Cortex-A76 @ 2.4GHz
 
 ### Complete 40-Benchmark Suite 🚀 (Verified December 2025)
 
-The Intent Kernel includes a **40-benchmark suite** across 10 categories, tailored to semantic computing:
+The Intent Kernel includes a **40-benchmark suite** across 11 categories, tailored to semantic computing:
 
 | Category | Benchmarks | Key Metrics |
 |----------|------------|-------------|
 | Intent Engine | 5 | Handler match: 0 cycles, Hash: 2 cycles, Security: 1 cycle |
-| Semantic Memory | 1 | Neural Alloc: 139 cycles, Retrieval: O(log N) |
-| Perception | 2 | Sensor fusion: 0 cycles, Perceive+Store: 55 cycles |
-| Multi-Modal | 5 | Steno: 37 cycles, English: 187 cycles |
-| Process/Agent | 6 | Context switch: 433 cycles, Preemption: 12 cycles |
-| Lock/Sync | 5 | SpinLock: 13 cycles, IPI: 101 cycles |
-| Interrupt | 4 | Timer jitter: 187 max cycles |
-| I/O/Network | 4 | TCP checksum: 8 cycles, UART: 0 cycles |
-| Memory | 2 | Slab: 22 cycles, Buddy: 33 cycles |
-| Stress Test | 1 | **180k ops @ 32 cycles avg** |
+| **Neural** | 3 | Decay: 13k cycles, Propagate: 244 cycles, Select: 5.7k cycles |
+| Semantic Memory | 1 | Neural Alloc: 230 cycles, Retrieval: O(log N) |
+| Perception | 2 | Sensor fusion: 0 cycles, Perceive+Store: 125 cycles |
+| Multi-Modal | 5 | Steno: 43 cycles, English: 208 cycles |
+| Process/Agent | 6 | Context switch: 420 cycles, Preemption: 17 cycles |
+| Lock/Sync | 5 | SpinLock: 19 cycles, IPI: 103 cycles |
+| Interrupt | 4 | Timer jitter: 188 max cycles |
+| I/O/Network | 4 | TCP checksum: 9 cycles, UART: 0 cycles |
+| Memory | 2 | Slab: 29 cycles, Buddy: 42 cycles |
+| Stress Test | 1 | **180k ops @ 29 cycles avg** |
 
 ### Extreme Stress Test Results (Verified December 2025) 🚀
 
@@ -622,22 +651,22 @@ Comprehensive allocator validation with **180,000 operations**:
 
 | Test | Operations | Avg Cycles | Throughput | Status |
 |------|-----------|-----------|------------|--------|
-| Small Allocations (8B) | 100,000 | 21 | **2.9M ops/sec** | ✅ |
-| Vec Operations (100 elem) | 50,000 | 35 | 1.8M ops/sec | ✅ |
-| Page Allocations (4KB) | 10,000 | 125 | 500K ops/sec | ✅ |
-| Mixed Workload (8B-4KB) | 20,000 | 28 | 2.2M ops/sec | ✅ |
-| **Total** | **180,000** | **32** | **~3M ops/sec** | ✅ |
+| Small Allocations (8B) | 100,000 | 28 | **2.2M ops/sec** | ✅ |
+| Vec Operations (100 elem) | 50,000 | 30 | 2.1M ops/sec | ✅ |
+| Page Allocations (4KB) | 10,000 | 31 | 2.0M ops/sec | ✅ |
+| Mixed Workload (8B-4KB) | 20,000 | 31 | 2.0M ops/sec | ✅ |
+| **Total** | **180,000** | **29** | **~3M ops/sec** | ✅ |
 
 ### Standard Benchmarks
 
 | Benchmark | Result | Target | Status |
 |-----------|--------|--------|--------|
-| **Context Switch** | 433 cycles | <500 | ✅ 13% under |
+| **Context Switch** | 420 cycles | <500 | ✅ 16% under |
 | **Syscall Dispatch** | 0 cycles | <50 | ✅ Optimal |
-| **Memory Alloc (Slab)** | 22 cycles | <100 | ✅ 78% under |
-| **Memory Alloc (Buddy)** | 33 cycles | <100 | ✅ 67% under |
+| **Memory Alloc (Slab)** | 29 cycles | <100 | ✅ 71% under |
+| **Memory Alloc (Buddy)** | 42 cycles | <100 | ✅ 58% under |
 | **Intent Security** | 1 cycles | <50 | ✅ 98% under |
-| **SpinLock** | 13 cycles | <50 | ✅ 74% under |
+| **SpinLock** | 19 cycles | <50 | ✅ 62% under |
 
 ---
 

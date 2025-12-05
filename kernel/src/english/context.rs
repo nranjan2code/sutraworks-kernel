@@ -155,6 +155,7 @@ impl ConversationContext {
                     confidence: 0.95,
                     data: crate::intent::IntentData::None,
                     name: "REPEAT",
+                    ..Intent::new(concept)
                 });
             }
         }
@@ -167,6 +168,7 @@ impl ConversationContext {
                     confidence: 0.9,
                     data: crate::intent::IntentData::None,
                     name: "DETAILED",
+                    ..Intent::new(concept)
                 });
             }
         }
@@ -180,6 +182,7 @@ impl ConversationContext {
                     confidence: 0.85,
                     data: crate::intent::IntentData::None,
                     name: "SHOW",
+                    ..Intent::new(crate::steno::dictionary::concepts::SHOW)
                 });
             }
 
@@ -189,6 +192,7 @@ impl ConversationContext {
                     confidence: 0.85,
                     data: crate::intent::IntentData::None,
                     name: "HIDE",
+                    ..Intent::new(crate::steno::dictionary::concepts::HIDE)
                 });
             }
         }
@@ -202,6 +206,7 @@ impl ConversationContext {
                 confidence: 0.7,
                 data: crate::intent::IntentData::None,
                 name: "HELP",
+                ..Intent::new(crate::steno::dictionary::concepts::HELP)
             });
         }
 

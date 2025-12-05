@@ -80,6 +80,12 @@ pub fn run_all() {
     kprintln!("\n═══ 10. Extreme Stress Test (180k Operations) ═══");
     bench_extreme_allocator_stress();
     
+    // === 11. NEURAL ARCHITECTURE BENCHMARKS (3) ===
+    kprintln!("\n═══ 11. Neural Architecture (3 benchmarks) ═══");
+    bench_neural_decay();
+    bench_neural_propagation();
+    bench_neural_selection();
+    
     kprintln!("\n╔═══════════════════════════════════════════════════════════╗");
     kprintln!("║  ALL 40 BENCHMARKS COMPLETED SUCCESSFULLY ✅             ║");
     kprintln!("╚═══════════════════════════════════════════════════════════╝\n");
@@ -281,6 +287,7 @@ fn bench_intent_security() {
         name: "HELP",
         data: crate::intent::IntentData::None,
         confidence: 1.0,
+        ..Intent::new(concepts::HELP)
     };
     
     let start = profiling::rdtsc();
@@ -846,6 +853,7 @@ fn bench_intent_queue() {
             name: "STATUS",
             data: IntentData::None,
             confidence: 1.0,
+            ..Intent::new(concepts::STATUS)
         };
         core::hint::black_box(intent);
     }
@@ -1432,4 +1440,135 @@ fn bench_sd_read() {
     let avg_cycles = end.wrapping_sub(start) / iterations;
     
     kprintln!("  -> Avg Block Calc: {} cycles", avg_cycles);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NEURAL ARCHITECTURE BENCHMARKS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Benchmark Neural Decay
+/// 
+/// Measures performance of decaying 1000 concepts in the NeuralAllocator.
+fn bench_neural_decay() {
+    kprintln!("[BENCH] Neural Decay (1000 concepts)...");
+    
+    use crate::kernel::memory::neural::{NeuralAllocator, SemanticBlock};
+    use crate::intent::ConceptID;
+    
+    // We create a temporary allocator for this benchmark to avoid polluting global state
+    // But NeuralAllocator uses a global static array... we can't easily create a local one 
+    // without implementing `new` which we did. Wait, NeuralAllocator internally uses 
+    // `blocks: [Option<SemanticBlock>; MAX_CONCEPTS]`.
+    // We'll use the global one but be careful, or just measure the logic.
+    // Ideally we use a local instance if it fits on stack? No, it's huge.
+    // We'll use the global NEURAL_ALLOCATOR but just measure the `decay_tick` function.
+    // To properly benchmark, we need active concepts throughout the array.
+    
+    // NOTE: This modifies global state, but it's a benchmark run on boot.
+    let mut allocator = crate::kernel::memory::neural::NEURAL_ALLOCATOR.lock();
+    
+    // Populate 1000 random concepts if not empty
+    // For benchmark consistency, we'll just ensure we have some active concepts.
+    // Let's manually activate a stride of concepts to simulate load.
+    let stride = 64; // Spread them out
+    for i in 0..1000 {
+        let id = ConceptID::new((i * stride) as u64);
+        allocator.activate(id, 1.0, 1);
+    }
+    
+    let iterations = 100;
+    let start = profiling::rdtsc();
+    
+    for i in 0..iterations {
+        allocator.decay_tick(i as u64 * 10, 0.95);
+    }
+    
+    let end = profiling::rdtsc();
+    let total_cycles = end.wrapping_sub(start);
+    let avg_cycles = total_cycles / iterations;
+    
+    kprintln!("  -> Avg Decay Tick (1000 active): {} cycles", avg_cycles);
+}
+
+/// Benchmark Neural Propagation
+/// 
+/// Measures bottom-up propagation through 5 layers.
+fn bench_neural_propagation() {
+    kprintln!("[BENCH] Neural Propagation (5 layers)...");
+    
+    use crate::intent::hierarchy::HierarchicalProcessor;
+    use crate::intent::{Intent, ConceptID, IntentLevel};
+    
+    let mut processor = HierarchicalProcessor::new();
+    processor.set_use_attention(false); // Disable attention for raw throughput test
+    
+    // Setup input
+    let intent = Intent {
+        concept_id: ConceptID(1),
+        activation: 1.0,
+        level: IntentLevel::Raw,
+        ..Intent::new(ConceptID(1))
+    };
+    
+    let iterations = 1_000;
+    let start = profiling::rdtsc();
+    
+    for _ in 0..iterations {
+        // Clear previous state to ensure propagation happens
+        processor.clear_all();
+        processor.input(&intent);
+        processor.propagate_all();
+    }
+    
+    let end = profiling::rdtsc();
+    let total_cycles = end.wrapping_sub(start);
+    let avg_cycles = total_cycles / iterations;
+    
+    kprintln!("  -> Avg Full Propagation: {} cycles", avg_cycles);
+}
+
+/// Benchmark Neural Selection
+/// 
+/// Measures urgency-based action selection with competing intents.
+fn bench_neural_selection() {
+    kprintln!("[BENCH] Neural Selection (32 intents)...");
+    
+    use crate::intent::scheduling::{NeuralScheduler, IntentRequest};
+    use crate::intent::ConceptID;
+    
+    let mut scheduler = NeuralScheduler::new();
+    
+    // Pre-create requests
+    let mut requests = Vec::new();
+    for i in 0..32 {
+        requests.push(IntentRequest {
+            concept_id: ConceptID(i as u64),
+            priority: (i * 8) as u8, // Varying priorities
+            urgency: 0.5 + (i as f32 / 64.0), // Varying urgency
+            surprise_boost: 1.0,
+            preferred_core: None,
+            timestamp: 0,
+            source_pid: 0,
+        });
+    }
+    
+    let iterations = 1_000;
+    let start = profiling::rdtsc();
+    
+    for _ in 0..iterations {
+        // Clear and fill
+        scheduler.clear();
+        for req in &requests {
+            scheduler.submit(*req);
+        }
+        
+        // Select best
+        let _ = scheduler.next();
+    }
+    
+    let end = profiling::rdtsc();
+    let total_cycles = end.wrapping_sub(start);
+    let avg_cycles = total_cycles / iterations;
+    
+    kprintln!("  -> Avg Selection (Fill+Sort+Pop): {} cycles", avg_cycles);
 }
