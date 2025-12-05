@@ -83,7 +83,11 @@ impl IntentScheduler {
         }
         
         if has_children {
-            Ok(None) // Should block
+            // Block current task - it will be woken when child exits
+            if let Some(agent) = self.get_agent_mut(parent_id) {
+                agent.state = AgentState::Blocked;
+            }
+            Ok(None) // Indicates blocking, caller should yield
         } else {
             Err("No children")
         }

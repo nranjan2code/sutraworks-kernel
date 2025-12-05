@@ -1,6 +1,8 @@
 use alloc::vec::Vec;
+use alloc::collections::BTreeMap;
 use core::convert::TryInto;
 use crate::net::ip::Ipv4Addr;
+use crate::arch::SpinLock;
 
 /// UDP Packet
 #[derive(Debug, Clone)]
@@ -52,12 +54,106 @@ impl UdpPacket {
     }
 }
 
-/// Handle incoming UDP packet
-pub fn handle_packet(data: &[u8], _src_ip: Ipv4Addr) -> Result<(), &'static str> {
-    let _packet = UdpPacket::parse(data)?;
+/// UDP packet with source address
+#[derive(Debug, Clone)]
+pub struct UdpMessage {
+    pub src_addr: Ipv4Addr,
+    pub src_port: u16,
+    pub payload: Vec<u8>,
+}
+
+/// UDP Listener Queue
+pub struct UdpListener {
+    port: u16,
+    queue: alloc::collections::VecDeque<UdpMessage>,
+    max_queue: usize,
+}
+
+impl UdpListener {
+    pub fn new(port: u16) -> Self {
+        Self {
+            port,
+            queue: alloc::collections::VecDeque::new(),
+            max_queue: 64, // Max 64 pending packets per port
+        }
+    }
     
-    // TODO: Dispatch to registered UDP listeners by port
-    // For now, just successfully parse and ignore
+    /// Enqueue a received packet
+    pub fn enqueue(&mut self, msg: UdpMessage) -> Result<(), &'static str> {
+        if self.queue.len() >= self.max_queue {
+            return Err("UDP queue full");
+        }
+        self.queue.push_back(msg);
+        Ok(())
+    }
+    
+    /// Dequeue a packet (non-blocking)
+    pub fn dequeue(&mut self) -> Option<UdpMessage> {
+        self.queue.pop_front()
+    }
+    
+    /// Check if queue has packets
+    pub fn has_packets(&self) -> bool {
+        !self.queue.is_empty()
+    }
+}
+
+/// Global UDP Listener Registry
+static UDP_LISTENERS: SpinLock<BTreeMap<u16, UdpListener>> = SpinLock::new(BTreeMap::new());
+
+/// Register a UDP listener on a specific port
+pub fn register_listener(port: u16) -> Result<(), &'static str> {
+    let mut listeners = UDP_LISTENERS.lock();
+    
+    if listeners.contains_key(&port) {
+        return Err("Port already in use");
+    }
+    
+    listeners.insert(port, UdpListener::new(port));
+    Ok(())
+}
+
+/// Unregister a UDP listener
+pub fn unregister_listener(port: u16) -> Result<(), &'static str> {
+    let mut listeners = UDP_LISTENERS.lock();
+    
+    if listeners.remove(&port).is_some() {
+        Ok(())
+    } else {
+        Err("Port not registered")
+    }
+}
+
+/// Receive a packet from a registered port (non-blocking)
+pub fn recv_from(port: u16) -> Option<UdpMessage> {
+    let mut listeners = UDP_LISTENERS.lock();
+    
+    if let Some(listener) = listeners.get_mut(&port) {
+        listener.dequeue()
+    } else {
+        None
+    }
+}
+
+/// Handle incoming UDP packet
+pub fn handle_packet(data: &[u8], src_ip: Ipv4Addr) -> Result<(), &'static str> {
+    let packet = UdpPacket::parse(data)?;
+    
+    // Dispatch to registered listener
+    let mut listeners = UDP_LISTENERS.lock();
+    if let Some(listener) = listeners.get_mut(&packet.dst_port) {
+        let msg = UdpMessage {
+            src_addr: src_ip,
+            src_port: packet.src_port,
+            payload: packet.payload,
+        };
+        
+        listener.enqueue(msg)?;
+    } else {
+        // No listener registered for this port - silently drop
+        // In production, could send ICMP Port Unreachable
+    }
     
     Ok(())
 }
+

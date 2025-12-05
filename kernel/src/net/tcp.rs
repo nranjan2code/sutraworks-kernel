@@ -683,7 +683,7 @@ impl TcpConnection {
                 }
             }
             
-            // Build TCP segment
+            // Build TCP segment with proper checksum
             let segment = TcpSegment {
                 src_port: self.local_port,
                 dst_port: self.remote_port,
@@ -692,13 +692,14 @@ impl TcpConnection {
                 data_offset: 5,
                 flags: TcpFlags::new(TcpFlags::ACK | TcpFlags::PSH),
                 window_size: self.recv_window as u16,
-                checksum: 0, // TODO: Calculate checksum
+                checksum: 0, // Will be computed below
                 urgent_pointer: 0,
                 options: Vec::new(),
                 payload: payload.clone(),
             };
             
-            let segment_bytes = segment.to_bytes();
+            // Compute checksum with pseudo-header (RFC 793)
+            let segment_bytes = segment.to_bytes_with_checksum(self.local_addr, self.remote_addr);
             
             // Start RTT measurement if not already timing
             if self.rtt_seq.is_none() {

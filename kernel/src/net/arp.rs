@@ -103,7 +103,7 @@ const MAX_ARP_ENTRIES: usize = 16;
 struct ArpEntry {
     ip: Ipv4Addr,
     mac: MacAddress,
-    // TODO: Add timestamp for expiration
+    timestamp_ms: u64, // Time when entry was added (for expiration)
 }
 
 /// ARP cache
@@ -121,10 +121,17 @@ impl ArpCache {
     }
     
     fn lookup(&self, ip: Ipv4Addr) -> Option<MacAddress> {
+        let now = crate::drivers::timer::uptime_ms();
+        const ARP_TIMEOUT_MS: u64 = 20 * 60 * 1000; // 20 minutes per RFC 826
+        
         for entry in &self.entries {
             if let Some(e) = entry {
                 if e.ip == ip {
-                    return Some(e.mac);
+                    // Check if entry has expired
+                    if now.saturating_sub(e.timestamp_ms) < ARP_TIMEOUT_MS {
+                        return Some(e.mac);
+                    }
+                    // Entry expired, will be replaced
                 }
             }
         }
@@ -132,11 +139,14 @@ impl ArpCache {
     }
     
     fn insert(&mut self, ip: Ipv4Addr, mac: MacAddress) {
-        // Check if already exists
+        let now = crate::drivers::timer::uptime_ms();
+        
+        // Check if already exists (update timestamp)
         for entry in &mut self.entries {
             if let Some(e) = entry {
                 if e.ip == ip {
                     e.mac = mac;
+                    e.timestamp_ms = now;
                     return;
                 }
             }
@@ -145,14 +155,14 @@ impl ArpCache {
         // Find empty slot
         for entry in &mut self.entries {
             if entry.is_none() {
-                *entry = Some(ArpEntry { ip, mac });
+                *entry = Some(ArpEntry { ip, mac, timestamp_ms: now });
                 self.count += 1;
                 return;
             }
         }
         
         // Cache full, replace first entry
-        self.entries[0] = Some(ArpEntry { ip, mac });
+        self.entries[0] = Some(ArpEntry { ip, mac, timestamp_ms: now });
     }
 }
 

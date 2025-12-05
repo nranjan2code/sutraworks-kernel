@@ -35,6 +35,7 @@ pub enum SyscallNumber {
     Fork = 18,
     Wait = 19,
     Exec = 20,
+    RecvFrom = 21,
     Unknown,
 }
 
@@ -62,6 +63,7 @@ impl From<u64> for SyscallNumber {
             18 => SyscallNumber::Fork,
             19 => SyscallNumber::Wait,
             20 => SyscallNumber::Exec,
+            21 => SyscallNumber::RecvFrom,
             _ => SyscallNumber::Unknown,
         }
     }
@@ -153,6 +155,9 @@ pub fn dispatcher(num: u64, arg0: u64, arg1: u64, arg2: u64, frame: &mut crate::
         }
         SyscallNumber::Exec => {
             sys_exec(arg0, frame)
+        }
+        SyscallNumber::RecvFrom => {
+            sys_recvfrom(arg0, arg1, arg2)
         }
         SyscallNumber::Unknown => {
             kprintln!("Unknown syscall: {}", num);
@@ -790,28 +795,30 @@ fn sys_fork(frame: &crate::kernel::exception::ExceptionFrame) -> u64 {
 fn sys_wait(pid: i32) -> u64 {
     // Only support wait(-1) for now (any child)
     if pid != -1 {
-        // TODO: Support specific PID
-        return u64::MAX;
+        return u64::MAX; // TODO: Support specific PID  
     }
 
     loop {
         let mut scheduler = SCHEDULER.lock();
-        let current_pid = scheduler.current_pid().unwrap_or(0);
+        let current_pid = match scheduler.current_pid() {
+            Some(p) => p,
+            None => return u64::MAX,
+        };
         
         match scheduler.wait_child(current_pid) {
             Ok(Some(child_pid)) => {
+                // Successfully reaped a terminated child
                 return child_pid;
-            },
+            }
             Ok(None) => {
-                // Children exist but running
-                scheduler.with_current_agent(|agent| {
-                    agent.state = crate::kernel::process::AgentState::Blocked;
-                });
+                // Children exist but none terminated - task is now blocked
+                // wait_child already set state to Blocked
                 drop(scheduler);
-                scheduler::yield_task();
-            },
+                crate::kernel::scheduler::yield_task();
+                // Task will be woken when child exits, retry wait
+            }
             Err(_) => {
-                return u64::MAX; // ECHILD
+                return u64::MAX; // ECHILD (no children)
             }
         }
     }
@@ -847,4 +854,34 @@ fn sys_exec(path_ptr: u64, frame: &mut crate::kernel::exception::ExceptionFrame)
     }).unwrap_or(u64::MAX);
     
     res
+}
+
+fn sys_recvfrom(port: u64, buf_ptr: u64, buf_len: u64) -> u64 {
+    let buf_raw = buf_ptr as *mut u8;
+    let len = buf_len as usize;
+    
+    // Validate buffer pointer
+    if crate::kernel::memory::validate_write_ptr(buf_raw, len).is_err() {
+        return u64::MAX; // EFAULT
+    }
+    
+    // Try to receive a packet from UDP layer
+    if let Some(msg) = crate::net::udp::recv_from(port as u16) {
+        // Copy payload to user buffer
+        let copy_len = msg.payload.len().min(len);
+        unsafe {
+            core::ptr::copy_nonoverlapping(
+                msg.payload.as_ptr(),
+                buf_raw,
+                copy_len
+            );
+        }
+        
+        // Return number of bytes copied
+        copy_len as u64
+    } else {
+        // No packets available - would block
+        // For now return 0 (could also return EWOULDBLOCK)
+        0
+    }
 }

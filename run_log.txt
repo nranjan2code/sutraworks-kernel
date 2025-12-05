@@ -173,3 +173,4 @@ Kernel Entry
 ║              INTENT KERNEL READY (USER MODE)              ║
 ╚═══════════════════════════════════════════════════════════╝
 
+qemu-system-aarch64: terminating on signal 1 from pid 87440 (<unknown process>)

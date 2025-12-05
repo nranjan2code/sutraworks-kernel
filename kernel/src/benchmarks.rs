@@ -13,10 +13,9 @@ pub fn run_all() {
     bench_context_switch();
     bench_memory_alloc();
     
-    // TODO: Re-enable after implementing proper task wait mechanism
-    // bench_syscall_user spawns a user task but doesn't wait for completion.
-    // This causes the Neural Memory Demo to run while the user task is still
-    // in the scheduler queue, leading to pointer corruption.
+    // NOTE: bench_syscall_user still crashes despite wait mechanism
+    // The issue appears to be deeper - needs more investigation
+    // Keeping disabled for now to maintain stability
     // bench_syscall_user();
     
     kprintln!("\n[BENCH] All benchmarks completed.\n");
