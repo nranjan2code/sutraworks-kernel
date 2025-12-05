@@ -143,8 +143,8 @@ impl Agent {
         space.map_user(ustack_virt_bottom, ustack_phys_start, ustack_size).map_err(|_| "Failed to map user stack")?;
         
         // 4. Map User Code (Copy to separate page to avoid Huge Page conflict)
-        // Allocate a new page for user code
-        let code_page = alloc_stack(0).ok_or("Failed to alloc code page")?;
+        // Allocate a new page for user code (1 page = 4KB)
+        let code_page = alloc_stack(1).ok_or("Failed to alloc code page")?;
         
         // Copy code from entry to code_page.bottom (usable start)
         let code_phys = code_page.bottom;

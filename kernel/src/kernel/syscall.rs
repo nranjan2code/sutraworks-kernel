@@ -87,7 +87,7 @@ pub fn dispatcher(num: u64, arg0: u64, arg1: u64, arg2: u64, frame: &mut crate::
     let result = match syscall {
         SyscallNumber::Exit => {
             sys_exit(arg0 as i32);
-            0 // Should not return
+            // Never returns
         }
         SyscallNumber::Yield => {
             scheduler::yield_task();

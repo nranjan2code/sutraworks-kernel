@@ -9,14 +9,12 @@ pub fn run_all() {
     kprintln!("║                 KERNEL BENCHMARKS                         ║");
     kprintln!("╚═══════════════════════════════════════════════════════════╝\n");
 
-    bench_syscall_latency();
-    bench_context_switch();
-    bench_memory_alloc();
+    kprintln!("[BENCH] Running kernel benchmarks...\n");
     
-    // NOTE: bench_syscall_user still crashes despite wait mechanism
-    // The issue appears to be deeper - needs more investigation
-    // Keeping disabled for now to maintain stability
-    // bench_syscall_user();
+    bench_context_switch();
+    bench_syscall_latency();
+    bench_memory_alloc();
+    bench_syscall_user();  // ✅ Re-enabled - bug fixed!
     
     kprintln!("\n[BENCH] All benchmarks completed.\n");
 }

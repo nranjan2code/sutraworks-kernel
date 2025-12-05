@@ -180,17 +180,27 @@ impl SmpScheduler {
     }
 
     /// Initialize SMP scheduler and wake secondary cores
+    /// Core 3 is reserved for watchdog, cores 0-2 are workers
     pub fn init(&mut self) {
-        // Detect number of cores (read MPIDR_EL1 or use known value for Pi 5)
+        // Raspberry Pi 5 has 4 cores total
         self.num_cores = 4;
+        
+        // IMPORTANT: Core 3 is reserved for watchdog/immune system
+        // Only cores 0-2 will run user tasks
+        const WATCHDOG_CORE: usize = 3;
+        const NUM_WORKER_CORES: usize = 3;
 
-        // Wake secondary cores (cores 1-3)
-        for core_id in 1..self.num_cores {
-            crate::kprintln!("[SMP] Waking core {}...", core_id);
+        crate::kprintln!("[SMP] Initializing with {} worker cores", NUM_WORKER_CORES);
+        crate::kprintln!("[SMP] Core 3 reserved for watchdog/immune system");
+
+        // Wake secondary worker cores (cores 1-2)
+        // Core 3 will be woken separately by watchdog init
+        for core_id in 1..NUM_WORKER_CORES {
+            crate::kprintln!("[SMP] Waking worker core {}...", core_id);
             arch::start_core(core_id, secondary_core_entry);
         }
 
-        crate::kprintln!("[SMP] Scheduler initialized with {} cores", self.num_cores);
+        crate::kprintln!("[SMP] Worker cores initialized. Watchdog core (3) awaiting init.");
     }
 
     /// Spawn a new task
@@ -208,10 +218,14 @@ impl SmpScheduler {
     }
 
     /// Select best core for a new task
+    /// Excludes Core 3 (watchdog) from selection
     fn select_core(&self, priority: Priority, affinity: AffinityMask) -> usize {
-        // Filter cores by affinity
+        const WATCHDOG_CORE: usize = 3;
+        const NUM_WORKER_CORES: usize = 3;
+        
+        // Filter cores by affinity AND exclude watchdog core
         let mut candidates = Vec::new();
-        for core_id in 0..self.num_cores {
+        for core_id in 0..NUM_WORKER_CORES {  // Only 0-2, not 3
             if affinity.can_run_on(core_id) {
                 candidates.push(core_id);
             }
@@ -300,12 +314,15 @@ impl SmpScheduler {
     }
 
     /// Work stealing: steal tasks from other cores
+    /// Excludes Core 3 (watchdog) from stealing
     fn steal_work(&mut self, thief_core: usize) -> Option<Box<SmpAgent>> {
-        // Try to steal from the busiest core
+        const NUM_WORKER_CORES: usize = 3;
+        
+        // Try to steal from the busiest core (only from workers 0-2)
         let mut busiest_core = None;
         let mut max_len = 0;
 
-        for core_id in 0..self.num_cores {
+        for core_id in 0..NUM_WORKER_CORES { // Only steal from workers
             if core_id == thief_core {
                 continue;
             }

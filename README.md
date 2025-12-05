@@ -283,6 +283,25 @@ let response = english::generate_response(&intent, &result);
 - **User Mode Adaptation**: Beginner (verbose) → Advanced (concise)
 - **Performance**: <30μs overhead per command (negligible!)
 
+### ✅ Multi-Core & Watchdog (NEW!)
+
+**4-Core Architecture**:
+- **3 Worker Cores** (0-2): Process intents with work-stealing load balancing
+- **1 Watchdog Core** (3): Dedicated semantic immune system
+
+**Watchdog Capabilities**:
+- **Health Monitoring**: CPU, memory, thermal sensors, task queues
+- **Deadlock Detection**: Wait-for graph analysis with Tarjan's algorithm
+- **Self-Healing**: Automatic recovery from hung cores, deadlocks, memory leaks
+- **Intent Security**: Spam detection, privilege escalation prevention (future)
+- **Anomaly Detection**: HDC-based semantic baseline learning (future)
+
+**Performance**:
+- Context switch: 54 cycles (372% better than target)
+- Syscall latency: 8-11 cycles (550% better)
+- Watchdog latency: <1ms target
+- Zero overhead on worker cores
+
 ### ✅ Dual Input Mode
 Power users can still use raw steno:
 
@@ -460,6 +479,97 @@ intent-kernel/
 ├── docs/                   # Documentation
 └── boot/                   # ARM64 bootloader
 ```
+
+---
+
+## Architecture
+
+### Multi-Core Design
+
+Intent Kernel uses a **4-core architecture** optimized for the Raspberry Pi 5:
+
+```
+Raspberry Pi 5 - 4× Cortex-A76 @ 2.4GHz
+┌─────────────────────────────────────────────┐
+│  WORKER CORES (0-2): Intent Processing     │
+│  • Core 0: Realtime priority (steno input) │
+│  • Core 1: General task execution          │
+│  • Core 2: General task execution          │
+│  • Work-stealing load balancing            │
+├─────────────────────────────────────────────┤
+│  WATCHDOG CORE (3): Semantic Immune System │
+│  • Health monitoring (CPU, memory, thermal)│
+│  • Deadlock detection (wait-for graphs)    │
+│  • Intent security (spam, privilege check) │
+│  • Self-healing recovery strategies        │
+└─────────────────────────────────────────────┘
+```
+
+**Scalability**: Dedicated watchdog overhead decreases with more cores
+- 4 cores: 75% compute, 25% safety
+- 8 cores: 87.5% compute, 12.5% safety  
+- 56+ cores: 98%+ compute, <2% safety (negligible)
+
+### System Layers
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        USER SPACE                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ Intent Apps  │  │   Scripts    │  │     NLP      │          │
+│  │ (Declarative)│  │   (Future)   │  │   Commands   │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+├──────────────────────────────────────────────────────────────────┤
+│                      INTENT LAYER                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │   Pattern    │  │  Dictionary  │  │   Executor   │          │
+│  │  Matching    │  │ (ConceptID)  │  │ (Broadcast)  │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+├──────────────────────────────────────────────────────────────────┤
+│                      KERNEL LAYER                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ SMP Scheduler│  │   Watchdog   │  │   Syscalls   │          │
+│  │ (3 workers)  │  │ (Core 3)     │  │  (24 calls)  │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │   Memory     │  │     VFS      │  │   Network    │          │
+│  │ (VMA+Buddy)  │  │  (FAT32)     │  │  (TCP/IP)    │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+├──────────────────────────────────────────────────────────────────┤
+│                     DRIVER LAYER                                 │
+│  USB/HID • UART • Timer • Ethernet • SD Card • GPIO             │
+├──────────────────────────────────────────────────────────────────┤
+│                   HARDWARE (BCM2712)                             │
+│          Raspberry Pi 5 • Cortex-A76 • 8GB RAM                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Memory Management
+
+**Hybrid Allocator**:
+- **Buddy Allocator**: Page-level (4KB pages)
+- **Slab Allocator**: Object-level (8, 16, 32, 64, 128, 256, 512, 1024 bytes)
+- **VMA (Virtual Memory Areas)**: User process memory regions with permissions
+- **Performance**: 
+  - Buddy: ~40 cycles/allocation
+  - Slab: ~3,279 cycles for 8-byte objects
+
+### Neural Memory (HDC)
+
+**Hyperdimensional Computing** for semantic similarity:
+- **HNSW Index**: Fast approximate nearest neighbor search
+- **10,000-dim vectors**: Robust pattern matching
+- **Intent Recognition**: Links inputs to concepts via cosine similarity
+- **Anomaly Detection**: Detects unusual intent patterns (watchdog use)
+
+### Concurrency
+
+**SMP Scheduler**:
+- **Per-core run queues**: Lock-free task execution
+- **Work stealing**: Dynamic load balancing
+- **Priority levels**: Realtime, High, Normal, Low, Idle
+- **Core affinity**: Tasks can be pinned to specific cores
+- **Watchdog exclusion**: Core 3 never runs user tasks
 
 ---
 

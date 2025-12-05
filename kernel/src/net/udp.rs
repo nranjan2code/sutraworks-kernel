@@ -64,7 +64,7 @@ pub struct UdpMessage {
 
 /// UDP Listener Queue
 pub struct UdpListener {
-    port: u16,
+    _port: u16,  // Reserved for future use
     queue: alloc::collections::VecDeque<UdpMessage>,
     max_queue: usize,
 }
@@ -72,7 +72,7 @@ pub struct UdpListener {
 impl UdpListener {
     pub fn new(port: u16) -> Self {
         Self {
-            port,
+            _port: port,
             queue: alloc::collections::VecDeque::new(),
             max_queue: 64, // Max 64 pending packets per port
         }

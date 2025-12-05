@@ -3,7 +3,8 @@
 //! Core kernel functionality including:
 //! - Memory management
 //! - Capability-based security
-//! - Scheduler (future)
+//! - Scheduler
+//! - Watchdog (immune system)
 //! - IPC (future)
 
 pub mod memory;
@@ -16,6 +17,7 @@ pub mod syscall;
 pub mod elf;
 pub mod signal;
 pub mod recovery;
+pub mod watchdog;
 
 // Re-export key types
 pub use memory::{PAGE_SIZE, stats as memory_stats};
