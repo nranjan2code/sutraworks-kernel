@@ -285,13 +285,15 @@ impl HnswIndex {
     fn add_connection(&mut self, src: usize, dst: usize, layer: usize) {
         let max_m = if layer == 0 { M0 } else { M };
         
+        // Check if src node has this layer (nodes at lower levels won't have higher layers)
+        if layer >= self.nodes[src].layers.len() {
+            // This node doesn't exist at this layer - that's fine, skip connection
+            return;
+        }
+        
         // Add dst to src's neighbor list
         // Note: In a real implementation, we would use a heuristic to select diverse neighbors
         // Here we just append and prune if too long.
-        
-        // We need to be careful about borrowing self.nodes
-        // We can't mutate self.nodes[src] while reading others.
-        // But here we just need to read dst to calculate distance if we prune.
         
         let neighbors = &mut self.nodes[src].layers[layer];
         if neighbors.contains(&dst) {

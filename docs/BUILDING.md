@@ -266,6 +266,21 @@ make test-integration
 # Output: Tests complete in <10 seconds
 ```
 
+### Running Benchmarks
+
+The kernel includes a **40-benchmark suite** that runs automatically at boot:
+
+```bash
+# Run benchmarks (output appears in console)
+make run
+
+# Benchmarks complete before "INTENT KERNEL READY"
+```
+
+**Categories:** Intent Engine (5), HDC Memory (7), Perception (4), Multi-Modal (5), Process (6), Lock (5), Interrupt (4), I/O (4), Memory (2), Stress Test (1).
+
+> **📊 Full Documentation**: See [BENCHMARKS.md](BENCHMARKS.md) for architecture, algorithms, and methodology.
+
 ### Test Architecture
 
 The testing infrastructure uses:
