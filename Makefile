@@ -38,7 +38,9 @@ BOOT_OBJ := $(BUILD_DIR)/boot.o
 LINKER := $(BOOT_DIR)/linker.ld
 
 # Rust flags
-RUSTFLAGS := -C target-feature=-fp-armv8 -C link-arg=-T$(LINKER)
+# Note: -C target-feature=-fp-armv8 removed due to Rust deprecation (issue #116344)
+# Rust now ties fp-armv8 to NEON and disabling is no longer supported.
+RUSTFLAGS := -C link-arg=-T$(LINKER)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # BUILD RULES
@@ -68,7 +70,7 @@ kernel: $(BUILD_DIR) $(BOOT_OBJ)
 	@echo "║  Building Intent Kernel (Rust)                               ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
 	cd $(KERNEL_DIR) && \
-	RUSTFLAGS="-C target-feature=-fp-armv8 -C link-arg=-T../$(LINKER) -C link-arg=../$(BOOT_OBJ)" cargo build --release --target $(TARGET)
+	RUSTFLAGS="-C link-arg=-T../$(LINKER) -C link-arg=../$(BOOT_OBJ)" cargo build --release --target $(TARGET)
 	cp $(TARGET_DIR)/release/kernel $(KERNEL_ELF)
 
 # Create binary image (skip separate linking, cargo already linked)

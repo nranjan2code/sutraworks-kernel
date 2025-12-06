@@ -315,9 +315,10 @@ impl Default for UrgencyAccumulator {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// System load level
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum LoadLevel {
     /// Normal operation
+    #[default]
     Normal,
     /// High load - start degradation
     High,
@@ -643,11 +644,7 @@ pub struct NeuralSchedulerStats {
     pub urgency_count: usize,
 }
 
-impl Default for LoadLevel {
-    fn default() -> Self {
-        LoadLevel::Normal
-    }
-}
+// LoadLevel implements Default via #[derive(Default)] with #[default] on Normal variant
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GLOBAL INSTANCE

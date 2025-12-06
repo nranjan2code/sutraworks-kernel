@@ -114,20 +114,15 @@ pub enum IntentData {
 /// - **Object**: Recognized objects (face, word, stroke sequence)
 /// - **Semantic**: Meaning (person=friend, word=command, intent recognized)
 /// - **Action**: Motor output (speak, move, display, execute)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr(u8)]
 pub enum IntentLevel {
     Raw = 0,       // Sensory input (pixels, samples)
     Feature = 1,   // Detected features (edges, phonemes)
     Object = 2,    // Recognized objects (face, word)
-    Semantic = 3,  // Meaning (person=friend, word=command)
+    #[default]
+    Semantic = 3,  // Meaning (person=friend, word=command) - Most intents start here
     Action = 4,    // Motor output (speak, move, display)
-}
-
-impl Default for IntentLevel {
-    fn default() -> Self {
-        IntentLevel::Semantic  // Most intents start at semantic level
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

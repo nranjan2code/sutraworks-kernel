@@ -337,8 +337,7 @@ pub extern "C" fn kernel_main() -> ! {
             let size = file.stat().map(|s| s.size).unwrap_or(0);
             if size > 0 {
                 // Allocate buffer (using Vec for convenience)
-                let mut buf = alloc::vec::Vec::with_capacity(size as usize);
-                buf.resize(size as usize, 0);
+                let mut buf = alloc::vec![0u8; size as usize];
                 
                 if let Ok(n) = file.read(&mut buf) {
                     kprintln!("       Read {} bytes", n);

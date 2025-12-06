@@ -1538,10 +1538,10 @@ fn bench_neural_selection() {
     
     let mut scheduler = NeuralScheduler::new();
     
-    // Pre-create requests
-    let mut requests = Vec::new();
+    // Pre-create requests using heapless::Vec to avoid dynamic allocation
+    let mut requests: heapless::Vec<IntentRequest, 32> = heapless::Vec::new();
     for i in 0..32 {
-        requests.push(IntentRequest {
+        let _ = requests.push(IntentRequest {
             concept_id: ConceptID(i as u64),
             priority: (i * 8) as u8, // Varying priorities
             urgency: 0.5 + (i as f32 / 64.0), // Varying urgency

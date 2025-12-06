@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_imports, clippy::needless_range_loop, clippy::collapsible_else_if, clippy::manual_find, clippy::manual_is_multiple_of, clippy::unnecessary_map_or, clippy::missing_safety_doc, clippy::implicit_saturating_sub, clippy::unnecessary_unwrap, clippy::unnecessary_cast, clippy::identity_op, clippy::doc_lazy_continuation, clippy::new_without_default, clippy::empty_loop, clippy::manual_div_ceil)]
+#![allow(dead_code, unused_imports, clippy::needless_range_loop, clippy::collapsible_else_if, clippy::manual_find, clippy::manual_is_multiple_of, clippy::unnecessary_map_or, clippy::missing_safety_doc, clippy::implicit_saturating_sub, clippy::unnecessary_unwrap, clippy::unnecessary_cast, clippy::identity_op, clippy::doc_lazy_continuation, clippy::new_without_default, clippy::empty_loop, clippy::manual_div_ceil, clippy::too_many_arguments, clippy::should_implement_trait)]
 //! ╔═══════════════════════════════════════════════════════════════════════════╗
 //! ║                    INTENT KERNEL - LIBRARY ROOT                           ║
 //! ║                 The Bridge Between Intent and Silicon                     ║

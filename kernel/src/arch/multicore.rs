@@ -15,7 +15,6 @@ const CORE_MAILBOX_BASE: u64 = 0x400000E0;
 /// Read the current core ID from MPIDR_EL1
 #[inline(always)]
 #[cfg(not(feature = "test_mocks"))]
-
 pub fn core_id() -> usize {
     let mpidr: u64;
     unsafe {
