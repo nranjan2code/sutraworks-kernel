@@ -38,7 +38,7 @@ BOOT_OBJ := $(BUILD_DIR)/boot.o
 LINKER := $(BOOT_DIR)/linker.ld
 
 # Rust flags
-RUSTFLAGS := -C target-cpu=cortex-a76 -C target-feature=-fp-armv8 -C link-arg=-T$(LINKER)
+RUSTFLAGS := -C target-feature=-fp-armv8 -C link-arg=-T$(LINKER)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # BUILD RULES
@@ -116,8 +116,8 @@ install: image
 
 # QEMU emulation (using 'virt' machine for best compatibility)
 QEMU = qemu-system-aarch64
-QEMU_FLAGS = -M virt -cpu cortex-a72 -m 2G \
-             -serial stdio -display none -semihosting \
+QEMU_FLAGS = -machine virt -cpu cortex-a72 -smp 4 -m 1G \
+             -nographic -serial mon:stdio -semihosting \
              -kernel $(KERNEL_IMG)
 
 run: LINKER := $(BOOT_DIR)/linker_qemu.ld
