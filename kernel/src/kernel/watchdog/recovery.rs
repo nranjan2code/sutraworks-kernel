@@ -96,7 +96,10 @@ pub fn execute_recovery(action: RecoveryAction) -> Result<(), &'static str> {
             Ok(())
         }
         RecoveryAction::Panic(msg) => {
-            panic!("[RECOVERY] Unrecoverable: {}", msg);
+            // UNRECOVERABLE: Halt the system safely instead of unwinding
+            crate::kprintln!("[RECOVERY] FATAL: Unrecoverable error: {}", msg);
+            crate::kprintln!("[RECOVERY] System halted.");
+            loop { crate::arch::wfi(); }
         }
     }
 }

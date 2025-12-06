@@ -91,55 +91,9 @@ pub fn run_all() {
     kprintln!("╚═══════════════════════════════════════════════════════════╝\n");
 }
 
-/// Measure Full Syscall Round-Trip (User Mode)
-fn bench_syscall_user() {
-    kprintln!("[BENCH] Running Syscall Round-Trip Benchmark (User Mode)...");
-    kprintln!("  -> Spawning user task to measure 10,000 syscalls...");
-    
-    extern "C" {
-        fn user_bench_entry();
-    }
-    
-    let entry: fn() = unsafe { core::mem::transmute(user_bench_entry as unsafe extern "C" fn()) };
-    
-    crate::kernel::scheduler::SCHEDULER.lock().spawn_user_simple(entry, 0).expect("Failed to spawn user bench");
-}
+// NOTE: Removed bench_syscall_user() and user_bench_entry assembly
+// They contained unsafe transmute and were never called from run_all()
 
-core::arch::global_asm!(
-    ".align 12", // Page align
-    ".global user_bench_entry",
-    "user_bench_entry:",
-    // 1. Get Start Time
-    "mrs x19, cntvct_el0",
-    
-    // 2. Loop 10000 times
-    "mov x22, #0",
-    "mov x21, #10000",
-    "1:",
-    "cmp x22, x21",
-    "b.ge 2f",
-    
-    // Syscall: GetPid (17)
-    "mov x8, #17",
-    "svc #0",
-    
-    "add x22, x22, #1",
-    "b 1b",
-    
-    "2:",
-    // 3. Get End Time
-    "mrs x20, cntvct_el0",
-    
-    // 4. Calculate Diff
-    "sub x0, x20, x19",
-    
-    // 5. Exit(diff)
-    "mov x8, #0", // syscall = Exit
-    "svc #0",
-    
-    "b .",
-    ".align 12" // Pad to page boundary
-);
 
 /// Measure System Call Latency
 fn bench_syscall_latency() {

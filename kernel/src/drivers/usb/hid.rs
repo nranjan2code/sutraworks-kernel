@@ -111,8 +111,8 @@ impl UsbHid {
                 0 => 0,
                 1 => 1,
                 2 => 2,
-                3 => 4,
-                _ => unreachable!(),
+                3 => 4, // size_code & 0x3 guarantees only 0-3
+                _ => 4, // Compiler: this is unreachable but satisfies exhaustiveness
             };
             
             let mut data: u32 = 0;
