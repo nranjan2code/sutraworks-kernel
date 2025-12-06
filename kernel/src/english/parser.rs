@@ -65,7 +65,7 @@ impl EnglishParser {
         }
 
         // Stage 2: Exact phrase match
-        if let Some(concept) = phrases::lookup(&normalized) {
+        if let Some(concept) = phrases::lookup_normalized(&normalized) {
             return Some(Intent {
                 concept_id: concept,
                 confidence: 1.0,
@@ -78,7 +78,7 @@ impl EnglishParser {
         // Stage 3: Synonym expansion
         let expanded = synonyms::expand(&normalized);
         if expanded != normalized {
-            if let Some(concept) = phrases::lookup(&expanded) {
+            if let Some(concept) = phrases::lookup_normalized(&expanded) {
                 return Some(Intent {
                     concept_id: concept,
                     confidence: 0.95, // Slightly lower confidence due to synonym expansion
@@ -105,134 +105,72 @@ impl EnglishParser {
 
     /// Extract keywords and match to concepts
     ///
-    /// This handles questions and natural phrases like:
-    /// - "can you show me the status?"
-    /// - "i need help with this"
-    /// - "what is happening?"
+    /// Optimized single-pass implementation:
+    /// Iterates through words once and finds the highest priority keyword match.
     fn extract_keywords(&self, input: &str) -> Option<Intent> {
         use crate::steno::dictionary::concepts;
 
-        let tokens: Vec<&str> = input.split_whitespace().collect();
+        let mut best_match: Option<(u8, ConceptID, &str, f32)> = None; // (Priority, Concept, Name, Confidence)
 
-        // Helper: Check if tokens contain a keyword
-        let contains = |keyword: &str| -> bool {
-            tokens.iter().any(|&t| t.trim_matches(|c| c == '?' || c == '!' || c == '.' || c == ',').eq_ignore_ascii_case(keyword))
-        };
+        for token in input.split_whitespace() {
+            // Clean punctuation (already mostly handled by normalize but good to be safe)
+            let word = token.trim_matches(|c| c == '?' || c == '!' || c == '.' || c == ',');
+            
+            // Match against all keywords in one go
+            // Priority 0 is highest.
+            let match_result = match word {
+                // Priority 0: HELP
+                "help" | "assist" | "guide" | "manual" | "how" => Some((0, concepts::HELP, "HELP", 0.9)),
+                
+                // Priority 1: STATUS
+                "status" | "info" | "information" | "what" | "stats" => Some((1, concepts::STATUS, "STATUS", 0.9)),
+                
+                // Priority 2: REBOOT
+                "reboot" | "restart" | "reset" | "power" => Some((2, concepts::REBOOT, "REBOOT", 0.9)),
+                
+                // Priority 3: CLEAR
+                "clear" | "clean" | "wipe" | "erase" => Some((3, concepts::CLEAR, "CLEAR", 0.9)),
+                
+                // Priority 4: SHOW
+                "show" | "display" | "view" | "see" => Some((4, concepts::SHOW, "SHOW", 0.85)),
+                
+                // Priority 5: HIDE
+                "hide" | "close" | "dismiss" | "remove" => Some((5, concepts::HIDE, "HIDE", 0.85)),
+                
+                // Priority 6: SAVE
+                "save" | "store" | "write" | "keep" => Some((6, concepts::SAVE, "SAVE", 0.85)),
+                
+                // Priority 7: SEARCH
+                "search" | "find" | "look" | "locate" => Some((7, concepts::SEARCH, "SEARCH", 0.85)),
+                
+                // Priority 8: YES
+                "yes" | "yeah" | "yep" | "ok" | "okay" | "sure" => Some((8, concepts::YES, "YES", 0.9)),
+                
+                // Priority 9: NO
+                "no" | "nope" | "nah" | "cancel" | "abort" => Some((9, concepts::NO, "NO", 0.9)),
+                
+                _ => None
+            };
 
-        let contains_any = |keywords: &[&str]| -> bool {
-            keywords.iter().any(|&kw| contains(kw))
-        };
-
-        // HELP keywords
-        if contains_any(&["help", "assist", "guide", "manual", "how"]) {
-            return Some(Intent {
-                concept_id: concepts::HELP,
-                confidence: 0.9,
-                data: IntentData::None,
-                name: "HELP",
-                ..Intent::new(concepts::HELP)
-            });
+            if let Some((prio, concept, name, conf)) = match_result {
+                // If we found a higher priority match (lower valid prio number), update
+                // Or if it's our first match
+                if best_match.map_or(true, |(best_p, _, _, _)| prio < best_p) {
+                    best_match = Some((prio, concept, name, conf));
+                    if prio == 0 { break; } // Optimization: Found highest priority, stop scanning
+                }
+            }
         }
 
-        // STATUS keywords
-        if contains_any(&["status", "info", "information", "how", "what", "stats"]) {
-            return Some(Intent {
-                concept_id: concepts::STATUS,
-                confidence: 0.9,
+        best_match.map(|(_, concept_id, name, confidence)| {
+            Intent {
+                concept_id,
+                confidence,
                 data: IntentData::None,
-                name: "STATUS",
-                ..Intent::new(concepts::STATUS)
-            });
-        }
-
-        // REBOOT keywords
-        if contains_any(&["reboot", "restart", "reset", "power"]) {
-            return Some(Intent {
-                concept_id: concepts::REBOOT,
-                confidence: 0.9,
-                data: IntentData::None,
-                name: "REBOOT",
-                ..Intent::new(concepts::REBOOT)
-            });
-        }
-
-        // CLEAR keywords
-        if contains_any(&["clear", "clean", "wipe", "erase"]) {
-            return Some(Intent {
-                concept_id: concepts::CLEAR,
-                confidence: 0.9,
-                data: IntentData::None,
-                name: "CLEAR",
-                ..Intent::new(concepts::CLEAR)
-            });
-        }
-
-        // SHOW keywords
-        if contains_any(&["show", "display", "view", "see"]) {
-            return Some(Intent {
-                concept_id: concepts::SHOW,
-                confidence: 0.85,
-                data: IntentData::None,
-                name: "SHOW",
-                ..Intent::new(concepts::SHOW)
-            });
-        }
-
-        // HIDE keywords
-        if contains_any(&["hide", "close", "dismiss", "remove"]) {
-            return Some(Intent {
-                concept_id: concepts::HIDE,
-                confidence: 0.85,
-                data: IntentData::None,
-                name: "HIDE",
-                ..Intent::new(concepts::HIDE)
-            });
-        }
-
-        // SAVE keywords
-        if contains_any(&["save", "store", "write", "keep"]) {
-            return Some(Intent {
-                concept_id: concepts::SAVE,
-                confidence: 0.85,
-                data: IntentData::None,
-                name: "SAVE",
-                ..Intent::new(concepts::SAVE)
-            });
-        }
-
-        // SEARCH keywords
-        if contains_any(&["search", "find", "look", "locate"]) {
-            return Some(Intent {
-                concept_id: concepts::SEARCH,
-                confidence: 0.85,
-                data: IntentData::None,
-                name: "SEARCH",
-                ..Intent::new(concepts::SEARCH)
-            });
-        }
-
-        // YES/NO keywords
-        if contains_any(&["yes", "yeah", "yep", "ok", "okay", "sure"]) {
-            return Some(Intent {
-                concept_id: concepts::YES,
-                confidence: 0.9,
-                data: IntentData::None,
-                name: "YES",
-                ..Intent::new(concepts::YES)
-            });
-        }
-
-        if contains_any(&["no", "nope", "nah", "cancel", "abort"]) {
-            return Some(Intent {
-                concept_id: concepts::NO,
-                confidence: 0.9,
-                data: IntentData::None,
-                name: "NO",
-                ..Intent::new(concepts::NO)
-            });
-        }
-
-        None
+                name,
+                ..Intent::new(concept_id)
+            }
+        })
     }
 
     /// Convert ConceptID to human-readable name

@@ -38,7 +38,7 @@ BOOT_OBJ := $(BUILD_DIR)/boot.o
 LINKER := $(BOOT_DIR)/linker.ld
 
 # Rust flags
-RUSTFLAGS := -C target-feature=-fp-armv8 -C link-arg=-T$(LINKER)
+RUSTFLAGS := -C target-cpu=cortex-a76 -C target-feature=-fp-armv8 -C link-arg=-T$(LINKER)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # BUILD RULES
@@ -68,7 +68,7 @@ kernel: $(BUILD_DIR) $(BOOT_OBJ)
 	@echo "║  Building Intent Kernel (Rust)                               ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
 	cd $(KERNEL_DIR) && \
-	RUSTFLAGS="-C link-arg=-T../$(LINKER) -C link-arg=../$(BOOT_OBJ)" cargo build --release --target $(TARGET)
+	RUSTFLAGS="-C target-feature=-fp-armv8 -C link-arg=-T../$(LINKER) -C link-arg=../$(BOOT_OBJ)" cargo build --release --target $(TARGET)
 	cp $(TARGET_DIR)/release/kernel $(KERNEL_ELF)
 
 # Create binary image (skip separate linking, cargo already linked)

@@ -1,3 +1,10 @@
+# [SUPERSEDED] Intent-Native Applications: Building at the Speed of Thought
+
+> [!WARNING]
+> **This design document has been superseded.**
+> Please refer to [APP_ARCHITECTURE.md](../APP_ARCHITECTURE.md) for the canonical Intent Application Framework specification.
+> This file is preserved for historical context and design rationale.
+
 # Intent-Native Applications: Building at the Speed of Thought
 
 ## The Philosophy

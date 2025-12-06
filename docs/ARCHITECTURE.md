@@ -454,8 +454,27 @@ pub struct UserAddressSpace {
 
 - **Kernel Mapping**: The kernel is mapped into every user space as **Privileged-Only (EL1)**. This allows the kernel to execute interrupt handlers and syscalls without a full TLB flush, while preventing user code from accessing kernel memory.
 - **User Mapping**: User stack and code pages are mapped as **User-Accessible (EL0)**.
-- **Context Switch**: When switching processes, the scheduler updates the `TTBR0_EL1` register to point to the new process's page table.
+- **Context Switch**: When switching processes, the scheduler updates the `TTBR0_EL1` register.
+  - **ASID Support**: Uses 16-bit Address Space IDs to tag TLB entries, avoiding expensive full TLB flushes (`vmalle1`) during switches.
 - **Stack Guards**: Every stack (Kernel & User) is backed by real VMM pages and includes an **Unmapped Guard Page** at the bottom. Stack overflows trigger a Data Abort (Page Fault) instead of silent corruption.
+
+### Memory Allocator (Hybrid Slab/Buddy)
+
+The kernel uses a high-performance, O(1) hybrid allocator:
+
+```rust
+pub struct KernelAllocator {
+    slab: SlabAllocator,   // Small objects (<4KB)
+    buddy: BuddyAllocator, // Large pages (>=4KB)
+}
+```
+
+- **Slab Allocator**: Manages fixed-size object caches (8, 16, 32... 2048 bytes).
+  - uses `leading_zeros` hardware instruction for O(1) size class lookup.
+  - No lock contention for thread-local caches (future).
+- **Buddy Allocator**: Manages physical pages in power-of-2 blocks.
+  - uses a `free_mask` bitmap for O(1) block availability checks, avoiding linear list scans.
+  - Immediate coalescing of freed blocks.
 
 ### Process Management
 
@@ -481,6 +500,10 @@ pub struct Agent {
 - **Round-Robin**: Cycles through `Ready` agents.
 - **Time Slices**: 10ms quantum enforced by ARM Generic Timer.
 - **Tick**: `scheduler::tick()` called on IRQ. Checks `Sleeping` agents and wakes them if `now >= wake_time`.
+
+### Intent Applications (New)
+For application development, the kernel supports declarative **Intent Manifests**. Apps are defined as semantic graphs rather than raw binaries.
+> See [APP_ARCHITECTURE.md](APP_ARCHITECTURE.md) for the full specification.
 
 ### System Call Interface
 

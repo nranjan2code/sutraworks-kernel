@@ -135,6 +135,8 @@ impl EntryFlags {
     // --- Access Flag (AF) ---
     /// Access Flag (must be 1 for access to be allowed without fault)
     pub const AF: Self = Self(1 << 10);
+    /// Non-Global (nG) - Entry is associated with a specific ASID
+    pub const NG: Self = Self(1 << 11);
 
     // --- Execution Permissions ---
     /// Privileged Execute Never (EL1 cannot execute)
@@ -482,12 +484,18 @@ impl VMM {
     }
 }
 
+use core::sync::atomic::{AtomicU16, Ordering};
+
+/// Global ASID allocator (start at 1, 0 is reserved/kernel)
+static NEXT_ASID: AtomicU16 = AtomicU16::new(1);
+
 /// User Address Space
 /// 
 /// Represents a process's isolated view of memory.
-/// Contains a pointer to its own Page Table (TTBR0).
+/// Contains a pointer to its own Page Table (TTBR0) and a unique ASID.
 pub struct UserAddressSpace {
     vmm: VMM,
+    asid: u16,
 }
 
 impl UserAddressSpace {
@@ -497,6 +505,7 @@ impl UserAddressSpace {
     /// This ensures the kernel can run, but the user cannot touch it.
     pub fn new() -> Option<Self> {
         let mut vmm = VMM::new()?;
+        let asid = NEXT_ASID.fetch_add(1, Ordering::Relaxed);
         
         // Map Kernel as Privileged Only (EL1)
         // We copy the mappings from the global kernel VMM? 
@@ -505,6 +514,7 @@ impl UserAddressSpace {
         
         unsafe {
             // 1. Identity map Kernel Code/Data (Normal Memory) - EL1 ONLY
+            // Kernel mappings are GLOBAL (no NG flag) so they are shared and cached globally.
             vmm.identity_map(0, 0x2_0000_0000, EntryFlags::ATTR_NORMAL | EntryFlags::AP_RW_EL1 | EntryFlags::SH_INNER)
                 .ok()?;
                 
@@ -522,17 +532,23 @@ impl UserAddressSpace {
             }
         }
         
-        Some(UserAddressSpace { vmm })
+        Some(UserAddressSpace { vmm, asid })
     }
     
     /// Get the physical address of the root table (for TTBR0)
     pub fn table_base(&self) -> u64 {
         self.vmm.root_address()
     }
+
+    /// Get the ASID for this address space
+    pub fn asid(&self) -> u16 {
+        self.asid
+    }
     
     /// Map a user memory region
     pub fn map_user(&mut self, virt: u64, phys: u64, size: usize) -> Result<(), &'static str> {
-        let flags = EntryFlags::ATTR_NORMAL | EntryFlags::AP_RW_USER | EntryFlags::SH_INNER;
+        // User mappings must be NON-GLOBAL (NG) to work with ASIDs
+        let flags = EntryFlags::ATTR_NORMAL | EntryFlags::AP_RW_USER | EntryFlags::SH_INNER | EntryFlags::NG;
         let end = virt + size as u64;
         let mut v = virt;
         let mut p = phys;
@@ -634,12 +650,21 @@ pub unsafe fn init() {
         // IPS = 001 (36-bit PA) - Pi 5 supports more but start safe
         // SH = 11 (Inner Shareable)
         // Cacheability = 01 (WB/WA)
+        // T0SZ = 16 (48-bit user space)
+        // T1SZ = 16 (48-bit kernel space)
+        // TG0 = 00 (4KB granule)
+        // TG1 = 10 (4KB granule)
+        // IPS = 001 (36-bit PA) - Pi 5 supports more but start safe
+        // SH = 11 (Inner Shareable)
+        // Cacheability = 01 (WB/WA)
+        // AS = 1 (16-bit ASID) - Bit 36
         let t0sz = (64 - 48) << 0;
         let t1sz = (64 - 48) << 16;
         let tg0 = 0 << 14; // 4KB
         let tg1 = 2 << 30; // 4KB
         let ips = 1 << 32; // 36-bit PA (64GB)
-        let flags = t0sz | t1sz | tg0 | tg1 | ips;
+        let as_bit = 1 << 36; // 16-bit ASID
+        let flags = t0sz | t1sz | tg0 | tg1 | ips | as_bit;
         crate::arch::set_tcr(flags);
         
         // 5. Set TTBR0 and TTBR1

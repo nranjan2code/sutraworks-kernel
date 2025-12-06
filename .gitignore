@@ -31,3 +31,4 @@ run_log_*.txt
 *.log
 debug_output.txt
 verification_*.txt
+benchmark_*.txt

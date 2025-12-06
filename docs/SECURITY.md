@@ -423,6 +423,8 @@ fn validated_access(cap: &Capability) {
 
 ---
 
+---
+
 ## Integration with Intent Engine
 
 The intent engine bridges natural language to capabilities:
@@ -457,6 +459,53 @@ User: "read the temperature"
          ▼
     Response: "42°C"
 ```
+
+---
+
+## Application Security (The 3-Layer Defense)
+
+To ensure that third-party "App Skills" cannot crash the system or act maliciously, we employ a 3-layer defense strategy.
+
+### Layer 1: Static Verification (The Manifest)
+Since Apps are declarative *Manifests* (`.intent`), not binaries, the kernel can read them before loading.
+*   **Structure Check**: Ensure the graph is valid (no infinite loops, no dangling references).
+*   **Intent Scanning**: If an app requests `DELETE_ROOT` or `WIPE_DISK`, the loader catches it immediately.
+
+### Layer 2: Dynamic Permission (The Semantic Linker)
+The Semantic Linker is the gatekeeper.
+*   **No Auto-Binding**: Just because an app *asks* for the `CameraSkill`, doesn't mean it gets it.
+*   **User Confirmation**: For sensitive intents, the Linker pauses and asks the user: *"FaceApp wants to use the Camera. Allow?"*
+*   **Context Awareness**: An app playing music is allowed to use Audio, but a Calculator app trying to use Audio is flagged as suspicious.
+
+### Layer 3: Runtime Isolation (WASM Sandbox)
+If an app requires custom logic (a "Skill"), that code runs in a **WebAssembly (WASM) Sandbox**.
+*   **Memory Safety**: The skill cannot access kernel memory or other apps' memory. 
+*   **Crash Containment**: If a skill panics or divides by zero, **only the sandbox dies**. The Kernel and GUI remain unaffected.
+*   **Resource Metering**: Infinite loops are killed by step-counting (gas limits).
+
+> See [APP_ARCHITECTURE.md](APP_ARCHITECTURE.md) for more on the App Model.
+
+---
+
+## Future: The Semantic Immune System (Biologically Inspired Security)
+
+Traditional security is static (Walls & Keys). The Intent Kernel moves towards a dynamic **Immune System**:
+
+### 1. Self vs. Non-Self (Anomaly Detection)
+The kernel builds a standard model of "Self" (User behavior).
+*   **Prediction**: "The user usually opens music after work."
+*   **Surprise**: "Why is the Music App requesting Camera access at 3 AM?"
+*   **Response**: High surprise scores trigger **System Fever** (heightened scrutiny).
+
+### 2. Lateral Inhibition (Suppression)
+Bad actors aren't just "blocked"; they are **actively inhibited** by the neural network.
+*   If an app behaves maliciously, the "Security Concept" activates and sends **inhibitory signals** to the app's intent handlers.
+*   This mimics how the brain suppresses errant motor signals.
+
+### 3. Homeostasis (System Health)
+The goal of security is not "Zero Access" but "System Health".
+*   The kernel monitors entropy, load, and surprise.
+*   If the system feels "sick" (high resource drain, unknown intents), it automatically constricts resources to non-essential apps (Graceful Degradation).
 
 ---
 

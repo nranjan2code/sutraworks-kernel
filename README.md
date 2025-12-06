@@ -465,6 +465,16 @@ The OS supports "Programming without Code" via **Intent Manifests**.
 - **Semantic Linking**: The kernel resolves intents to capabilities at runtime using HDC.
 - **Just-in-Time Assembly**: "I want to track calories" automatically links to the best available database and storage skills.
 
+### 2. Intent-Native Apps Framework ✨ NEW!
+> **Full Documentation**: [docs/APP_ARCHITECTURE.md](docs/APP_ARCHITECTURE.md)
+
+"Applications" in this OS are not compiled binaries—they are **Semantic Manifests**.
+*   **Manifest**: A declarative graph of storage (`.intent` file).
+*   **Semantic Linker**: A runtime that binds your intent to the best available **Skill**.
+*   **Skill**: The atomic unit of execution (WASM/Rust).
+
+See the [App Architecture Guide](docs/APP_ARCHITECTURE.md) to build your first app.
+
 ---
 
 ## Project Structure
@@ -747,9 +757,11 @@ Semantic-first kernel with multiple input paths. Everyone can use English; power
 | Document | Description |
 |----------|-------------|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design and data flow |
+| [APP_ARCHITECTURE.md](docs/APP_ARCHITECTURE.md) | **App Development Framework** |
 | [ENHANCEMENTS.md](docs/ENHANCEMENTS.md) | ✨ Recent enhancements (Hailo, SMP, Storage, Networking) |
 | [ENGLISH_LAYER.md](docs/ENGLISH_LAYER.md) | Natural language I/O system |
 | [VISUAL_INTERFACE.md](docs/VISUAL_INTERFACE.md) | Semantic Visual Interface (SVI) guide |
+| [SEMANTIC_MEDIA.md](docs/SEMANTIC_MEDIA.md) | **Media & Blob Storage Spec** |
 | [API.md](docs/API.md) | Complete API reference |
 | [ROADMAP.md](docs/ROADMAP.md) | Development phases |
 | [BUILDING.md](docs/BUILDING.md) | Build instructions |

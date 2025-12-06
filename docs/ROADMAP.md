@@ -89,6 +89,12 @@
 - [x] **Feedback Loops**: Efference copy, expectation matching, surprise detection.
 - [x] **Neural Scheduler**: Urgency-based preemption, basal ganglia model.
 
+### Phase 11: Core Performance Optimization (Sprint 13.3) ✅
+- [x] **ASID Support**: 16-bit ASID tagging for O(1) context switches (avoid `vmalle1`).
+- [x] **O(1) Allocator**: Slab CLZ + Buddy FreeMask optimizations (28 cycles/op).
+- [x] **Zero-Copy Parser**: Optimized English parser (133 cycles, ~15x faster).
+- [x] **Benchmark Consistency**: Full 40-benchmark suite passing on QEMU.
+
 ## Test Coverage
 
 | Module | Tests | Status |

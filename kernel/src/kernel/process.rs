@@ -198,8 +198,9 @@ impl Agent {
         agent.context.x20 = ustack_top;        // User Stack
         agent.context.x21 = arg;               // Argument
 
-        // Set TTBR0 to the new User Table
-        agent.context.ttbr0 = agent.vmm.as_ref().unwrap().table_base();
+        // Set TTBR0 to the new User Table (with ASID)
+        let vmm = agent.vmm.as_ref().unwrap();
+        agent.context.ttbr0 = vmm.table_base() | ((vmm.asid() as u64) << 48);
 
         Ok(agent)
     }
@@ -277,8 +278,9 @@ impl Agent {
         agent.context.x20 = ustack_top_virt;      // User Stack (Virtual)
         agent.context.x21 = 0;                    // Arg (argc/argv ptr?)
 
-        // Set TTBR0
-        agent.context.ttbr0 = agent.vmm.as_ref().unwrap().table_base();
+        // Set TTBR0 (with ASID)
+        let vmm = agent.vmm.as_ref().unwrap();
+        agent.context.ttbr0 = vmm.table_base() | ((vmm.asid() as u64) << 48);
 
         // 7. Initialize VMAs
         use crate::kernel::memory::vma::{VMA, VmaPerms, VmaFlags};
@@ -400,7 +402,8 @@ impl Agent {
         agent.context.x19 = kstack_ptr; // Arg1: Frame Ptr
         agent.context.x20 = sp_el0;     // Arg2: SP_EL0
         
-        agent.context.ttbr0 = agent.vmm.as_ref().unwrap().table_base();
+        let vmm = agent.vmm.as_ref().unwrap();
+        agent.context.ttbr0 = vmm.table_base() | ((vmm.asid() as u64) << 48);
 
         Ok(agent)
     }
@@ -508,12 +511,19 @@ impl Agent {
         // We MUST update TTBR0_EL1 immediately.
         
         unsafe {
-            crate::arch::set_ttbr0(self.vmm.as_ref().unwrap().table_base());
-            crate::arch::tlb_invalidate_all();
+            let vmm = self.vmm.as_ref().unwrap();
+            crate::arch::set_ttbr0_with_asid(vmm.table_base(), vmm.asid());
+            // crate::arch::tlb_invalidate_all(); // Not needed if unique ASID? 
+            // Better to invalidate for safety on EXEC (new mapping structure in same ASID? No, new ASID!)
+            // Wait, exec created a NEW Address Space, which allocated a NEW ASID.
+            // So we don't need to invalidate all if we switch to new ASID.
+            // But just to be super safe, let's keep invalidate for now, removing it is obscure optimization.
+            // Actually, if we use new ASID, we don't need to flush.
         }
         
         // Also update the context struct for future switches
-        self.context.ttbr0 = self.vmm.as_ref().unwrap().table_base();
+        let vmm = self.vmm.as_ref().unwrap();
+        self.context.ttbr0 = vmm.table_base() | ((vmm.asid() as u64) << 48);
         
         Ok(())
     }

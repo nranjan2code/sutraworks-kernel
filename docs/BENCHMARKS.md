@@ -10,6 +10,9 @@ make run   # Benchmarks run automatically at boot
 
 Output appears before "INTENT KERNEL READY (USER MODE)".
 
+> **Verified (Dec 2025)**: The full suite is verified to run on QEMU 7.0+ with the latest kernel patches fixing GIC address detection.
+
+
 ---
 
 ## Architecture Overview
@@ -80,11 +83,11 @@ Measures the multi-path input architecture.
 |-----------|----------|------------------|-----------|
 | Steno Stroke | `bench_steno_stroke()` | Key → Intent | Direct lookup |
 | Multi-Stroke | `bench_multi_stroke()` | Sequence buffering | Circular buffer |
-| English Parse | `bench_english_parse()` | Text → Intent | Phrase matching |
+| English Parse | `bench_english_parse()` | Text → Intent | Aho-Corasick + Zero-Copy |
 | Synonym | `bench_synonym_expand()` | Word normalization | Hash lookup |
 | Dictionary | `bench_dictionary_lookup()` | Stroke → Entry | Binary search |
 
-**Design**: Steno is the fastest path (<0.1μs), English uses phrase database (~200 entries).
+**Design**: Steno is the fastest path (<0.1μs), English uses optimized parser (~2μs).
 
 ### 5. Process & Agent (6 benchmarks)
 
@@ -94,7 +97,7 @@ Measures the semantic agent model.
 |-----------|----------|------------------|-----------|
 | Kernel Spawn | `bench_agent_spawn_kernel()` | Agent creation | Stack alloc |
 | User Spawn | `bench_agent_spawn_user()` | EL0 agent | Page table setup |
-| Context Switch | `bench_context_switch_full()` | Full context swap | yield_task() |
+| Context Switch | `bench_context_switch_full()` | Full context swap | yield (ASID optimized) |
 | Preemption | `bench_preemption_latency()` | Timer tick | uptime_ms() |
 | Fork | `bench_fork()` | Address clone | Page table walk |
 | Exec | `bench_exec()` | ELF loading | Magic check |
@@ -147,10 +150,10 @@ Measures hybrid allocator performance.
 
 | Benchmark | Function | What It Measures | Algorithm |
 |-----------|----------|------------------|-----------|
-| Slab | `bench_memory_alloc()` | 8-byte alloc | Slab cache |
-| Buddy | `bench_memory_alloc()` | 4KB alloc | Buddy system |
+| Slab | `bench_memory_alloc()` | 8-byte alloc | Slab + CLZ (O(1)) |
+| Buddy | `bench_memory_alloc()` | 4KB alloc | Buddy + FreeMask (O(1)) |
 
-**Design**: Slab for small objects (<4KB), Buddy for pages (≥4KB).
+**Design**: Hybrid O(1) allocator. Slab for small objects, Buddy for pages.
 
 ### 10. Extreme Stress Test (1 benchmark)
 

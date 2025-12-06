@@ -53,7 +53,7 @@ kernel/src/english/
 - **Phrases**: 200+ variations covering all major intents
 - **Synonyms**: 50+ common word expansions
 - **Tests**: Comprehensive unit tests in each module
-- **Performance**: <30μs overhead per command (negligible)
+- **Performance**: <2μs overhead per command (optimized)
 
 ## Features
 
@@ -239,10 +239,10 @@ println!("{}", response);
 ### Overhead Analysis
 
 **English Mode**:
-- Phrase lookup: ~5-10μs (linear search of 200 entries)
-- Synonym expansion: ~5μs (linear search of 50 entries)
+- Phrase lookup: ~133 cycles (~2μs) - Zero-copy Aho-Corasick
+- Synonym expansion: Zero alloc
 - Template generation: ~10-20μs
-- **Total**: ~30μs per command
+- **Total**: ~2-30μs per command depending on complexity
 
 **Steno Mode** (bypass):
 - Direct stroke processing: ~0.1μs

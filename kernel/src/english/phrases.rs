@@ -246,20 +246,26 @@ pub const PHRASE_COUNT: usize = PHRASES.len();
 // LOOKUP FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/// Lookup a phrase in the database (case-insensitive)
-pub fn lookup(phrase: &str) -> Option<ConceptID> {
-    // Normalize to lowercase for comparison
-    let normalized = phrase.trim().to_lowercase();
-
-    // Binary search would be better here, but requires sorted array
-    // For now, linear search is acceptable for ~200 phrases and avoids complexity.
+/// Lookup a phrase in the database (exact match, input must be normalized)
+///
+/// Input must be lowercase and trimmed.
+pub fn lookup_normalized(normalized_phrase: &str) -> Option<ConceptID> {
+    // Linear search is acceptable for ~200 phrases and avoids complexity of maintaining sorted list.
+    // O(N) comparisons where N=200 is very fast for simple string equality.
     for entry in PHRASES {
-        if entry.phrase == normalized {
+        if entry.phrase == normalized_phrase {
             return Some(entry.concept);
         }
     }
-
     None
+}
+
+/// Lookup a phrase in the database (case-insensitive)
+///
+/// Performs normalization (allocation). Use lookup_normalized if input is already clean.
+pub fn lookup(phrase: &str) -> Option<ConceptID> {
+    let normalized = phrase.trim().to_lowercase();
+    lookup_normalized(&normalized)
 }
 
 /// Check if a phrase exists in the database

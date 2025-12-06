@@ -41,15 +41,15 @@ pub fn uart_base() -> usize {
 
 pub fn gicd_base() -> usize {
     match dtb::machine_type() {
-        MachineType::QemuVirt => 0x0800_0000,
-        _ => 0x1_0004_0000 + 0x1000, // Pi 5 GICD
+        MachineType::RaspberryPi5 => 0x1_0004_0000 + 0x1000,
+        _ => 0x0800_0000, // QemuVirt or Unknown (Default to QEMU)
     }
 }
 
 pub fn gicc_base() -> usize {
     match dtb::machine_type() {
-        MachineType::QemuVirt => 0x0801_0000,
-        _ => 0x1_0004_0000 + 0x2000, // Pi 5 GICC
+        MachineType::RaspberryPi5 => 0x1_0004_0000 + 0x2000,
+        _ => 0x0801_0000, // QemuVirt or Unknown (Default to QEMU)
     }
 }
 

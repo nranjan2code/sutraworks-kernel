@@ -128,6 +128,8 @@ pub struct BuddyAllocator {
     base: usize,
     // Total size
     size: usize,
+    // Bitmap of free orders (bit N set if order N has free blocks)
+    free_mask: u32,
     // Statistics
     allocated: AtomicUsize,
     total_allocations: AtomicUsize,
@@ -145,6 +147,7 @@ impl BuddyAllocator {
             free_lists: [None; MAX_ORDER + 1],
             base: 0,
             size: 0,
+            free_mask: 0,
             allocated: AtomicUsize::new(0),
             total_allocations: AtomicUsize::new(0),
         }
@@ -159,6 +162,7 @@ impl BuddyAllocator {
         for i in 0..=MAX_ORDER {
             self.free_lists[i] = None;
         }
+        self.free_mask = 0;
         
         // Add entire region as free blocks
         let mut addr = base;
@@ -212,12 +216,16 @@ impl BuddyAllocator {
         let node = addr as *mut FreeNode;
         (*node).next = self.free_lists[order];
         self.free_lists[order] = NonNull::new(node);
+        self.free_mask |= 1 << order;
     }
     
     /// Remove a block from free list
     unsafe fn remove_from_free_list(&mut self, order: usize) -> Option<usize> {
         let node = self.free_lists[order]?;
         self.free_lists[order] = (*node.as_ptr()).next;
+        if self.free_lists[order].is_none() {
+            self.free_mask &= !(1 << order);
+        }
         Some(node.as_ptr() as usize)
     }
     
@@ -231,14 +239,18 @@ impl BuddyAllocator {
         // crate::kprintln!("[MEM] Buddy Allocate: {}", size);
         let order = self.order_for_size(size);
         
-        // Find a free block (may need to split larger blocks)
-        let mut current_order = order;
-        while current_order <= MAX_ORDER {
-            if self.free_lists[current_order].is_some() {
-                break;
-            }
-            current_order += 1;
+        // Find a free block using bitmap (O(1))
+        // Mask out orders smaller than requested
+        let search_mask = self.free_mask & !((1 << order) - 1);
+        
+        if search_mask == 0 {
+            // No block found
+            crate::kprintln!("[MEM] Buddy OOM");
+            return None;
         }
+        
+        // Find smallest available order (trailing zeros)
+        let mut current_order = search_mask.trailing_zeros() as usize;
         
         if current_order > MAX_ORDER {
             crate::kprintln!("[MEM] Buddy OOM");
@@ -361,14 +373,29 @@ impl Default for SlabCache {
 
 impl SlabCache {
     
-    /// Get slab index for size
+    /// Get slab index for size (Optimized O(1))
     fn slab_index(&self, size: usize) -> Option<usize> {
-        for (i, &slab_size) in SLAB_SIZES.iter().enumerate() {
-            if size <= slab_size {
-                return Some(i);
-            }
-        }
-        None
+        if size > 2048 { return None; }
+        
+        // Ensure size is at least minimum (16)
+        let sz = size.max(16);
+        
+        // Calculate log2(ceil(sz))
+        // (sz - 1).leading_zeros() gives LZ count.
+        // 64 - LZ = bits required to represent sz-1.
+        // Example: 16 -> 15 (0...01111) -> LZ=60. 64-60=4.
+        // Example: 17 -> 16 (0...10000) -> LZ=59. 64-59=5.
+        // Index mapping:
+        // 16 (2^4) -> index 0. (4 - 4 = 0)
+        // 32 (2^5) -> index 1. (5 - 4 = 1)
+        // Formula: (64 - (sz - 1).leading_zeros()) - 4
+        
+        let lz = (sz - 1).leading_zeros();
+        debug_assert!(lz <= 60); // min size 16 means max (15) has 60 leading zeros
+        let power = 64 - lz;
+        let index = (power - 4) as usize;
+        
+        Some(index)
     }
     
     /// Get total allocated bytes

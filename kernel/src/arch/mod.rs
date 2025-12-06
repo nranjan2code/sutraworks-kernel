@@ -425,9 +425,21 @@ pub unsafe fn set_ttbr0(value: u64) {
     core::arch::asm!("msr ttbr0_el1, {}", in(reg) value, options(nostack));
 }
 
+/// Set TTBR0 with ASID
+#[inline]
+#[cfg(not(feature = "test_mocks"))]
+pub unsafe fn set_ttbr0_with_asid(base: u64, asid: u16) {
+    let val = base | ((asid as u64) << 48);
+    core::arch::asm!("msr ttbr0_el1, {}", in(reg) val, options(nostack));
+}
+
 #[inline]
 #[cfg(feature = "test_mocks")]
 pub unsafe fn set_ttbr0(_value: u64) {}
+
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn set_ttbr0_with_asid(_base: u64, _asid: u16) {}
 
 /// Set Translation Table Base Register 1 (TTBR1_EL1)
 #[inline]
@@ -520,7 +532,7 @@ core::arch::global_asm!(
     // Restore TTBR0
     "ldr x9, [x1, #104]",
     "msr ttbr0_el1, x9",
-    "tlbi vmalle1",
+    // "tlbi vmalle1", // Optimization: Don't flush TLB on switch (ASID handles it)
     "dsb nsh",
     "isb",
 
