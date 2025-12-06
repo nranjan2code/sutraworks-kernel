@@ -496,8 +496,8 @@ kernel/src/intent/
 ### The Cost of Cognition
 
 Implementing biological realism comes with a computational cost. Our benchmarks reveal a **~100x latency gap** between raw intent dispatch and full neural processing:
-- **Reflex (Dispatch)**: ~40 cycles (Spinal cord speed)
-- **Thought (Neural)**: ~5,700 cycles (Cortical speed)
+- **Reflex (Dispatch)**: ~54 cycles (Spinal cord speed)
+- **Thought (Neural)**: ~5,989 cycles (Cortical speed)
 
 This is a **feature**, not a bug. It means the system can handle high-frequency inputs (steno typing at 300 WPM) without getting bogged down by deep thought, while still applying complex logic (inhibition, prediction) when necessary. We trade cycles for intelligence, but only where it matters.
 

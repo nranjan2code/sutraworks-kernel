@@ -204,24 +204,24 @@ Measures the biologically-inspired neural primitives.
 
 ---
 
-## Typical Results (Verified December 2025)
+## Typical Results (Verified December 6, 2025)
 
 | Category | Key Metric | Typical |
 |----------|------------|---------|
 | Intent Handler | Match time | 0 cycles |
-| Concept Lookup | Hash (FNV-1a) | 2 cycles |
-| Neural Alloc | Semantic block | 230 cycles |
-| Neural Decay | 1000 concepts | 13,218 cycles |
-| Neural Prop | 5 layers | 244 cycles |
-| Steno Stroke | Input→Intent | 43 cycles |
-| English Parse | Text→Intent | 208 cycles |
-| Context Switch | Full swap | 420 cycles |
+| Concept Lookup | Hash (FNV-1a) | 1 cycle |
+| Neural Alloc | Semantic block | 142 cycles |
+| Neural Decay | 1000 concepts | 15 cycles |
+| Neural Prop | 5 layers | 157 cycles |
+| Steno Stroke | Input→Intent | 54 cycles |
+| English Parse | Text→Intent | 139 cycles |
+| Context Switch | Full swap | 474 cycles |
 | SpinLock | Uncontended | 19 cycles |
-| IPI Send | Cross-core | 103 cycles |
-| Timer Jitter | Max deviation | 188 cycles |
-| TCP Checksum | 64 bytes | 9 cycles |
-| Slab Alloc | 8 bytes | 29 cycles |
-| Buddy Alloc | 4KB | 42 cycles |
+| IPI Send | Cross-core | 106 cycles |
+| Timer Jitter | Max deviation | 125 cycles |
+| TCP Checksum | 64 bytes | 8 cycles |
+| Slab Alloc | 8 bytes | 28 cycles |
+| Buddy Alloc | 4KB | 43 cycles |
 | Stress Test | 180k ops | 29 cycles/op |
 
 ---
@@ -244,11 +244,11 @@ A human eye blink takes ~100 milliseconds. Most Intent Kernel operations complet
 | Benchmark | What It Actually Tests | Why It Matters |
 |-----------|----------------------|----------------|
 | **Handler dispatch: 0 cycles** | Processing a command is instant | No waiting when you press a key |
-| **Neural Propagation: 244 cycles** | 5 layers of "thought" in ~0.1μs | Real-time biological cognition |
-| **Steno stroke: 43 cycles** | Key press → action in ~17 ns | 6 million commands per second possible |
-| **English parse: 208 cycles** | "Show status" → action in ~83 ns | Natural language with negligible overhead |
-| **Context switch: 420 cycles** | Switching between programs in ~168 ns | Seamless multitasking |
-| **Memory alloc: 29 cycles** | Getting memory in ~12 ns | Instant app response |
+| **Neural Propagation: 157 cycles** | 5 layers of "thought" in ~0.1μs | Real-time biological cognition |
+| **Steno stroke: 54 cycles** | Key press → action in ~22 ns | 4.5 million commands per second possible |
+| **English parse: 139 cycles** | "Show status" → action in ~56 ns | Natural language with negligible overhead |
+| **Context switch: 474 cycles** | Switching between programs in ~190 ns | Seamless multitasking |
+| **Memory alloc: 28 cycles** | Getting memory in ~11 ns | Instant app response |
 | **180k ops @ 29 cycles** | Stress test: ~3 million ops/second | Can handle extreme workloads |
 
 ### Bottom Line
@@ -263,8 +263,8 @@ One of the most striking results from the benchmark suite is the **~100x latency
 
 | System | Benchmark | Cycles | Time | System Analogy |
 |--------|-----------|--------|------|----------------|
-| **Reflex (System 1)** | Steno Stroke | **43** | ~17 ns | Spinal Cord (Hot Stove) |
-| **Cognition (System 2)** | Neural Selection | **5,775** | ~2.3 μs | Frontal Cortex (Decision) |
+| **Reflex (System 1)** | Steno Stroke | **54** | ~22 ns | Spinal Cord (Hot Stove) |
+| **Cognition (System 2)** | Neural Selection | **5,989** | ~2.4 μs | Frontal Cortex (Decision) |
 
 ### Why the Gap?
 

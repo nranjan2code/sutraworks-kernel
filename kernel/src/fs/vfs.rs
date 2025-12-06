@@ -154,7 +154,7 @@ impl ProcessFileTable {
         }
         
         // Clone the FD (Arc increment)
-        let fd_struct = self.fds[oldfd].as_ref().unwrap().clone();
+        let fd_struct = self.fds[oldfd].as_ref().expect("oldfd validated above").clone();
         self.fds[newfd] = Some(fd_struct);
         
         Ok(newfd)

@@ -356,8 +356,9 @@ fn bench_allocator_performance() {
         let mut v = Vec::with_capacity(100);
         v.push(1u64);
         // allocation happens here
-        core::hint::black_box(v);
+        core::hint::black_box(&v);
         // deallocation happens here
+        drop(v);
     }
     
     let end = profiling::rdtsc();
@@ -449,7 +450,8 @@ fn bench_extreme_allocator_stress() {
         for j in 0..10 {
             v.push(j);
         }
-        core::hint::black_box(v);
+        core::hint::black_box(&v);  // Pass reference to prevent optimization but allow drop
+        drop(v);  // Explicitly drop to ensure deallocation
     }
     
     let end_vec = profiling::rdtsc();
@@ -649,6 +651,9 @@ fn bench_neural_alloc() {
     let avg_cycles = total_cycles / iterations;
     
     kprintln!("  -> Avg Neural Alloc: {} cycles", avg_cycles);
+    
+    // Cleanup: Free BTreeMap memory for subsequent tests
+    NEURAL_ALLOCATOR.lock().clear();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -948,6 +953,9 @@ fn bench_perceive_and_store() {
     let avg_cycles = end.wrapping_sub(start) / iterations;
     
     kprintln!("  -> Avg Perceive+Store: {} cycles", avg_cycles);
+    
+    // Cleanup: Free BTreeMap memory for subsequent tests
+    NEURAL_ALLOCATOR.lock().clear();
 }
 
 

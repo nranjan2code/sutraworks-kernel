@@ -199,7 +199,7 @@ impl Agent {
         agent.context.x21 = arg;               // Argument
 
         // Set TTBR0 to the new User Table (with ASID)
-        let vmm = agent.vmm.as_ref().unwrap();
+        let vmm = agent.vmm.as_ref().expect("VMM must exist for user process");
         agent.context.ttbr0 = vmm.table_base() | ((vmm.asid() as u64) << 48);
 
         Ok(agent)
@@ -279,7 +279,7 @@ impl Agent {
         agent.context.x21 = 0;                    // Arg (argc/argv ptr?)
 
         // Set TTBR0 (with ASID)
-        let vmm = agent.vmm.as_ref().unwrap();
+        let vmm = agent.vmm.as_ref().expect("VMM must exist for ELF process");
         agent.context.ttbr0 = vmm.table_base() | ((vmm.asid() as u64) << 48);
 
         // 7. Initialize VMAs
@@ -323,7 +323,7 @@ impl Agent {
             let mut virt = vma.start;
             while virt < vma.end {
                 // Get physical address of current page
-                if let Some(old_phys) = self.vmm.as_ref().unwrap().translate(virt) {
+                if let Some(old_phys) = self.vmm.as_ref().expect("VMM required for fork").translate(virt) {
                     // Allocate new page
                     let new_page = unsafe { crate::kernel::memory::alloc_pages(1) }.ok_or("Out of memory for fork")?;
                     let new_phys = new_page.as_ptr() as u64;
@@ -402,7 +402,7 @@ impl Agent {
         agent.context.x19 = kstack_ptr; // Arg1: Frame Ptr
         agent.context.x20 = sp_el0;     // Arg2: SP_EL0
         
-        let vmm = agent.vmm.as_ref().unwrap();
+        let vmm = agent.vmm.as_ref().expect("VMM required for fork child");
         agent.context.ttbr0 = vmm.table_base() | ((vmm.asid() as u64) << 48);
 
         Ok(agent)
@@ -511,7 +511,7 @@ impl Agent {
         // We MUST update TTBR0_EL1 immediately.
         
         unsafe {
-            let vmm = self.vmm.as_ref().unwrap();
+            let vmm = self.vmm.as_ref().expect("VMM must exist for exec");
             crate::arch::set_ttbr0_with_asid(vmm.table_base(), vmm.asid());
             // crate::arch::tlb_invalidate_all(); // Not needed if unique ASID? 
             // Better to invalidate for safety on EXEC (new mapping structure in same ASID? No, new ASID!)
@@ -522,7 +522,7 @@ impl Agent {
         }
         
         // Also update the context struct for future switches
-        let vmm = self.vmm.as_ref().unwrap();
+        let vmm = self.vmm.as_ref().expect("VMM must exist after exec");
         self.context.ttbr0 = vmm.table_base() | ((vmm.asid() as u64) << 48);
         
         Ok(())

@@ -117,6 +117,24 @@ impl NeuralAllocator {
             blocks: BTreeMap::new(),
         }
     }
+    
+    /// Clear/reset the allocator to free memory
+    /// 
+    /// This clears the BTreeMap indexes to release heap memory.
+    /// Note: The pages themselves are NOT freed (no deallocation mechanism yet).
+    /// The pages will be reused for new allocations.
+    pub fn clear(&mut self) {
+        self.index.clear();
+        self.blocks.clear();
+        self.total_items = 0;
+        // Reset page pointers to reuse from beginning
+        self.current_page = self.head_page;
+        if let Some(mut page) = self.current_page {
+            unsafe {
+                (*page.as_mut()).used = 0;
+            }
+        }
+    }
 
     /// Allocate memory with a concept ID tag
     pub unsafe fn alloc(&mut self, size: usize, concept_id: ConceptID) -> Option<IntentPtr> {
@@ -130,7 +148,7 @@ impl NeuralAllocator {
             self.grow_heap()?;
         }
         
-        let page_ptr = self.current_page.unwrap();
+        let page_ptr = self.current_page.expect("grow_heap ensures current_page");
         let page = page_ptr.as_ptr();
         
         // Calculate placement

@@ -738,7 +738,8 @@ pub unsafe fn alloc_pages(count: usize) -> Option<NonNull<u8>> {
     }
     #[cfg(not(feature = "test_mocks"))]
     {
-        crate::kprintln!("[MEM] Alloc Pages: {}", count);
+        // Verbose logging removed - was printing on every page allocation
+        // which added significant overhead during high-allocation scenarios
         let mut inner = GLOBAL.inner.lock();
         inner.buddy.allocate(count * PAGE_SIZE)
     }

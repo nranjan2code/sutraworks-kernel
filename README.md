@@ -643,16 +643,16 @@ The Intent Kernel includes a **40-benchmark suite** across 11 categories, tailor
 
 | Category | Benchmarks | Key Metrics |
 |----------|------------|-------------|
-| Intent Engine | 5 | Handler match: 0 cycles, Hash: 2 cycles, Security: 1 cycle |
-| **Neural** | 3 | Decay: 13k cycles, Propagate: 244 cycles, Select: 5.7k cycles |
-| Semantic Memory | 1 | Neural Alloc: 230 cycles, Retrieval: O(log N) |
-| Perception | 2 | Sensor fusion: 0 cycles, Perceive+Store: 125 cycles |
-| Multi-Modal | 5 | Steno: 43 cycles, English: 208 cycles |
-| Process/Agent | 6 | Context switch: 420 cycles, Preemption: 17 cycles |
-| Lock/Sync | 5 | SpinLock: 19 cycles, IPI: 103 cycles |
-| Interrupt | 4 | Timer jitter: 188 max cycles |
-| I/O/Network | 4 | TCP checksum: 9 cycles, UART: 0 cycles |
-| Memory | 2 | Slab: 29 cycles, Buddy: 42 cycles |
+| Intent Engine | 5 | Handler match: 0 cycles, Hash: 1 cycle, Security: 0 cycles |
+| **Neural** | 3 | Decay: 15 cycles, Propagate: 157 cycles, Select: 5.9k cycles |
+| Semantic Memory | 1 | Neural Alloc: 142 cycles, Retrieval: O(log N) |
+| Perception | 2 | Sensor fusion: 0 cycles, Perceive+Store: 73 cycles |
+| Multi-Modal | 5 | Steno: 54 cycles, English: 139 cycles |
+| Process/Agent | 6 | Context switch: 474 cycles, Preemption: 14 cycles |
+| Lock/Sync | 5 | SpinLock: 19 cycles, IPI: 106 cycles |
+| Interrupt | 4 | Timer jitter: 125 max cycles |
+| I/O/Network | 4 | TCP checksum: 8 cycles, UART: 0 cycles |
+| Memory | 2 | Slab: 28 cycles, Buddy: 43 cycles |
 | Stress Test | 1 | **180k ops @ 29 cycles avg** |
 
 ### Extreme Stress Test Results (Verified December 2025) 🚀
@@ -663,21 +663,21 @@ Comprehensive allocator validation with **180,000 operations**:
 |------|-----------|-----------|------------|--------|
 | Small Allocations (8B) | 100,000 | 28 | **2.2M ops/sec** | ✅ |
 | Vec Operations (100 elem) | 50,000 | 30 | 2.1M ops/sec | ✅ |
-| Page Allocations (4KB) | 10,000 | 31 | 2.0M ops/sec | ✅ |
-| Mixed Workload (8B-4KB) | 20,000 | 31 | 2.0M ops/sec | ✅ |
+| Page Allocations (4KB) | 10,000 | 36 | 1.7M ops/sec | ✅ |
+| Mixed Workload (8B-4KB) | 20,000 | 33 | 1.9M ops/sec | ✅ |
 | **Total** | **180,000** | **29** | **~3M ops/sec** | ✅ |
 
-> **Biological Performance Profile**: The benchmark results reveal a deliberate ~100x gap between **Reflex** (steno input, 43 cycles) and **Cognition** (neural selection, 5,775 cycles). This mimics the biological distinction between spinal reflexes and cortical decision-making, ensuring the kernel is fast where it needs to be and smart where it has to be.
+> **Biological Performance Profile**: The benchmark results reveal a deliberate ~100x gap between **Reflex** (steno input, 54 cycles) and **Cognition** (neural selection, 5,989 cycles). This mimics the biological distinction between spinal reflexes and cortical decision-making, ensuring the kernel is fast where it needs to be and smart where it has to be.
 
 ### Standard Benchmarks
 
 | Benchmark | Result | Target | Status |
 |-----------|--------|--------|--------|
-| **Context Switch** | 420 cycles | <500 | ✅ 16% under |
+| **Context Switch** | 474 cycles | <500 | ✅ 5% under |
 | **Syscall Dispatch** | 0 cycles | <50 | ✅ Optimal |
-| **Memory Alloc (Slab)** | 29 cycles | <100 | ✅ 71% under |
-| **Memory Alloc (Buddy)** | 42 cycles | <100 | ✅ 58% under |
-| **Intent Security** | 1 cycles | <50 | ✅ 98% under |
+| **Memory Alloc (Slab)** | 28 cycles | <100 | ✅ 72% under |
+| **Memory Alloc (Buddy)** | 43 cycles | <100 | ✅ 57% under |
+| **Intent Security** | 0 cycles | <50 | ✅ 100% under |
 | **SpinLock** | 19 cycles | <50 | ✅ 62% under |
 
 ---

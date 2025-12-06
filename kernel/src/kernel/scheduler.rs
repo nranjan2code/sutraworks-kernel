@@ -225,10 +225,10 @@ impl IntentScheduler {
             
             // 1. Move Next to Front
             // Remove 'next' from its current position
-            let mut next = self.agents.remove(index).unwrap();
+            let mut next = self.agents.remove(index).expect("remove at valid index");
             
             // 2. Move Current (Prev) to Back
-            let prev = self.agents.pop_front().unwrap();
+            let prev = self.agents.pop_front().expect("queue non-empty");
             
             // Update stats
             let now = crate::profiling::rdtsc();
@@ -269,7 +269,7 @@ impl IntentScheduler {
             // Update atomic PID for lock tracking
             let core_id = crate::arch::core_id();
             if core_id < 4 {
-                CURRENT_PIDS[core_id as usize].store(next.id.0.try_into().unwrap(), Ordering::Relaxed);
+                CURRENT_PIDS[core_id as usize].store(next.id.0.try_into().unwrap_or(0), Ordering::Relaxed);
             }
             
             // Push Prev to Back
@@ -279,10 +279,10 @@ impl IntentScheduler {
             self.agents.push_front(next);
             
             // 3. Get pointers
-            let next_agent = self.agents.front().unwrap();
+            let next_agent = self.agents.front().expect("next exists after push");
             let next_ctx = &next_agent.context as *const Context;
             
-            let prev_agent = self.agents.back_mut().unwrap();
+            let prev_agent = self.agents.back_mut().expect("prev exists after push");
             let prev_ctx = &mut prev_agent.context as *mut Context;
             
             crate::profiling::PROFILER.context_switches.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
@@ -291,7 +291,7 @@ impl IntentScheduler {
         
         // No other task is Ready.
         // Check if current task can continue.
-        let current = self.agents.front().unwrap();
+        let current = self.agents.front().expect("checked non-empty above");
         if current.state == AgentState::Running || current.state == AgentState::Ready {
              // Continue running current
              return None;

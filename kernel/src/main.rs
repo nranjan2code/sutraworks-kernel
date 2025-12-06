@@ -197,6 +197,9 @@ pub extern "C" fn kernel_main() -> ! {
         
         let mut neura = NEURAL_ALLOCATOR.lock(); // Lock once for the loop
         
+        // Clear previous allocations from benchmarks to free heap memory
+        neura.clear();
+        
         for i in 0..count {
             let id = ConceptID::new((i as u64) | 0xCAFE_0000);
             
@@ -220,15 +223,16 @@ pub extern "C" fn kernel_main() -> ! {
         crate::kprintln!("       ════════════════════════════════════════════");
 
         // 6. Verify Retrieval (Correctness)
-        crate::kprintln!("       Query Test: Retrieving Concept 50,000...");
-        let target_id = ConceptID::new(50_000 | 0xCAFE_0000);
+        crate::kprintln!("       Index contains {} entries", neura.count());
+        let target_id = ConceptID::new(50_000u64 | 0xCAFE_0000u64);
+        crate::kprintln!("       Query Test: Retrieving Concept {:#x}...", target_id.0);
         
         let q_start = profiling::rdtsc();
         if let Some(ptr) = neura.retrieve(target_id) {
              let q_end = profiling::rdtsc();
              crate::kprintln!("       Found: Concept {:#x} in {} cycles (O(log N))", ptr.id.0, q_end.wrapping_sub(q_start));
         } else {
-             crate::kprintln!("       ❌ Failed to retrieve concept!",);
+             crate::kprintln!("       ❌ Failed to retrieve concept!");
         }
     }
 
@@ -305,7 +309,6 @@ pub extern "C" fn kernel_main() -> ! {
     // ═══════════════════════════════════════════════════════════════════════════════
     // SYSCALL TEST
     // ═══════════════════════════════════════════════════════════════════════════════
-    kprintln!("\n[KERNEL] Spawning Syscall Test Task...");
     kprintln!("\n[KERNEL] Spawning Syscall Test Task...");
     let _ = crate::kernel::scheduler::SCHEDULER.lock().spawn_simple(syscall_test_task);
     

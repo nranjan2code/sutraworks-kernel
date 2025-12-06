@@ -421,7 +421,7 @@ impl HailoDriver {
             return Err("Hailo-8 not found on PCIe bus");
         }
 
-        let dev = self.device.unwrap();
+        let dev = self.device.expect("device assigned above in init");
 
         // 2. Enable Bus Mastering
         pcie::enable_master(&dev);

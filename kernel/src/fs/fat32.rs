@@ -138,7 +138,7 @@ impl Fat32FileSystem {
         let mut buf = [0u8; 512];
         self.device.read_sector(fat_sector, &mut buf)?;
         
-        let entry = u32::from_le_bytes(buf[ent_offset..ent_offset+4].try_into().unwrap()) & 0x0FFFFFFF;
+        let entry = u32::from_le_bytes(buf[ent_offset..ent_offset+4].try_into().expect("4-byte slice is valid")) & 0x0FFFFFFF;
         
         if entry >= 0x0FFFFFF8 {
             Ok(None) // End of Chain

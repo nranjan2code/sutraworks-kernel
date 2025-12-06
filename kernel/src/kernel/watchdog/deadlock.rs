@@ -123,13 +123,13 @@ impl WaitGraph {
                 if !indices.contains_key(&w) {
                     // Successor w has not yet been visited; recurse on it
                     self.strongconnect(w, index, stack, indices, lowlinks, on_stack, sccs);
-                    let low_v = *lowlinks.get(&v).unwrap();
-                    let low_w = *lowlinks.get(&w).unwrap();
+                    let low_v = *lowlinks.get(&v).expect("v was inserted above");
+                    let low_w = *lowlinks.get(&w).expect("w visited in recurse");
                     lowlinks.insert(v, low_v.min(low_w));
                 } else if *on_stack.get(&w).unwrap_or(&false) {
                     // Successor w is in stack S and hence in the current SCC
-                    let low_v = *lowlinks.get(&v).unwrap();
-                    let index_w = *indices.get(&w).unwrap();
+                    let low_v = *lowlinks.get(&v).expect("v inserted above");
+                    let index_w = *indices.get(&w).expect("w on stack so indexed");
                     lowlinks.insert(v, low_v.min(index_w));
                 }
             }
@@ -139,7 +139,7 @@ impl WaitGraph {
         if lowlinks.get(&v) == indices.get(&v) {
             let mut scc = Vec::new();
             loop {
-                let w = stack.pop().unwrap();
+                let w = stack.pop().expect("loop guards non-empty");
                 on_stack.insert(w, false);
                 scc.push(w);
                 if w == v {
