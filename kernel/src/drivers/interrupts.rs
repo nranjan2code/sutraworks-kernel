@@ -151,10 +151,11 @@ impl Gic {
             i += 32;
         }
         
-        // Set all interrupts to lowest priority (0xFF)
+        // Set all interrupts to default priority (0x80 = Medium)
+        // Note: Priority must be < PMR (0xFF) to be signaled
         i = 0;
         while i < num_irqs {
-            self.gicd_write(GICD_IPRIORITYR + i as usize, 0xFFFFFFFF);
+            self.gicd_write(GICD_IPRIORITYR + i as usize, 0x80808080);
             i += 4;
         }
         

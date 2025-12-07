@@ -32,6 +32,7 @@ pub mod profiling;
 #[cfg(not(test))]
 pub mod benchmarks;
 pub mod dtb;
+pub mod apps;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TESTING FRAMEWORK

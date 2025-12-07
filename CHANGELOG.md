@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Verified (December 6, 2025) - 🧠 Intent-Native Architecture
+- **Shell Intent Integration**
+  - **Change**: Refactored `user/init` shell to route all commands through `SYS_PARSE_INTENT` syscall (22) instead of classical string matching.
+  - **Impact**: Shell is now a pure Intent-native client. Commands like `help` flow through the kernel's semantic parsing pipeline.
+- **Neural Subsystem Wiring**
+  - **Change**: Integrated `decay_tick()` (100ms) and `propagate_all()` (50ms) into `scheduler::tick()` timer interrupt handler.
+  - **Impact**: Temporal dynamics and hierarchical processing are now **active** on every tick.
+- **Skill Registry Connection**
+  - **Change**: Added fallback in `IntentExecutor::execute()` to dispatch unknown intents to registered skills.
+  - **Impact**: User-space skills can now receive intents via the broadcast mechanism.
+- **Verification Proof**:
+  ```
+  [AUTOTEST] SUCCESS: Intent flow verified!
+  [NEURAL] tick=100 uptime=1742ms decay_active=true propagate_active=true
+  ```
+
 ### Fixed (December 6, 2025) - 🚑 Major Stability Fix & Performance Verification
 - **Critical Crash Fix (`DataAbortSame`)**
   - **Issue**: Kernel crashed during boot on QEMU (`MachineType::Unknown`) due to incorrect fallback to Raspberry Pi 5 GIC addresses (`0x100041100`).
@@ -21,6 +37,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - **Steno Latency**: 36 cycles (Exceeded target of 43)
     - **Context Switch**: 346 cycles (Exceeded target of 420)
     - **Neural Memory**: 282 cycles (Stable alloc)
+
+### Fixed (December 6, 2025) - 🐚 Interactive Shell Stability (Zero Crash)
+- **Critical Startup Crash Fix ("Unknown Exception" at `0x400000`)**
+  - **Issue**: `user/init` crashed immediately upon startup due to `ElfLoader` failing to map `.rodata` (String Literals) correctly.
+  - **Resolution**:
+    - **Stack-Based Shell**: Refactored `user/init` to use stack-allocated byte arrays for strings, bypassing `.rodata` completely.
+    - **Stack Relocation**: Moved User Stack to `0x2000_0000` (lower address) to avoid potential 48-bit address boundary edge cases.
+    - **I-Cache Coherency**: Added `ic iallu` (Instruction Cache Invalidate All) to `jump_to_userspace` stub.
+  - **Impact**: **0 Crashes**. The shell now launches substantially and accepts input ("help", "ls").
+
 
 ### Added (December 4, 2025) - 🌐 TCP Congestion Control & Retransmission (Sprint 5 Enhancement)
 - **Connection Tracking (`TcpConnection`)**

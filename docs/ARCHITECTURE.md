@@ -4,12 +4,19 @@
 
 Intent Kernel is a **Perceptual Computing Platform**—a bare-metal operating system where **all inputs are processed as semantic concepts**. Whether from steno machines, standard keyboards, or AI sensors, every input becomes a ConceptID that triggers immediate execution.
 
+> [!IMPORTANT]
+> **CORE INVARIANT: NO HYBRID IMPLEMENTATIONS**
+> The Intent Kernel architecture strictly forbids "hybrid" command handling.
+> *   **All User Inputs** must pass through the Intent System (Parser -> ConceptID -> Executor).
+> *   **User Space Components** (shell, CLI) must act as "Dumb Forwarders", sending raw input to the kernel via `SYS_PARSE_INTENT`.
+> *   **Imperative Logic** (e.g., `if user_input == "ls"`) in user-space input loops is an architectural violation.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                        USER INPUT (Multiple Modes)                       │
 │                                                                          │
-│  Steno Machine (USB HID) ────▶ Direct Strokes (fastest: <0.1μs)        │
-│  Standard Keyboard       ────▶ Natural English (~30μs)                 │
+│  Steno Machine (USB HID) ────▶ Kernel Steno Loop (fastest: <0.1μs)     │
+│  Standard Keyboard       ────▶ Kernel Console (~30μs)                  │
 │  Vision (Hailo-8 NPU)    ────▶ Object Detection → ConceptID              │
 │  Audio                   ────▶ Classification → ConceptID                │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -61,6 +68,8 @@ The Intent Kernel uses a **biologically-inspired neural architecture** for inten
 | **Hierarchical Processing** | Raw → Feature → Object → Semantic → Action |
 | **Predictive Processing** | Predict outcomes, detect surprise |
 | **Basal Ganglia Model** | Urgency-based action selection |
+
+> **Status (Dec 2025)**: ✅ **Verified Active** — `decay_tick()` and `propagate_all()` are wired to the scheduler timer and confirmed running via QEMU test output.
 
 For complete details, see [NEURAL_ARCHITECTURE.md](NEURAL_ARCHITECTURE.md).
 
@@ -452,11 +461,24 @@ pub struct UserAddressSpace {
 }
 ```
 
+#### `kernel/src/net/mod.rs` (150 lines)
+**Core Networking API**:
+- Supports both **Ethernet** (RP1) and **VirtIO-Net** (QEMU) drivers.
+- Abstracts hardware via `NetDriver` trait (implicit).
 - **Kernel Mapping**: The kernel is mapped into every user space as **Privileged-Only (EL1)**. This allows the kernel to execute interrupt handlers and syscalls without a full TLB flush, while preventing user code from accessing kernel memory.
 - **User Mapping**: User stack and code pages are mapped as **User-Accessible (EL0)**.
 - **Context Switch**: When switching processes, the scheduler updates the `TTBR0_EL1` register.
   - **ASID Support**: Uses 16-bit Address Space IDs to tag TLB entries, avoiding expensive full TLB flushes (`vmalle1`) during switches.
 - **Stack Guards**: Every stack (Kernel & User) is backed by real VMM pages and includes an **Unmapped Guard Page** at the bottom. Stack overflows trigger a Data Abort (Page Fault) instead of silent corruption.
+
+### Huge Page Splitting
+The VMM implements dynamic splitting of huge pages:
+- **Block Mapping**: 1GB (L1) and 2MB (L2) blocks used for kernel efficient mapping.
+- **Dynamic Splitting**: If a 4KB page (L3) is requested within a huge block (e.g., for User Process loading), the VMM automatically:
+  1. Allocates a new empty Page Table.
+  2. Breaks the huge block into smaller entries.
+  3. Maps the specific 4KB page needed.
+- **Benefit**: Ensures compatibility with granular user-mode mappings while keeping kernel memory access fast.
 
 ### Memory Allocator (Hybrid Slab/Buddy)
 
@@ -505,6 +527,25 @@ pub struct Agent {
 For application development, the kernel supports declarative **Intent Manifests**. Apps are defined as semantic graphs rather than raw binaries.
 > See [APP_ARCHITECTURE.md](APP_ARCHITECTURE.md) for the full specification.
 
+### Semantic Process Binding (Sprint 15)
+The kernel treats User Processes as extensions of its semantic nervous system.
+
+**Registration**:
+1. Process starts (e.g., `counter_service`).
+2. Calls `sys_announce(INCREMENT_CONCEPT)`.
+3. Kernel registers a `ProcessSkill` in the global registry.
+
+**Execution Flow**:
+1. **Intent**: User inputs "increment".
+2. **Resolution**: Kernel resolves `INCREMENT` -> `ProcessSkill(PID)`.
+3. **Dispatch**: Kernel pushes a "Nervous Impulse" (message) to the process's mailbox.
+4. **Action**: Process wakes up (`sys_ipc_recv`), handles the message, and updates.
+
+**Nervous Impulse IPC**:
+- **Fixed Size**: 64 bytes (fast copy).
+- **Asynchronous**: Send and forget (fire and reset).
+- **Semantics**: Message contains the _Trigger_ (ConceptID) and _Data_.
+
 ### System Call Interface
 
 User programs interact with the kernel via `svc #0`.
@@ -524,6 +565,9 @@ User programs interact with the kernel via `svc #0`.
 | `CLOSE` | 5 | `fd` | Close file descriptor |
 | `READ` | 6 | `fd`, `buf`, `len` | Read from file |
 | `WRITE` | 7 | `fd`, `buf`, `len` | Write to file |
+| `BIND_UDP` | 23 | `port` | Bind UDP port (returns fd) |
+| `RECVFROM` | 24 | `fd`, `buf`, `len`, `src` | Receive UDP packet |
+| `PARSE` | 22 | `ptr`, `len` | Parse natural language intent |
 
 ---
 
@@ -597,6 +641,19 @@ let ptr = allocator.retrieve(concept_id);
 ---
 
 ## Hardware Drivers
+
+### Interrupt Architecture (GICv2)
+The kernel uses the **ARM Generic Interrupt Controller (GIC-400)** with a strict priority model:
+
+- **Priorities**: 8-bit priority levels (0-255).
+  - **0x00**: Highest Priority (Critical).
+  - **0x80**: Medium Priority (Default for devices).
+  - **0xFF**: Lowest Priority (Masked).
+- **Masking**: The CPU Priority Mask (PMR) is set to `0xFF`. Interrupts must have priority `< 0xFF` to fire.
+- **Preemption**:
+  - Timer Interrupt (IRQ 27/30) triggers `scheduler::tick()`.
+  - Context Switch happens **after** EOI (End of Interrupt) to prevent blocking the GIC.
+  - Safe recursion: Interrupts are disabled during the handler itself but re-enabled for the next task.
 
 ### PCIe Root Complex & RP1 Southbridge ✨ NEW!
 
@@ -961,8 +1018,15 @@ The kernel includes a full SD Card Host Controller Interface (SDHCI) driver for 
 #### Initialization Sequence
 
 ```rust
-pub fn init(&mut self) -> Result<(), &'static str>
+pub fn recv_frame(buffer: &mut [u8]) -> Result<usize, &'static str>
 ```
+
+#### `kernel/src/drivers/virtio.rs` (450 lines)
+**VirtIO-Net Driver** (QEMU):
+- **MMIO Interface**: Legacy/Modern support
+- **Virtqueues**: RX/TX ring buffers
+- **Features**: MAC address discovery, device status management
+- **Integration**: Automatically selected when running on QEMU machine type
 
 **Steps**:
 1. Reset controller

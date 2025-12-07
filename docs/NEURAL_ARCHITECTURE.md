@@ -13,6 +13,9 @@ The Intent Kernel implements a **biologically-inspired neural architecture** tha
 - **Predictive Processing** - Predict outcomes, detect surprise
 - **Basal Ganglia Model** - Urgency-based action selection
 
+> [!IMPORTANT]
+> **Verified Active (Dec 2025)**: The neural subsystem is wired and running. `decay_tick()` fires every 100ms, `propagate_all()` every 50ms, proven via QEMU test output.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         NEURAL INTENT ARCHITECTURE                           │

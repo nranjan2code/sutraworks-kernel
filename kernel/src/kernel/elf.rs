@@ -145,8 +145,16 @@ impl<'a> ElfLoader<'a> {
         let file_size = ph.file_size;
         let mem_size = ph.mem_size;
         let flags = ph.flags;
-        kprintln!("[ELF] Loading Segment: VAddr={:#x}, FileSize={:#x}, MemSize={:#x}, Flags={:#x}",
-            vaddr, file_size, mem_size, flags);
+        
+        let flag_str = match flags {
+            5 => "R-X", // Code
+            6 => "RW-", // Data
+            4 => "R--", // RO Data
+            _ => "???",
+        };
+
+        kprintln!("[ELF] Loading Segment: VAddr={:#x}, FileSize={:#x}, MemSize={:#x}, Flags={:#x} ({})",
+            vaddr, file_size, mem_size, flags, flag_str);
 
         // Calculate pages needed
         // We need to map from vaddr to vaddr + mem_size

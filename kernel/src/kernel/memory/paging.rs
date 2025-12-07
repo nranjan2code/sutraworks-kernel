@@ -230,11 +230,6 @@ impl VMM {
     /// * `phys_addr` - Physical address (must be 4KB aligned)
     /// * `flags` - Access permissions and attributes
     /// Map a virtual page to a physical frame
-    /// 
-    /// # Arguments
-    /// * `virt_addr` - Virtual address (must be 4KB aligned)
-    /// * `phys_addr` - Physical address (must be 4KB aligned)
-    /// * `flags` - Access permissions and attributes
     pub unsafe fn map_page(&mut self, virt_addr: u64, phys_addr: u64, flags: EntryFlags) -> Result<(), &'static str> {
         if virt_addr & 0xFFF != 0 || phys_addr & 0xFFF != 0 {
             return Err("Addresses must be page aligned");
@@ -248,14 +243,14 @@ impl VMM {
         
         let root = self.root_table.as_mut();
         
-        // Level 0 -> Level 1
-        let l1_table = self.get_next_table(&mut root.entries[l0_idx as usize])?;
+        // Level 0 -> Level 1 (Step 1GB for next level blocks)
+        let l1_table = self.get_next_table(&mut root.entries[l0_idx as usize], 0x4000_0000)?;
         
-        // Level 1 -> Level 2
-        let l2_table = self.get_next_table(&mut l1_table.entries[l1_idx as usize])?;
+        // Level 1 -> Level 2 (Step 2MB for next level blocks)
+        let l2_table = self.get_next_table(&mut l1_table.entries[l1_idx as usize], 0x200000)?;
         
-        // Level 2 -> Level 3
-        let l3_table = self.get_next_table(&mut l2_table.entries[l2_idx as usize])?;
+        // Level 2 -> Level 3 (Step 4KB for next level pages)
+        let l3_table = self.get_next_table(&mut l2_table.entries[l2_idx as usize], 0x1000)?;
         
         // Level 3 Entry (The Page)
         let entry = &mut l3_table.entries[l3_idx as usize];
@@ -269,6 +264,7 @@ impl VMM {
             }
         }
         
+        // L3 Page: Table bit (1) | Valid (1) | AF (1)
         entry.set(phys_addr, flags | EntryFlags::VALID | EntryFlags::TABLE | EntryFlags::AF);
         
         Ok(())
@@ -287,18 +283,20 @@ impl VMM {
 
         let root = self.root_table.as_mut();
 
-        // Traverse, keeping references to tables to check emptiness later
+        // Level 0 -> Level 1
         let l1_entry = &mut root.entries[l0_idx as usize];
         if !l1_entry.is_valid() { return Ok(None); }
-        let l1_table = &mut *(l1_entry.address() as *mut PageTable);
+        let l1_table = self.get_next_table(l1_entry, 0x4000_0000)?;
 
+        // Level 1 -> Level 2
         let l2_entry = &mut l1_table.entries[l1_idx as usize];
         if !l2_entry.is_valid() { return Ok(None); }
-        let l2_table = &mut *(l2_entry.address() as *mut PageTable);
+        let l2_table = self.get_next_table(l2_entry, 0x200000)?;
 
+        // Level 2 -> Level 3
         let l3_entry = &mut l2_table.entries[l2_idx as usize];
         if !l3_entry.is_valid() { return Ok(None); }
-        let l3_table = &mut *(l3_entry.address() as *mut PageTable);
+        let l3_table = self.get_next_table(l3_entry, 0x1000)?;
 
         let entry = &mut l3_table.entries[l3_idx as usize];
         if !entry.is_valid() { return Ok(None); }
@@ -306,36 +304,7 @@ impl VMM {
         let phys = entry.address();
         *entry = PageTableEntry::new(); // Clear the page entry
 
-        // Check if L3 table is empty and free it
-        if l3_table.is_empty() {
-            let l3_phys = l3_entry.address();
-            *l3_entry = PageTableEntry::new(); // Remove from L2
-            
-            if let Some(ptr) = NonNull::new(l3_phys as *mut u8) {
-                super::free_pages(ptr, 1);
-            }
-            
-            // Check if L2 table is empty
-            if l2_table.is_empty() {
-                let l2_phys = l2_entry.address();
-                *l2_entry = PageTableEntry::new(); // Remove from L1
-                
-                if let Some(ptr) = NonNull::new(l2_phys as *mut u8) {
-                    super::free_pages(ptr, 1);
-                }
-                
-                // Check if L1 table is empty
-                if l1_table.is_empty() {
-                    let l1_phys = l1_entry.address();
-                    *l1_entry = PageTableEntry::new(); // Remove from L0
-                    
-                    if let Some(ptr) = NonNull::new(l1_phys as *mut u8) {
-                        super::free_pages(ptr, 1);
-                    }
-                }
-            }
-        }
-        
+        // Cleanup empty tables skipped for now/robustness
         Ok(Some(phys))
     }
 
@@ -351,16 +320,17 @@ impl VMM {
             
             let l1_entry = &root.entries[l0_idx as usize];
             if !l1_entry.is_valid() { return false; }
+            if !l1_entry.is_table() { return true; } // L0 Block
             let l1_table = &*(l1_entry.address() as *const PageTable);
 
             let l2_entry = &l1_table.entries[l1_idx as usize];
             if !l2_entry.is_valid() { return false; }
-            if !l2_entry.is_table() { return true; } // Block mapping (Huge Page)
+            if !l2_entry.is_table() { return true; } // L1 Block
             let l2_table = &*(l2_entry.address() as *const PageTable);
 
             let l3_entry = &l2_table.entries[l2_idx as usize];
             if !l3_entry.is_valid() { return false; }
-            if !l3_entry.is_table() { return true; } // Block mapping
+            if !l3_entry.is_table() { return true; } // L2 Block
             let l3_table = &*(l3_entry.address() as *const PageTable);
 
             let entry = &l3_table.entries[l3_idx as usize];
@@ -381,6 +351,7 @@ impl VMM {
             
             let l1_entry = &root.entries[l0_idx as usize];
             if !l1_entry.is_valid() { return None; }
+            if !l1_entry.is_table() { return Some(l1_entry.address() + (virt_addr & 0x7F_FFFF_FFFF)); }
             let l1_table = &*(l1_entry.address() as *const PageTable);
 
             let l2_entry = &l1_table.entries[l1_idx as usize];
@@ -418,21 +389,21 @@ impl VMM {
         
         let root = self.root_table.as_mut();
         
-        // Level 0 -> Level 1
-        let l1_table = self.get_next_table(&mut root.entries[l0_idx as usize])?;
+        // Level 0 -> Level 1 (Step 1GB for next level blocks)
+        let l1_table = self.get_next_table(&mut root.entries[l0_idx as usize], 0x4000_0000)?;
         
-        // Level 1 -> Level 2
-        let l2_table = self.get_next_table(&mut l1_table.entries[l1_idx as usize])?;
+        // Level 1 -> Level 2 (Step 2MB for next level blocks)
+        let l2_table = self.get_next_table(&mut l1_table.entries[l1_idx as usize], 0x200000)?;
         
-        // Level 2 Entry (The Block)
-        let entry = &mut l2_table.entries[l2_idx as usize];
+        // Level 2 -> Level 3 (Step 4KB for next level pages)
+        let l3_table = self.get_next_table(&mut l2_table.entries[l2_idx as usize], 0x1000)?;
         
-        // Block descriptor: VALID (1) | AF (1) | Not TABLE (0)
-        // Note: EntryFlags::TABLE is bit 1. We want it CLEARED for Block.
-        // But we pass 'flags' which might have attributes.
-        // We need to ensure TABLE bit is cleared.
+        // Overwrite existing block or table?
+        // If it's a table, we should free it? Or error?
+        // Assuming we rely on OS capability/logic to not overwrite tables with blocks blindly.
+        
         let block_flags = (flags | EntryFlags::VALID | EntryFlags::AF) & !EntryFlags::TABLE;
-        
+        let entry = &mut l2_table.entries[l2_idx as usize];
         entry.set(phys_addr, block_flags);
         
         Ok(())
@@ -459,19 +430,58 @@ impl VMM {
         Ok(())
     }
     
-    /// Helper to get the next level table, allocating it if necessary
-    unsafe fn get_next_table<'a>(&self, entry: &'a mut PageTableEntry) -> Result<&'a mut PageTable, &'static str> {
+    /// Helper to get the next level table, allocating OR splitting if necessary
+    /// 
+    /// # Arguments
+    /// * `entry` - The current level entry
+    /// * `step_size` - The size of the region covered by each entry in the NEXT level
+    unsafe fn get_next_table<'a>(&self, entry: &'a mut PageTableEntry, step_size: u64) -> Result<&'a mut PageTable, &'static str> {
         if entry.is_valid() {
-            if !entry.is_table() {
-                return Err("Huge pages not supported yet");
+            if entry.is_table() {
+                // It's already a table, follow it
+                let table_addr = entry.address();
+                Ok(&mut *(table_addr as *mut PageTable))
+            } else {
+                // It's a Block (Huge Page). We must split it into a Table of smaller blocks/pages.
+                let base_phys = entry.address();
+                let flags = entry.0 & 0xFFF0_0000_0000_0FFF; // Preserve attribute bits
+                
+                // Allocate new table
+                let page = super::alloc_pages(1).ok_or("Out of memory for page table split")?;
+                let table = page.as_ptr() as *mut PageTable;
+                
+                // Fill the new table with smaller blocks
+                for i in 0..512 {
+                    let offset = i * step_size;
+                    let child_phys = base_phys + offset;
+                    
+                    // Construct child entry
+                    // For L3, child entries are Pages (bit 1=1)
+                    // For L2/L1, child entries are Blocks (bit 1=0, unless we recursively want tables which we don't here)
+                    // Wait, L1->L2 table means L2 entries are Blocks (or Tables).
+                    // We are creating Blocks here.
+                    
+                    let child_entry = if step_size == 0x1000 {
+                         // L3 Table: Children = Pages (Table bit set)
+                         flags | EntryFlags::VALID.bits() | EntryFlags::TABLE.bits() | child_phys
+                    } else {
+                         // L1/L2 Table: Children = Blocks (Table bit clear)
+                         flags | EntryFlags::VALID.bits() | child_phys // ensure table bit is 0
+                    };
+                    
+                    (*table).entries[i as usize] = PageTableEntry::from_raw(child_entry);
+                }
+                
+                // Link the new table to the current entry (Table bit set)
+                // Note: We MUST set the TABLE bit (bit 1) so it points to the new table.
+                entry.set(table as u64, EntryFlags::VALID | EntryFlags::TABLE | EntryFlags::AF);
+                
+                crate::kprintln!("[MEM] Splitting Huge Page block at {:#x} -> Table (Step {:#x})", base_phys, step_size);
+                
+                Ok(&mut *table)
             }
-            // Entry points to physical address of next table
-            // In identity mapping/early boot, phys == virt.
-            // We assume kernel page tables are always identity mapped.
-            let table_addr = entry.address();
-            Ok(&mut *(table_addr as *mut PageTable))
         } else {
-            // Allocate new table
+            // Allocate new table (Empty)
             let page = super::alloc_pages(1).ok_or("Out of memory for page table")?;
             let table = page.as_ptr() as *mut PageTable;
             (*table).zero();

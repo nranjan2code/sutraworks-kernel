@@ -15,6 +15,9 @@ pub mod rng;
 pub mod usb;
 pub mod sd;
 pub mod rp1;
+pub mod virtio;
+pub mod virtio_blk;
+pub mod ethernet;
 
 // Re-export commonly used items
 pub use uart::Uart;
@@ -34,8 +37,8 @@ use crate::dtb::{self, MachineType};
 
 pub fn uart_base() -> usize {
     match dtb::machine_type() {
-        MachineType::QemuVirt => 0x0900_0000,
-        _ => 0x1_0000_0000 + 0x0020_1000, // Pi 5 PL011
+        MachineType::RaspberryPi5 => 0x1_0000_0000 + 0x0020_1000, // Pi 5 PL011
+        _ => 0x0900_0000, // QemuVirt or Unknown
     }
 }
 

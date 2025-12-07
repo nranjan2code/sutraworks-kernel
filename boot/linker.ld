@@ -35,10 +35,10 @@ MEMORY
 {
     BOOT    (rx)  : ORIGIN = 0x80000,     LENGTH = 64K
     CODE    (rx)  : ORIGIN = 0x90000,     LENGTH = 1408K
-    RODATA  (r)   : ORIGIN = 0x1F0000,    LENGTH = 64K
-    DATA    (rw)  : ORIGIN = 0x200000,    LENGTH = 1M
-    BSS     (rw)  : ORIGIN = 0x300000,    LENGTH = 512K
-    STACK   (rw)  : ORIGIN = 0x380000,    LENGTH = 512K
+    RODATA  (r)   : ORIGIN = 0x1F0000,    LENGTH = 256K
+    DATA    (rw)  : ORIGIN = 0x230000,    LENGTH = 1M
+    BSS     (rw)  : ORIGIN = 0x330000,    LENGTH = 512K
+    STACK   (rw)  : ORIGIN = 0x3B0000,    LENGTH = 512K
 }
 
 SECTIONS
@@ -132,7 +132,7 @@ PROVIDE(__kernel_start = 0x80000);
 PROVIDE(__kernel_size = __kernel_end - __kernel_start);
 
 /* Capability pool (general purpose allocation) */
-PROVIDE(__heap_start = 0x400000);
+PROVIDE(__heap_start = 0x500000);
 PROVIDE(__heap_end = 0x10000000);
 PROVIDE(__heap_size = __heap_end - __heap_start);
 

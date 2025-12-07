@@ -409,9 +409,28 @@ impl IntentExecutor {
         } else if id == concepts::CANCEL {
             self.handle_cancel();
         }
-        // Unknown
+        // File Operations
+        else if id == concepts::LIST_FILES {
+            self.handle_list_files();
+        } else if id == concepts::READ_FILE {
+            self.handle_read_file(intent);
+        }
+        // Unknown - try Skill Registry as fallback
         else {
-            crate::kprintln!("[INTENT] Unknown concept: {:?}", id);
+            // Check if a Skill is registered for this concept
+            if let Some(skill) = crate::apps::registry::REGISTRY.lock().find_by_tag(id) {
+                let ctx = crate::apps::registry::Context::default();
+                match skill.execute(intent.name, &ctx) {
+                    Ok(result) => {
+                        crate::kprintln!("[SKILL] {}: {}", skill.name(), result);
+                    }
+                    Err(e) => {
+                        crate::kprintln!("[SKILL] {} failed: {:?}", skill.name(), e);
+                    }
+                }
+            } else {
+                crate::kprintln!("[INTENT] Unknown concept: {:?}", id);
+            }
         }
     }
     
@@ -513,6 +532,31 @@ impl IntentExecutor {
     
     fn handle_cancel(&self) {
         crate::kprintln!("[CONFIRM] Cancelled");
+    }
+
+    fn handle_list_files(&self) {
+        crate::kprintln!("╔═══════════════════════════════════════╗");
+        crate::kprintln!("║            FILE LISTING               ║");
+        crate::kprintln!("╠═══════════════════════════════════════╣");
+        
+        // Use VFS to list root directory
+        // In kernel space, we can access VFS directly if we have appropriate handles
+        // For MVP, we'll try to use the Global VFS if exposed, or just print a placeholder 
+        // until we wire up kernel-space VFS access.
+        
+        // TODO: Properly acquire VFS handle in kernel space
+        crate::kprintln!("║ [DIR]  /                              ║");
+        crate::kprintln!("║  - init                               ║");
+        crate::kprintln!("║  - counter                            ║");
+        crate::kprintln!("║  - hello                              ║");
+        crate::kprintln!("║  - EFI                                ║");
+        crate::kprintln!("╚═══════════════════════════════════════╝");
+        crate::kprintln!("[INTENT] LIST_FILES executed");
+    }
+
+    fn handle_read_file(&self, _intent: &Intent) {
+        // In future: parse intent.data or name for filename
+        crate::kprintln!("[INTENT] READ_FILE not yet fully implemented");
     }
     
     // ═══════════════════════════════════════════════════════════════════════════

@@ -578,6 +578,15 @@ pub mod concepts {
     pub const MEMORY: ConceptID = ConceptID(0x0009_0001);
     pub const CPU_INFO: ConceptID = ConceptID(0x0009_0002);
     pub const UPTIME: ConceptID = ConceptID(0x0009_0003);
+
+    // Counter Demo (0x000A_xxxx)
+    pub const INCREMENT: ConceptID = ConceptID(0x000A_0001);
+    pub const DECREMENT: ConceptID = ConceptID(0x000A_0002);
+    pub const GET_COUNT: ConceptID = ConceptID(0x000A_0003);
+
+    // File Operations (REDEFINED)
+    pub const LIST_FILES: ConceptID = ConceptID(0x0008_0005);
+    pub const READ_FILE: ConceptID = ConceptID(0x0008_0006);
 }
 
 impl Default for StrokeSequence {

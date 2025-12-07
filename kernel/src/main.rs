@@ -39,6 +39,7 @@ pub extern "C" fn kernel_main() -> ! {
     
     // Banner
     print_banner();
+
     
     // Phase 2: Core system initialization
     kprintln!("[BOOT] Initializing Intent Kernel...");
@@ -113,6 +114,12 @@ pub extern "C" fn kernel_main() -> ! {
     if machine == dtb::MachineType::RaspberryPi5 {
         drivers::gpio::init();
     }
+
+    // Initialize Ethernet
+    kprintln!("[INIT] Ethernet...");
+    // Use a default MAC (VirtIO will detect its own, RP1 needs one)
+    let mac = drivers::ethernet::MacAddr::from_bytes([0x52, 0x54, 0x00, 0x12, 0x34, 0x56]);
+    drivers::ethernet::init(mac);
     
     // Initialize mailbox (GPU communication)
     if machine == dtb::MachineType::RaspberryPi5 {
@@ -236,6 +243,75 @@ pub extern "C" fn kernel_main() -> ! {
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // DEMO: INTENT-NATIVE APPS (Sprint 14)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    unsafe {
+        use intent_kernel::apps::{manifest, linker, registry, demo};
+        
+        kprintln!("\n       ════════════════════════════════════════════");
+        kprintln!("       🚀 DEMO: Intent-Native App (Smart Doorknob)");
+        kprintln!("       ════════════════════════════════════════════");
+        
+        // 1. Register Skills (Capabilities)
+        demo::register_demo_skills();
+        kprintln!("       [KERNEL] Registered Skills: 'Identify Person', 'Unlock Door'");
+        
+        // 2. Load Manifest (The "App")
+        // Note: In a real system this comes from disk/network
+        let manifest_source = r#"
+app_name: "Smart Doorknob"
+description: "Automatically unlocks for authorized users"
+triggers:
+  - input: "Face detected"
+flow:
+  - id: "chk_face"
+    goal: "Identify Person"
+    inputs: ["trigger.image"]
+  
+  - id: "action"
+    goal: "Unlock Door"
+    condition: "chk_face.result == 'Authorized User'"
+"#;
+        kprintln!("       [LOADER] Parsing 'Smart Doorknob' Manifest...");
+        if let Ok(app) = manifest::AppManifest::parse(manifest_source) {
+            kprintln!("       [PARSER] App: '{}' ({} triggers, {} steps)", 
+                app.app_name, app.triggers.len(), app.flow.len());
+                
+            // 3. Simulate Run
+            kprintln!("       [RUNTIME] Simulating Trigger: 'Face detected'...");
+            
+            // Step 1: Resolve "Identify Person"
+            let step1 = &app.flow[0];
+            kprintln!("       [LINKER] Resolving intent: '{}'...", step1.goal);
+            if let Some(skill) = linker::SemanticLinker::resolve(&step1.goal) {
+                kprintln!("       [LINKER] Bound to Capability: '{}'", skill.name());
+                let ctx = registry::Context { user_id: 1 };
+                match skill.execute("Face detected", &ctx) {
+                    Ok(res) => kprintln!("       [EXEC] Output: '{}'", res),
+                    Err(_) => kprintln!("       [EXEC] Failed"),
+                }
+            }
+            
+            // Step 2: Resolve "Unlock Door"
+            let step2 = &app.flow[1];
+            kprintln!("       [LINKER] Resolving intent: '{}'...", step2.goal);
+             if let Some(skill) = linker::SemanticLinker::resolve(&step2.goal) {
+                kprintln!("       [LINKER] Bound to Capability: '{}'", skill.name());
+                let ctx = registry::Context { user_id: 1 };
+                // Creating a mock context where previous step succeeded
+                match skill.execute("Authorized User", &ctx) {
+                    Ok(res) => kprintln!("       [EXEC] Output: '{}'", res),
+                    Err(_) => kprintln!("       [EXEC] Failed"),
+                }
+            }
+            
+        } else {
+             kprintln!("       [ERROR] Failed to parse manifest");
+        }
+        kprintln!("       ════════════════════════════════════════════");
+    }
+
 
     // Initialize Perception Layer (Adaptive Hardware Support)
     if machine == dtb::MachineType::RaspberryPi5 {
@@ -254,26 +330,16 @@ pub extern "C" fn kernel_main() -> ! {
     // perception::hud::init();
 
     // Initialize Filesystem
+    kprintln!("[INIT] Filesystem...");
+    fs::init();
+
     if machine == dtb::MachineType::RaspberryPi5 {
-        kprintln!("[INIT] Filesystem...");
-        fs::init();
-        
         // Initialize SD Card
         kprintln!("[INIT] SD Card Driver...");
         drivers::sd::init();
         
         // Mount FAT32 on SD
         kprintln!("[INIT] Mounting FAT32 on SD...");
-    }
-    
-    if machine == dtb::MachineType::RaspberryPi5 {
-        // Get SD Driver instance
-        // Note: In a real system we'd have a BlockDevice registry.
-        // Here we just use the static instance wrapped in an Arc-like adapter or just pass it if we change Fat32 to take a reference?
-        // Fat32FileSystem takes Arc<dyn BlockDevice>.
-        // We need to implement BlockDevice for Arc<SpinLock<SdCardDriver>> or similar.
-        // Or just implement it for the static?
-        // Let's create a wrapper struct that implements BlockDevice and calls the static SD_DRIVER.
         
         struct SdWrapper;
         impl fs::vfs::BlockDevice for SdWrapper {
@@ -295,14 +361,38 @@ pub extern "C" fn kernel_main() -> ! {
         }
         
         let device = Arc::new(SdWrapper);
-        // Wrap in Cache (512 sectors = 256KB cache)
         let cached_dev = Arc::new(fs::cache::CachedDevice::new(device, 512));
         
         if let Ok(fs) = fs::fat32::Fat32FileSystem::mount(cached_dev) {
-            let _ = fs::mount("/sd", fs);
-            kprintln!("       Mounted FAT32 at /sd");
+            let _ = fs::mount("/", fs);
+            kprintln!("       Mounted SD Card at /");
         } else {
             kprintln!("       Failed to mount SD card");
+        }
+    } else {
+        // QEMU / VirtIO Block
+        kprintln!("[INIT] VirtIO Block Driver...");
+        if drivers::virtio_blk::init().is_ok() {
+             struct VirtioBlkWrapper;
+             impl fs::vfs::BlockDevice for VirtioBlkWrapper {
+                 fn read_sector(&self, sector: u32, buf: &mut [u8]) -> Result<(), &'static str> {
+                     drivers::virtio_blk::read_sector(sector as u64, buf)
+                 }
+                 fn write_sector(&self, sector: u32, buf: &[u8]) -> Result<(), &'static str> {
+                     drivers::virtio_blk::write_sector(sector as u64, buf)
+                 }
+             }
+             let device = Arc::new(VirtioBlkWrapper);
+             // Cache is useful
+             let cached = Arc::new(fs::cache::CachedDevice::new(device, 512));
+             if let Ok(fs) = fs::fat32::Fat32FileSystem::mount(cached) {
+                 let _ = fs::mount("/", fs);
+                 kprintln!("       Mounted VirtIO Block at /");
+             } else {
+                 kprintln!("       Failed to mount VirtIO Block FS");
+             }
+        } else {
+            kprintln!("       VirtIO Block init failed (expected if no -drive)");
         }
     }
 
@@ -310,7 +400,7 @@ pub extern "C" fn kernel_main() -> ! {
     // SYSCALL TEST
     // ═══════════════════════════════════════════════════════════════════════════════
     kprintln!("\n[KERNEL] Spawning Syscall Test Task...");
-    let _ = crate::kernel::scheduler::SCHEDULER.lock().spawn_simple(syscall_test_task);
+    // let _ = crate::kernel::scheduler::SCHEDULER.lock().spawn_simple(syscall_test_task);
     
 
     // Initialize PCIe (Already initialized earlier)
@@ -324,18 +414,21 @@ pub extern "C" fn kernel_main() -> ! {
 
     // Initialize Scheduler
     kprintln!("[INIT] Scheduler...");
+    
+    // Register Boot Thread as Agent (prevents corruption on first switch)
+    crate::kernel::scheduler::SCHEDULER.lock().register_boot_agent();
 
     // Spawn Async Executor Agent (The "Main" Thread)
     // Spawn Async Executor Agent (The "Main" Thread)
-    let _ = kernel::scheduler::SCHEDULER.lock().spawn_simple(async_executor_agent);
+    // let _ = kernel::scheduler::SCHEDULER.lock().spawn_simple(async_executor_agent);
     kprintln!("       Spawned Async Executor Agent");
 
     // Spawn User Task (EL0 Process) from init.elf
-    kprintln!("[INIT] Loading /init.elf...");
+    kprintln!("[INIT] Loading /init...");
     {
-        // Read init.elf
+        // Read init
         let vfs = fs::VFS.lock();
-        if let Ok(file) = vfs.open("/sd/init.elf", 0) {
+        if let Ok(file) = vfs.open("/init", 0) { // Try plain /init first (as created by script)
             let mut file = file.lock();
             let size = file.stat().map(|s| s.size).unwrap_or(0);
             if size > 0 {
@@ -351,10 +444,7 @@ pub extern "C" fn kernel_main() -> ! {
                         Ok(_) => kprintln!("       Spawned User Process 1 (init)"),
                         Err(e) => kprintln!("       Failed to spawn user process 1: {}", e),
                     }
-                    match scheduler.spawn_user_elf(&buf) {
-                        Ok(_) => kprintln!("       Spawned User Process 2 (init)"),
-                        Err(e) => kprintln!("       Failed to spawn user process 2: {}", e),
-                    }
+
                 } else {
                     kprintln!("       Failed to read /init.elf");
                 }
@@ -362,10 +452,15 @@ pub extern "C" fn kernel_main() -> ! {
                 kprintln!("       /init.elf is empty");
             }
         } else {
-            kprintln!("       Failed to open /init.elf");
-            // Fallback to internal test
-            let _ = kernel::scheduler::SCHEDULER.lock().spawn_user_simple(user_task, 0);
-            kprintln!("       Spawned Fallback User Task (EL0)");
+            kprintln!("       Failed to open /init");
+            // Fallback to embedded init
+            kprintln!("       Loading embedded init...");
+            // Embed the binary
+            let init_bin = include_bytes!("../../user/init/target/aarch64-unknown-none/release/init");
+            match kernel::scheduler::SCHEDULER.lock().spawn_user_elf(init_bin) {
+                Ok(_) => kprintln!("       Spawned Embedded User Process (init)"),
+                Err(e) => kprintln!("       Failed to spawn embedded init: {}", e),
+            }
         }
     }
 
@@ -373,8 +468,8 @@ pub extern "C" fn kernel_main() -> ! {
     kprintln!("[INIT] Enabling Preemption...");
     drivers::timer::set_timer_interrupt(10_000);
     
-    // Enable GIC for Timer (PPI 30)
-    drivers::interrupts::enable(30);
+    // Enable GIC for Timer (PPI 27 = Virtual Timer)
+    drivers::interrupts::enable(27);
 
     // Enable Global Interrupts (DAIF)
     unsafe { arch::enable_interrupts(); }
@@ -391,7 +486,8 @@ pub extern "C" fn kernel_main() -> ! {
         let start = kernel::scheduler::record_idle_start(core_id as usize);
         
         // Wait for interrupt
-        unsafe { crate::arch::wait_for_interrupt(); }
+        // unsafe { crate::arch::wait_for_interrupt(); }
+        kernel::scheduler::yield_task();
         
         kernel::scheduler::record_idle_end(core_id as usize, start);
     }
@@ -553,10 +649,11 @@ fn print_banner() {
     kprintln!("║   █████╔╝ █████╗  ██████╔╝██╔██╗ ██║█████╗  ██║                   ║");
     kprintln!("║   ██╔═██╗ ██╔══╝  ██╔══██╗██║╚██╗██║██╔══╝  ██║                   ║");
     kprintln!("║   ██║  ██╗███████╗██║  ██║██║ ╚████║███████╗███████╗              ║");
-    kprintln!("║   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝              ║");
+    kprintln!("║   ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═══╝   ╚═╝                  ║");
     kprintln!("║                                                                   ║");
     kprintln!("║      A Perceptual Computing Platform               v0.2      ║");
-    kprintln!("║                                                                   ║");
+    kprintln!("║      *** KERNEL MAIN UPDATED ***                                  ║");
+    kprintln!();
     kprintln!("║   Hardware: Raspberry Pi 5 (BCM2712)                              ║");
     kprintln!("║   CPU:      ARM Cortex-A76 x4 @ 2.4GHz                            ║");
     kprintln!("║   RAM:      8GB LPDDR4X                                           ║");
@@ -644,6 +741,7 @@ fn syscall_test_task() {
         msg.as_ptr() as u64,
         msg.len() as u64,
         0,
+        0,
         &mut frame
     );
     
@@ -652,6 +750,7 @@ fn syscall_test_task() {
     let fd = crate::kernel::syscall::dispatcher(
         crate::kernel::syscall::SyscallNumber::Open as u64,
         path.as_ptr() as u64,
+        0,
         0,
         0,
         &mut frame
@@ -666,6 +765,7 @@ fn syscall_test_task() {
             fd,
             buf.as_mut_ptr() as u64,
             32,
+            0,
             &mut frame
         );
         
@@ -678,7 +778,7 @@ fn syscall_test_task() {
         
         crate::kernel::syscall::dispatcher(
             crate::kernel::syscall::SyscallNumber::Close as u64,
-            fd, 0, 0,
+            fd, 0, 0, 0,
             &mut frame
         );
     } else {
@@ -689,7 +789,7 @@ fn syscall_test_task() {
     kprintln!("[TASK] Exiting...");
     crate::kernel::syscall::dispatcher(
         crate::kernel::syscall::SyscallNumber::Exit as u64,
-        0, 0, 0,
+        0, 0, 0, 0,
         &mut frame
     );
     
@@ -698,7 +798,7 @@ fn syscall_test_task() {
     loop {
         crate::kernel::syscall::dispatcher(
             crate::kernel::syscall::SyscallNumber::Yield as u64,
-            0, 0, 0,
+            0, 0, 0, 0,
             &mut frame
         );
     }

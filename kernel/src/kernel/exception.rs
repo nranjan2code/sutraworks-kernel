@@ -160,18 +160,17 @@ pub unsafe extern "C" fn handle_exception(frame: *mut ExceptionFrame) {
     let frame_ref = unsafe { &*frame };
     let ec = ExceptionClass::from(frame_ref.esr);
     
-    crate::kprintln!();
-    crate::kprintln!("╔═══════════════════════════════════════════════════════════╗");
-    crate::kprintln!("║                   EXCEPTION CAUGHT                        ║");
-    crate::kprintln!("╚═══════════════════════════════════════════════════════════╝");
-    crate::kprintln!();
-    
-    crate::kprintln!("Exception Class: {:?}", ec);
-    crate::kprintln!("ESR: {:#018x}", frame_ref.esr);
-    crate::kprintln!("FAR: {:#018x}", frame_ref.far);
-    
     match ec {
         ExceptionClass::DataAbortLower | ExceptionClass::DataAbortSame => {
+            crate::kprintln!();
+            crate::kprintln!("╔═══════════════════════════════════════════════════════════╗");
+            crate::kprintln!("║                   EXCEPTION CAUGHT                        ║");
+            crate::kprintln!("╚═══════════════════════════════════════════════════════════╝");
+            crate::kprintln!();
+            crate::kprintln!("Exception Class: {:?}", ec);
+            crate::kprintln!("ESR: {:#018x}", frame_ref.esr);
+            crate::kprintln!("FAR: {:#018x}", frame_ref.far);
+
             let iss = frame_ref.esr & 0x1FFFFFF;
             let wnr = (iss >> 6) & 1;
             let dfsc = DataFaultStatusCode::from(iss);
@@ -211,8 +210,10 @@ pub unsafe extern "C" fn handle_exception(frame: *mut ExceptionFrame) {
             let arg0 = frame_mut.x[0];
             let arg1 = frame_mut.x[1];
             let arg2 = frame_mut.x[2];
+            let arg3 = frame_mut.x[3];
             
-            let ret = crate::kernel::syscall::dispatcher(syscall_num, arg0, arg1, arg2, frame_mut);
+            let ret = crate::kernel::syscall::dispatcher(syscall_num, arg0, arg1, arg2, arg3, frame_mut);
+
             
             // Set return value
             frame_mut.x[0] = ret;
@@ -224,12 +225,30 @@ pub unsafe extern "C" fn handle_exception(frame: *mut ExceptionFrame) {
             return;
         }
         ExceptionClass::InstrAbortLower | ExceptionClass::InstrAbortSame => {
+            crate::kprintln!();
+            crate::kprintln!("╔═══════════════════════════════════════════════════════════╗");
+            crate::kprintln!("║                   EXCEPTION CAUGHT                        ║");
+            crate::kprintln!("╚═══════════════════════════════════════════════════════════╝");
+            crate::kprintln!();
+            crate::kprintln!("Exception Class: {:?}", ec);
+            crate::kprintln!("ESR: {:#018x}", frame_ref.esr);
+            crate::kprintln!("FAR: {:#018x}", frame_ref.far);
+
             let iss = frame_ref.esr & 0x1FFFFFF;
             let dfsc = DataFaultStatusCode::from(iss);
             crate::kprintln!("Instruction Abort:");
             crate::kprintln!("  Status: {:?}", dfsc);
         }
-        _ => {}
+        _ => {
+            crate::kprintln!();
+            crate::kprintln!("╔═══════════════════════════════════════════════════════════╗");
+            crate::kprintln!("║                   EXCEPTION CAUGHT                        ║");
+            crate::kprintln!("╚═══════════════════════════════════════════════════════════╝");
+            crate::kprintln!();
+            crate::kprintln!("Exception Class: {:?}", ec);
+            crate::kprintln!("ESR: {:#018x}", frame_ref.esr);
+            crate::kprintln!("FAR: {:#018x}", frame_ref.far);
+        }
     }
     
     frame_ref.dump();

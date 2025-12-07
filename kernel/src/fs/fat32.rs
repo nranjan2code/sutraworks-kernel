@@ -238,7 +238,15 @@ impl Filesystem for Fat32FileSystem {
         let mut path_parts = path.split('/').filter(|s| !s.is_empty()).peekable();
         
         if path_parts.peek().is_none() {
-             return Err("Cannot open root directory");
+             // Root directory
+             return Ok(Arc::new(SpinLock::new(Fat32File {
+                 fs: Arc::new(self.clone()),
+                 first_cluster: self.bpb.root_cluster,
+                 current_cluster: self.bpb.root_cluster,
+                 current_offset: 0,
+                 size: 0,
+                 is_dir: true,
+             })));
         }
         
         while let Some(name) = path_parts.next() {
@@ -342,7 +350,7 @@ pub struct Fat32File {
 
 impl FileOps for Fat32File {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, &'static str> {
-        if self.current_offset >= self.size {
+        if !self.is_dir && self.current_offset >= self.size {
             return Ok(0); // EOF
         }
         
@@ -350,16 +358,19 @@ impl FileOps for Fat32File {
         let mut bytes_read = 0;
         let mut buf_offset = 0;
         
-        while buf_offset < buf.len() && self.current_offset < self.size {
+        while buf_offset < buf.len() && (self.is_dir || self.current_offset < self.size) {
             // Calculate offset within current cluster
             let cluster_offset = (self.current_offset % cluster_size) as usize;
             let bytes_to_read = core::cmp::min(
                 buf.len() - buf_offset,
-                core::cmp::min(
-                    (cluster_size as usize) - cluster_offset,
-                    (self.size - self.current_offset) as usize
-                )
+                (cluster_size as usize) - cluster_offset,
             );
+            
+            let bytes_to_read = if self.is_dir {
+                bytes_to_read
+            } else {
+                core::cmp::min(bytes_to_read, (self.size - self.current_offset) as usize)
+            };
             
             // Read cluster
             let mut cluster_buf = vec![0; cluster_size as usize];
@@ -442,5 +453,41 @@ impl FileOps for Fat32File {
 
     fn as_any(&mut self) -> &mut dyn core::any::Any {
         self
+    }
+    
+    fn readdir(&mut self) -> Result<Option<DirEntry>, &'static str> {
+        if !self.is_dir {
+            return Err("Not a directory");
+        }
+        
+        loop {
+            let mut buf = [0u8; 32];
+            match self.read(&mut buf) {
+                Ok(32) => {
+                    // Check for end of directory
+                    if buf[0] == 0x00 { return Ok(None); }
+                    
+                    // Check for deleted entry
+                    if buf[0] == 0xE5 { continue; }
+                    
+                    let entry = unsafe { core::ptr::read(buf.as_ptr() as *const FatDirEntry) };
+                    
+                    // Skip LFN and Volume ID
+                    if entry.attr == ATTR_LONG_NAME || (entry.attr & ATTR_VOLUME_ID) != 0 {
+                        continue;
+                    }
+                    
+                    let name = parse_fat_name(&entry.name);
+                    
+                    return Ok(Some(DirEntry {
+                        name,
+                        is_dir: (entry.attr & ATTR_DIRECTORY) != 0,
+                        size: entry.size as u64,
+                    }));
+                },
+                Ok(_) => return Ok(None), // Partial read or EOF
+                Err(e) => return Err(e),
+            }
+        }
     }
 }

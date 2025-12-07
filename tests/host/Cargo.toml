@@ -23,3 +23,11 @@ path = "src/dictionary_tests.rs"
 [[test]]
 name = "concept_tests"
 path = "src/concept_tests.rs"
+
+[[test]]
+name = "manifest_tests"
+path = "src/manifest_tests.rs"
+
+[[test]]
+name = "registry_tests"
+path = "src/registry_tests.rs"

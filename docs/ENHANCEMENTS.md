@@ -724,3 +724,27 @@ loop {
  - `kernel/src/intent/scheduling.rs` (NEW)
  
  **Total**: 14+ new files, ~5,000 lines of production code.
+
+---
+
+## 5. Userspace Networking & VirtIO (Sprint 13.4)
+
+### What Was Built
+
+#### `kernel/src/drivers/virtio.rs` (450 lines)
+**VirtIO-Net Driver for QEMU**:
+- Full MMIO driver implementation for `virt` machine type.
+- Supports Legacy and Modern VirtIO descriptors.
+- Enables real networking in QEMU environment without requiring hardware.
+
+#### `kernel/src/net/socket.rs` & Syscalls
+**Userspace Network API**:
+- `sys_bind_udp(port)`: Registers a listener and returns a File Descriptor (FD).
+- `sys_recvfrom(fd, buf, len, src)`: Reads packet data and source address.
+- **Listener Agent**: `user/listener` embedded binary that acts as a UDP echo server.
+- **Zero-Copy Logic**: Kernel directly copies packet payload to user buffer.
+
+### Impact
+- **Server Capability**: The kernel can now act as a server (e.g. web server, echo server) driven by user agents.
+- **Testing**: Enable end-to-end network testing in CI/CD via QEMU.
+- **Separation**: Networking logic moves to userspace agents, keeping kernel minimal.

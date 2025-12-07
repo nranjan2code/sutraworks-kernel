@@ -50,6 +50,7 @@ make kernel
 
 # Run in QEMU (virt machine)
 make run
+# (Drops into Kernel Steno-Native Console; User Process runs in background)
 
 # Run 127 host tests (native)
 make test
@@ -436,6 +437,8 @@ Full TCP/IP implementation with production-grade reliability (~1,700 LOC):
   - Congestion control (RFC 5681: Slow Start, Congestion Avoidance, Fast Recovery)
   - TCP checksum with pseudo-header (RFC 793)
   - 17 unit tests covering all components
+- **Userspace Networking**: User agents can bind UDP ports (`sys_bind_udp`) and receive packets (`sys_recvfrom`), enabling server-like capabilities.
+- **VirtIO Support**: Initial VirtIO-Net driver for QEMU networking.
 
 ### ✅ Framebuffer Console
 Text output on HDMI display:
@@ -456,14 +459,23 @@ Full preemptive multitasking OS capabilities:
 - **ELF Loading**: Loads standard ELF64 binaries from SD card.
 - **Preemptive Scheduler**: Round-Robin scheduling with 10ms time slices.
 - **Process Isolation**: Full address space separation (Kernel=EL1, User=EL0).
-- **System Calls**: `yield`, `sleep`, `print`, `exit`, and File I/O.
+- **System Calls**: `yield`, `sleep`, `print`, `exit`, `sys_parse_intent`, and File I/O.
+- **Intent-Native Shell**: Kernel-side console that accepts English or Steno input directly.
+- **Preemption**: Correct interrupt-driven context switching (Virtual Timer).
 - **User Program**: `no_std` Rust userland support.
 
-### ✅ Intent-Native Apps ✨ NEW!
+### ✅ Intent-Native Apps ✨ COMPLETE! (Sprint 14)
 The OS supports "Programming without Code" via **Intent Manifests**.
 - **Declarative Apps**: Define apps as a graph of `[Trigger] -> [Intent] -> [Action]`.
 - **Semantic Linking**: The kernel resolves intents to capabilities at runtime using HDC.
 - **Just-in-Time Assembly**: "I want to track calories" automatically links to the best available database and storage skills.
+
+### ✅ Semantic Process Binding ✨ COMPLETE! (Sprint 15)
+Processes are not just binaries; they are **Semantic Agents**.
+- **Announce**: A process calls `sys_announce(CONCEPT_ID)` to declare: "I handle INCREMENT."
+- **Binding**: The kernel binds the `ConceptID` to the Process ID (PID).
+- **Execution**: When you think "Increment", the kernel automatically routes the intent to the correct process via IPC.
+- **Nervous Impulse IPC**: Fixed-size, biological message passing (64 bytes) between agents.
 
 ### 2. Intent-Native Apps Framework ✨ NEW!
 > **Full Documentation**: [docs/APP_ARCHITECTURE.md](docs/APP_ARCHITECTURE.md)
@@ -696,11 +708,13 @@ Comprehensive allocator validation with **180,000 operations**:
 | **7. Security** | ✅ | VMM Isolation (TTBR0 Switching, Kernel Protection) |
 | **8. Multi-Core** | ✅ ✨ | **SMP Scheduler** (4 cores, priority, affinity, work stealing) |
 | **9** | Storage | ✅ ✨ | **SD Card Driver** (SDHCI, block I/O, SDHC/SDXC, **DMA**, **Write Support**) |
-| **10** | Networking | ✅ ✨ | **TCP/IP Stack** (Ethernet, ARP, IPv4, ICMP, UDP, TCP) - **ZERO TECHNICAL DEBT** ✅ |
+| **10** | Networking | ✅ ✨ | **TCP/IP Stack** (Ethernet, VirtIO, ARP, IPv4, ICMP, UDP, TCP) - **Userspace Receive Supported** ✅ |
 | **11. Hardware** | ✅ ✨ | **Real Drivers**: PCIe Root Complex, RP1 Southbridge, **Hailo-8 (HCP, DMA, Inference)** |
-| **12. Userspace** | ✅ ✨ | **ELF Loader**, Preemptive Scheduler, Syscalls, User Mode (EL0) |
+| **12. Userspace** | ✅ ✨ | **ELF Loader**, Preemptive Scheduler, Syscalls, User Mode (EL0), **Stable Shell** |
 | **13. Visual Interface** | ✅ ✨ | **SVI**: Broadcast-based GUI, Projections, Perception Overlay, Memory Graph |
 | **14. Integration** | ✅ ✨ | **Integration Tests** (QEMU, RamFS, Loopback, Process Lifecycle) |
+| **15. Multi-Tasking** | ✅ ✨ | **Semantic Process Binding**: `sys_announce`, `sys_ipc` (Biological Message Passing) |
+| **16. Neural Architecture** | ✅ ✨ | **Verified Active**: `decay_tick()`, `propagate_all()` running on timer tick |
 
 ### Test Coverage (Verified December 2025)
 
@@ -765,6 +779,8 @@ Semantic-first kernel with multiple input paths. Everyone can use English; power
 | [API.md](docs/API.md) | Complete API reference |
 | [ROADMAP.md](docs/ROADMAP.md) | Development phases |
 | [BUILDING.md](docs/BUILDING.md) | Build instructions |
+| [GUIDE_INTENTS.md](docs/GUIDE_INTENTS.md) | **Dev Guide: Adding Intents** |
+| [GUIDE_USERSPACE.md](docs/GUIDE_USERSPACE.md) | **Dev Guide: User Agents** |
 | [CONTRIBUTING.md](docs/CONTRIBUTING.md) | How to contribute |
 
 ---

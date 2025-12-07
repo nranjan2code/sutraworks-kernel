@@ -261,6 +261,24 @@ make test
 make run
 
 # Output: Tests complete in <10 seconds
+
+### Running the User Shell
+
+The **User Mode Shell** launches automatically after boot (following any benchmarks). It runs as an isolated process (EL0).
+
+**Commands:**
+- `help`: Triggers kernel's `handle_help` intent.
+- `echo <msg>`: Example of text processing.
+- `status`: Show system status (via Kernel Intent).
+- `panic`: Trigger a user-mode panic (tests fault handling).
+
+**Note**: The shell is "Intent-Native". It sends your text directly to the Kernel's `EnglishParser`. You can type "show status" or "what time is it" just like you would on the main console.
+
+```bash
+make run
+# Wait for boot...
+# shell> help
+```
 ```
 
 ### Running Benchmarks

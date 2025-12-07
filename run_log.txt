@@ -3,22 +3,141 @@
 ╚═══════════════════════════════════════════════════════════════╝
 cd kernel && \
 	RUSTFLAGS="-C link-arg=-T../boot/linker_qemu.ld -C link-arg=../build/boot.o" cargo build --release --target aarch64-unknown-none
-warning: function `bench_syscall_user` is never used
-  --> src/benchmarks.rs:21:4
-   |
-21 | fn bench_syscall_user() {
-   |    ^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+warning: unnecessary `unsafe` block
+   --> src/drivers/virtio.rs:264:9
+    |
+264 |         unsafe {
+    |         ^^^^^^ unnecessary `unsafe` block
+    |
+    = note: `#[warn(unused_unsafe)]` (part of `#[warn(unused)]`) on by default
 
-warning: function `user_bench_entry` is never used
-  --> src/benchmarks.rs:26:12
-   |
-26 |         fn user_bench_entry();
-   |            ^^^^^^^^^^^^^^^^
+warning: unnecessary `unsafe` block
+   --> src/drivers/ethernet.rs:168:23
+    |
+168 | ...   let tx_ring = unsafe { self.tx_desc_ring.unwrap()....
+    |                     ^^^^^^ unnecessary `unsafe` block
 
-warning: `intent-kernel` (lib) generated 2 warnings
-    Finished `release` profile [optimized] target(s) in 0.01s
+warning: unnecessary `unsafe` block
+   --> src/drivers/ethernet.rs:201:23
+    |
+201 | ...   let rx_ring = unsafe { self.rx_desc_ring.unwrap()....
+    |                     ^^^^^^ unnecessary `unsafe` block
+
+warning: unnecessary `unsafe` block
+   --> src/drivers/ethernet.rs:258:23
+    |
+258 | ...   let tx_ring = unsafe { self.tx_desc_ring.unwrap()....
+    |                     ^^^^^^ unnecessary `unsafe` block
+
+warning: unnecessary `unsafe` block
+   --> src/drivers/ethernet.rs:299:23
+    |
+299 | ...   let rx_ring = unsafe { self.rx_desc_ring.unwrap()....
+    |                     ^^^^^^ unnecessary `unsafe` block
+
+warning: unused variable: `l3_table`
+   --> src/kernel/memory/paging.rs:399:13
+    |
+399 |         let l3_table = self.get_next_table(&mut l2_table...
+    |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_l3_table`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `prev_id`
+   --> src/kernel/scheduler.rs:296:17
+    |
+296 |             let prev_id = prev.id.0;
+    |                 ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_prev_id`
+
+warning: unused variable: `next_id`
+   --> src/kernel/scheduler.rs:297:17
+    |
+297 |             let next_id = next.id.0;
+    |                 ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_next_id`
+
+warning: value assigned to `count` is never read
+   --> src/kernel/syscall.rs:444:25
+    |
+444 |         let mut count = 0;
+    |                         ^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `port_bytes`
+   --> src/kernel/syscall.rs:903:33
+    |
+903 | ...             let port_bytes = msg.src_port.to_ne_byte...
+    |                     ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_port_bytes`
+
+warning: type `VirtioNet` is more private than the item `virtio::DRIVER`
+   --> src/drivers/virtio.rs:441:1
+    |
+441 | pub static DRIVER: crate::arch::SpinLock<VirtioNet> = cr...
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ static `virtio::DRIVER` is reachable at visibility `pub`
+    |
+note: but type `VirtioNet` is only usable at visibility `pub(self)`
+   --> src/drivers/virtio.rs:89:1
+    |
+ 89 | struct VirtioNet {
+    | ^^^^^^^^^^^^^^^^
+    = note: `#[warn(private_interfaces)]` on by default
+
+warning: type `VirtioBlock` is more private than the item `virtio_blk::DRIVER`
+   --> src/drivers/virtio_blk.rs:339:1
+    |
+339 | pub static DRIVER: crate::arch::SpinLock<VirtioBlock> = ...
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ static `virtio_blk::DRIVER` is reachable at visibility `pub`
+    |
+note: but type `VirtioBlock` is only usable at visibility `pub(self)`
+   --> src/drivers/virtio_blk.rs:101:1
+    |
+101 | struct VirtioBlock {
+    | ^^^^^^^^^^^^^^^^^^
+
+warning: `intent-kernel` (lib) generated 12 warnings (run `cargo fix --lib -p intent-kernel` to apply 4 suggestions)
+warning: unnecessary `unsafe` block
+   --> src/main.rs:248:5
+    |
+248 |     unsafe {
+    |     ^^^^^^ unnecessary `unsafe` block
+    |
+    = note: `#[warn(unused_unsafe)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `async_executor_agent` is never used
+   --> src/main.rs:495:4
+    |
+495 | fn async_executor_agent() {
+    |    ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `usb_loop` is never used
+   --> src/main.rs:504:10
+    |
+504 | async fn usb_loop() {
+    |          ^^^^^^^^
+
+warning: function `steno_loop` is never used
+   --> src/main.rs:530:10
+    |
+530 | async fn steno_loop() {
+    |          ^^^^^^^^^^
+
+warning: function `user_task` is never used
+   --> src/main.rs:610:4
+    |
+610 | fn user_task() {
+    |    ^^^^^^^^^
+
+warning: function `syscall_test_task` is never used
+   --> src/main.rs:729:4
+    |
+729 | fn syscall_test_task() {
+    |    ^^^^^^^^^^^^^^^^^
+
+warning: `intent-kernel` (bin "kernel") generated 6 warnings
+    Finished `release` profile [optimized] target(s) in 0.00s
 cp kernel/target/aarch64-unknown-none/release/kernel build/kernel.elf
 ╔═══════════════════════════════════════════════════════════════╗
 ║  Creating Bootable Image                                     ║
@@ -33,144 +152,66 @@ cp kernel/target/aarch64-unknown-none/release/kernel build/kernel.elf
 ╠═══════════════════════════════════════════════════════════════╣
 ║  Where humans speak and silicon listens                      ║
 ╚═══════════════════════════════════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════════╗
+║  Building User Applications                                  ║
+╚═══════════════════════════════════════════════════════════════╝
+cd user/init && cargo build --release --target aarch64-unknown-none
+warning: unused import: `core::ffi::CStr`
+ --> src/listener.rs:5:5
+  |
+5 | use core::ffi::CStr;
+  |     ^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `init` (bin "listener") generated 1 warning (run `cargo fix --bin "listener"` to apply 1 suggestion)
+    Finished `release` profile [optimized] target(s) in 0.00s
+cd user/services/counter && cargo build --release --target aarch64-unknown-none
+warning: unused variable: `sender`
+  --> src/main.rs:86:17
+   |
+86 |             let sender = sys_ipc_recv(&mut buf);
+   |                 ^^^^^^ help: if this is intentional, prefix it with an underscore: `_sender`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `sys_ipc_send` is never used
+  --> src/main.rs:29:11
+   |
+29 | unsafe fn sys_ipc_send(pid: u64, msg: &[u8; 64]) -> u64 {
+   |           ^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `counter` (bin "counter") generated 2 warnings
+    Finished `release` profile [optimized] target(s) in 0.00s
+cd user/services/hello && cargo build --release --target aarch64-unknown-none
+warning: constant `SYS_EXIT` is never used
+  --> src/main.rs:23:7
+   |
+23 | const SYS_EXIT: u64 = 0;
+   |       ^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `SYS_PRINT` is never used
+  --> src/main.rs:24:7
+   |
+24 | const SYS_PRINT: u64 = 2;
+   |       ^^^^^^^^^
+
+warning: `hello` (bin "hello") generated 2 warnings
+    Finished `release` profile [optimized] target(s) in 0.00s
+╔═══════════════════════════════════════════════════════════════╗
+║  Creating SD Card Image (FAT32)                              ║
+╚═══════════════════════════════════════════════════════════════╝
+./scripts/create_image.sh
+[IMAGE] Creating SD Card Image...
+  Added: init.elf (as init)
+  Added: counter.elf
+  Added: hello.elf
+  Using newfs_msdos...
+  Attached to /dev/disk4
+  Success: Created sd.img using newfs_msdos
 Starting QEMU (Note: Pi 5 emulation is limited)...
-qemu-system-aarch64 -M virt -cpu cortex-a72 -m 2G -serial stdio -display none -semihosting -kernel build/kernel8.img
-Kernel Entry
-
-╔═══════════════════════════════════════════════════════════════════╗
-║                                                                   ║
-║   ██╗███╗   ██╗████████╗███████╗███╗   ██╗████████╗               ║
-║   ██║████╗  ██║╚══██╔══╝██╔════╝████╗  ██║╚══██╔══╝               ║
-║   ██║██╔██╗ ██║   ██║   █████╗  ██╔██╗ ██║   ██║                  ║
-║   ██║██║╚██╗██║   ██║   ██╔══╝  ██║╚██╗██║   ██║                  ║
-║   ██║██║ ╚████║   ██║   ███████╗██║ ╚████║   ██║                  ║
-║   ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═══╝   ╚═╝                  ║
-║                                                                   ║
-║   ██╗  ██╗███████╗██████╗ ███╗   ██╗███████╗██╗                   ║
-║   ██║ ██╔╝██╔════╝██╔══██╗████╗  ██║██╔════╝██║                   ║
-║   █████╔╝ █████╗  ██████╔╝██╔██╗ ██║█████╗  ██║                   ║
-║   ██╔═██╗ ██╔══╝  ██╔══██╗██║╚██╗██║██╔══╝  ██║                   ║
-║   ██║  ██╗███████╗██║  ██║██║ ╚████║███████╗███████╗              ║
-║   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝              ║
-║                                                                   ║
-║      A Perceptual Computing Platform               v0.2      ║
-║                                                                   ║
-║   Hardware: Raspberry Pi 5 (BCM2712)                              ║
-║   CPU:      ARM Cortex-A76 x4 @ 2.4GHz                            ║
-║   RAM:      8GB LPDDR4X                                           ║
-║   GPU:      VideoCore VII                                         ║
-║                                                                   ║
-╚═══════════════════════════════════════════════════════════════════╝
-
-[BOOT] Initializing Intent Kernel...
-
-[DEBUG] BSS: 0x40590000 - 0x405d55c0 (Size: 284096)
-[DEBUG] NEURAL_ALLOCATOR: 0x40392018
-[DEBUG] BSS[0]: 0x0
-[DEBUG] BSS[1]: 0x0
-[CPU]  Core 0 running at EL1
-[INIT] System timer...
-       Frequency: 62 MHz
-[INIT] Interrupt controller...
-[INIT] Security Subsystem...
-       RNG Seed: 0x0008e4db0008e325
-[SEC] Pointer Guard initialized
-[INIT] Memory allocator...
-[MEM] Memory Init Done (Lock held)
-[MEM] Alloc Pages: 1
-[MEM] Initializing VMM...
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] MMU Enabled!
-[MEM] VMM Done
-       Heap: 127 MB available
-[INIT] Machine Detection: QemuVirt
-[INIT] GPIO...
-       Display: Not available (serial only mode)
-[INIT] Capability system...
-[INIT] Enabling interrupts...
-
-╔═══════════════════════════════════════════════════════════╗
-║              INTENT KERNEL READY                          ║
-║                                                           ║
-║  Type 'help' for commands, or just say what you want.     ║
-╚═══════════════════════════════════════════════════════════╝
-
-[INIT] Semantic Intent Engine...
-[INTENT] Executor initialized
-[INIT] Input Engine (Steno Path)...
-[STENO] Steno Input Engine initialized
-[STENO] Fastest input path: 23 keys, <0.1μs latency.
-[INIT] Visual Projection Layer...
-[VISUAL] Visual Layer initialized
-
-╔═══════════════════════════════════════════════════════════╗
-║                 KERNEL BENCHMARKS                         ║
-╚═══════════════════════════════════════════════════════════╝
-
-[BENCH] Running Syscall Latency Benchmark...
-  -> Total Cycles: 114937
-  -> Avg Cycles:   11
-  -> Iterations:   10000
-[BENCH] Running Context Switch Stress Test...
-[MEM] Alloc Pages: 5
-  -> Total Switches: 10000
-  -> Total Cycles:   2839313
-  -> Avg Cycles/Switch: 283
-[BENCH] Running Memory Allocation Benchmark...
-  -> Slab Alloc/Free (8 bytes)
-  -> Total Cycles: 316125
-  -> Avg Cycles:   31
-  -> Buddy Alloc/Free (4KB)
-  -> Total Cycles: 44687
-  -> Avg Cycles:   44
-
-[BENCH] All benchmarks completed.
-
-[INIT] Neural Memory Demo (HDC)...
-[MEM] Alloc Pages: 1
-       Allocated: CAT, DOG, CAR
-       Query: 'Kitten' (Hypervector similar to CAT)
-       Result: Found Concept 0xca12 (Sim: 1.0000)
-       Demo: Binding (Cognitive Algebra)
-       Bound 'Running Cat' similarity to Cat: 0.5000 (Should be ~0.5)
-       Bound 'Running Cat' similarity to Action: 0.5000 (Should be ~0.5)
-       Unbound 'Running Cat' * 'Action' -> Cat Sim: 1.0000 (Should be 1.0)
-
-[KERNEL] Spawning Syscall Test Task...
-
-[KERNEL] Spawning Syscall Test Task...
-[MEM] Alloc Pages: 5
-[INIT] Scheduler...
-[MEM] Alloc Pages: 5
-       Spawned Async Executor Agent
-[INIT] Loading /init.elf...
-       Failed to open /init.elf
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 5
-[MEM] Alloc Pages: 5
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-[MEM] Alloc Pages: 1
-       Spawned Fallback User Task (EL0)
-[INIT] Enabling Preemption...
-
-╔═══════════════════════════════════════════════════════════╗
-║              INTENT KERNEL READY (USER MODE)              ║
-╚═══════════════════════════════════════════════════════════╝
-
-qemu-system-aarch64: terminating on signal 1 from pid 87440 (<unknown process>)
+qemu-system-aarch64 -machine virt -cpu cortex-a72 -smp 4 -m 1G -nographic -serial mon:stdio -semihosting -netdev user,id=net0,hostfwd=udp::8085-:8080 -device virtio-net-device,netdev=net0 -drive file=sd.img,if=none,id=hd0,format=raw -device virtio-blk-device,drive=hd0 -kernel build/kernel8.img

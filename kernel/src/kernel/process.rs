@@ -11,6 +11,15 @@ use crate::kernel::memory::{Stack, alloc_stack};
 use crate::kernel::capability::Capability;
 use crate::fs::vfs::ProcessFileTable;
 use crate::kernel::signal::SigAction;
+use crate::arch::SpinLock;
+use alloc::collections::vec_deque::VecDeque;
+
+/// IPC Message (Fixed Size 64 bytes)
+#[derive(Debug, Clone, Copy)]
+pub struct Message {
+    pub sender: AgentId,
+    pub data: [u8; 64],
+}
 
 /// Unique Agent Identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -77,6 +86,7 @@ pub struct Agent {
     pub parent_id: Option<u64>,
     pub cpu_cycles: u64,
     pub last_scheduled: u64,
+    pub mailbox: SpinLock<VecDeque<Message>>,
 }
 
 impl Agent {
@@ -101,6 +111,7 @@ impl Agent {
             parent_id: None,
             cpu_cycles: 0,
             last_scheduled: 0,
+            mailbox: SpinLock::new(VecDeque::new()),
         };
 
         let stack_top = agent.kernel_stack.top;
@@ -181,6 +192,7 @@ impl Agent {
             parent_id: None,
             cpu_cycles: 0,
             last_scheduled: 0,
+            mailbox: SpinLock::new(VecDeque::new()),
         };
 
         // Kernel Stack Setup (for when we are in kernel mode handling this process)
@@ -238,9 +250,8 @@ impl Agent {
         let ustack_size = (user_stack.top - user_stack.bottom) as usize;
         
         // Let's pick a virtual address for the stack top.
-        // 0x0000_0040_0000_0000 (256GB mark? No, let's keep it simple)
-        // 0x0000_FFFF_FFFF_0000 (Near top of 48-bit space)
-        let ustack_virt_top = 0x0000_FFFF_FFFF_0000;
+        // Move to lower memory to avoid potential 48-bit boundary issues
+        let ustack_virt_top = 0x2000_0000;
         let ustack_virt_bottom = ustack_virt_top - ustack_size as u64;
         
         space.map_user(ustack_virt_bottom, ustack_phys_start, ustack_size)?;
@@ -263,6 +274,7 @@ impl Agent {
             parent_id: None,
             cpu_cycles: 0,
             last_scheduled: 0,
+            mailbox: SpinLock::new(VecDeque::new()),
         };
 
         // Kernel Stack Setup
@@ -389,6 +401,7 @@ impl Agent {
             parent_id: Some(self.id.0),
             cpu_cycles: 0,
             last_scheduled: 0,
+            mailbox: SpinLock::new(VecDeque::new()),
         };
         
         // Clone File Table (dup)
@@ -548,6 +561,8 @@ extern "C" fn user_trampoline() {
         core::arch::asm!("mov {}, x20", out(reg) stack);
         core::arch::asm!("mov {}, x21", out(reg) arg);
         
+        crate::kprintln!("[DEBUG] Trampoline: Entry={:#x} Stack={:#x} Arg={:#x}", entry, stack, arg);
+
         crate::arch::jump_to_userspace(entry, stack, arg);
     }
 }

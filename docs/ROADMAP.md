@@ -63,7 +63,7 @@
 - [x] **Networking**: Real Ethernet driver (RP1/PCIe) and TCP/IP stack.
 - [x] **Persistent Storage**: SDHCI driver for SD card read/write.
 - [x] **Multi-Core SMP**: 4-core scheduler with work stealing and affinity.
-- [x] **Userspace & Scheduling**: ELF Loader, Preemptive Scheduler, Syscalls.
+- [x] **Userspace & Scheduling**: ELF Loader, Preemptive Scheduler, Syscalls, **Intent-Native Shell**.
 
 ### Phase 7: Semantic Visual Interface (SVI) ✅
 - [x] **Visual Layer**: Broadcast listener architecture (`kernel/src/visual`).
@@ -94,6 +94,21 @@
 - [x] **O(1) Allocator**: Slab CLZ + Buddy FreeMask optimizations (28 cycles/op).
 - [x] **Zero-Copy Parser**: Optimized English parser (133 cycles, ~15x faster).
 - [x] **Benchmark Consistency**: Full 40-benchmark suite passing on QEMU.
+
+### Phase 12: Semantic Multi-Tasking (Sprint 15) ✅
+- [x] **Process Manager**: PID tracking, process states, and lifecycle management.
+- [x] **Syscall Spawn**: Loading ELF binaries (with simulated embedded loading).
+- [x] **Biological IPC**: `sys_ipc_send`/`sys_ipc_recv` for direct agent communication.
+- [x] **Semantic Binding**: `sys_announce` allows processes to register as Concept Handlers.
+- [x] **Skill Proxy**: Kernel-side proxy (`ProcessSkill`) ensuring transparent Intent->IPC routing.
+- [x] **Architecture Audit**: Removal of legacy BSD socket artifacts.
+
+### Phase 13: Neural Architecture Verification (Dec 2025) ✅
+- [x] **Shell Refactor**: Routes commands through `SYS_PARSE_INTENT` syscall instead of classical string matching.
+- [x] **Temporal Wiring**: `decay_tick()` (100ms interval) integrated into scheduler timer interrupt.
+- [x] **Hierarchical Wiring**: `propagate_all()` (50ms interval) integrated into scheduler timer interrupt.
+- [x] **Skill Registry Connection**: Intent broadcast falls back to registered skills.
+- [x] **Verification Proof**: QEMU output confirms `[NEURAL] tick=...` messages firing every second.
 
 ## Test Coverage
 

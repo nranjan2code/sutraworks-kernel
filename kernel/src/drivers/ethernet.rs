@@ -428,6 +428,11 @@ pub static ETHERNET: SpinLock<EthernetDriver> = SpinLock::new(EthernetDriver::ne
 
 /// Initialize Ethernet driver
 pub fn init(mac_addr: MacAddr) {
+    if crate::dtb::machine_type() == crate::dtb::MachineType::QemuVirt {
+         crate::drivers::virtio::init();
+         return;
+    }
+
     let mut driver = ETHERNET.lock();
     if let Err(e) = driver.init(mac_addr) {
         kprintln!("[ETH] Init failed: {}", e);
@@ -436,15 +441,24 @@ pub fn init(mac_addr: MacAddr) {
 
 /// Send an Ethernet frame
 pub fn send_frame(data: &[u8]) -> Result<(), &'static str> {
+    if crate::dtb::machine_type() == crate::dtb::MachineType::QemuVirt {
+        return crate::drivers::virtio::send_frame(data);
+    }
     ETHERNET.lock().send_frame(data)
 }
 
 /// Receive an Ethernet frame
 pub fn recv_frame(buffer: &mut [u8]) -> Result<usize, &'static str> {
+    if crate::dtb::machine_type() == crate::dtb::MachineType::QemuVirt {
+        return crate::drivers::virtio::recv_frame(buffer);
+    }
     ETHERNET.lock().recv_frame(buffer)
 }
 
 /// Get MAC address
 pub fn get_mac_address() -> MacAddr {
+    if crate::dtb::machine_type() == crate::dtb::MachineType::QemuVirt {
+        return MacAddr::from_bytes(crate::drivers::virtio::get_mac());
+    }
     ETHERNET.lock().get_mac_address()
 }

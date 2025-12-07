@@ -149,6 +149,15 @@ impl EnglishParser {
                 // Priority 9: NO
                 "no" | "nope" | "nah" | "cancel" | "abort" => Some((9, concepts::NO, "NO", 0.9)),
                 
+                // Priority 10: Counter Demo
+                "increment" | "up" | "add" | "plus" => Some((10, concepts::INCREMENT, "INCREMENT", 0.9)),
+                "decrement" | "down" | "sub" | "minus" => Some((10, concepts::DECREMENT, "DECREMENT", 0.9)),
+                "count" | "value" => Some((10, concepts::GET_COUNT, "GET_COUNT", 0.9)),
+
+                // Priority 11: File Operations
+                "ls" | "list" | "dir" => Some((11, concepts::LIST_FILES, "LIST_FILES", 0.9)),
+                "cat" | "read" | "open" => Some((11, concepts::READ_FILE, "READ_FILE", 0.9)),
+                
                 _ => None
             };
 
@@ -193,6 +202,11 @@ impl EnglishParser {
         else if concept == concepts::CANCEL { "CANCEL" }
         else if concept == concepts::NEXT { "NEXT" }
         else if concept == concepts::PREVIOUS { "PREVIOUS" }
+        else if concept == concepts::INCREMENT { "INCREMENT" }
+        else if concept == concepts::DECREMENT { "DECREMENT" }
+        else if concept == concepts::GET_COUNT { "GET_COUNT" }
+        else if concept == concepts::LIST_FILES { "LIST_FILES" }
+        else if concept == concepts::READ_FILE { "READ_FILE" }
         else { "UNKNOWN" }
     }
 }

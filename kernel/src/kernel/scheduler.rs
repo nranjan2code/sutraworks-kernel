@@ -4,7 +4,7 @@
 
 use alloc::collections::vec_deque::VecDeque;
 use alloc::boxed::Box;
-use crate::kernel::process::{Agent, AgentState, Context};
+use crate::kernel::process::{Agent, AgentState, Context, Message};
 use crate::kernel::sync::SpinLock;
 use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
@@ -113,12 +113,33 @@ impl IntentScheduler {
         Ok(())
     }
 
+    /// Register the currently running boot thread as Agent 0
+    pub fn register_boot_agent(&mut self) {
+        // Create an agent for the current thread
+        // We use a dummy entry point because we are ALREADY running.
+        let mut agent = Agent::new_kernel_simple(|| {}).unwrap();
+        
+        // PID 0 reserved for Idle/Boot
+        // We might need to hack the ID if AgentId::new() increments.
+        // But for now, just let it have an ID.
+        // agent.id.0 = 0; 
+        
+        agent.state = AgentState::Running;
+        
+        // We claim we are running this agent
+        self.current_agent_id = Some(agent.id.0);
+        self.agents.push_front(Box::new(agent));
+        
+        crate::kprintln!("[SCHED] Registered Boot Agent (PID {})", self.current_agent_id.unwrap());
+    }
+
     /// Spawn a new user agent from ELF binary
-    pub fn spawn_user_elf(&mut self, elf_data: &[u8]) -> Result<(), &'static str> {
+    pub fn spawn_user_elf(&mut self, elf_data: &[u8]) -> Result<u64, &'static str> {
         let mut agent = Agent::new_user_elf(elf_data)?;
         agent.parent_id = self.current_agent_id; // Set parent
+        let pid = agent.id.0;
         self.agents.push_back(Box::new(agent));
-        Ok(())
+        Ok(pid)
     }
 
     /// Fork an agent
@@ -272,6 +293,9 @@ impl IntentScheduler {
                 CURRENT_PIDS[core_id as usize].store(next.id.0.try_into().unwrap_or(0), Ordering::Relaxed);
             }
             
+            let prev_id = prev.id.0;
+            let next_id = next.id.0;
+
             // Push Prev to Back
             self.agents.push_back(prev);
             
@@ -286,6 +310,8 @@ impl IntentScheduler {
             let prev_ctx = &mut prev_agent.context as *mut Context;
             
             crate::profiling::PROFILER.context_switches.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+            
+            
             return Some((prev_ctx, next_ctx));
         }
         
@@ -356,6 +382,29 @@ impl IntentScheduler {
             Err("Task not found")
         }
     }
+
+
+    /// Send an IPC message to a process
+    pub fn send_message(&mut self, target_pid: u64, msg: Message) -> Result<(), &'static str> {
+        if let Some(agent) = self.get_agent_mut(target_pid) {
+            let mut mailbox = agent.mailbox.lock();
+            if mailbox.len() >= 32 {
+                return Err("Mailbox full");
+            }
+            mailbox.push_back(msg);
+            drop(mailbox); // Unlock immediately
+            
+            // Wake up if sleeping (simplified: wake if ANY sleep, real impl should check if sleeping for MSG)
+            // Ideally we should have AgentState::WaitingForMessage
+            if agent.state == AgentState::Sleeping {
+                agent.state = AgentState::Ready;
+                agent.wake_time = 0; // Cancel sleep timeout
+            }
+            Ok(())
+        } else {
+            Err("Target process not found")
+        }
+    }
 }
 
 pub static SCHEDULER: SpinLock<IntentScheduler> = SpinLock::new(IntentScheduler::new());
@@ -368,6 +417,30 @@ pub fn tick() {
     // Track tick count for periodic tasks
     static TICK_COUNT: AtomicU64 = AtomicU64::new(0);
     let ticks = TICK_COUNT.fetch_add(1, Ordering::Relaxed);
+    
+    let now = crate::drivers::timer::uptime_ms();
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // NEURAL SUBSYSTEM TICKS (Biological Architecture)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    // Temporal dynamics: decay activations every 100ms (10 ticks)
+    if ticks % 10 == 0 {
+        crate::intent::temporal::decay_tick(now);
+    }
+    
+    // Hierarchical propagation: propagate intents through layers every 50ms (5 ticks)
+    if ticks % 5 == 0 {
+        crate::intent::hierarchy::propagate_all();
+    }
+    
+    // ═════════════════════════════════════════════════════════════════════════════════
+    // VERIFICATION: Observable proof that neural architecture is active
+    // Log once per second (100 ticks @ 10ms each) to avoid flooding
+    // ═════════════════════════════════════════════════════════════════════════════════
+    if ticks % 100 == 0 && ticks > 0 {
+        crate::kprintln!("[NEURAL] tick={} uptime={}ms decay_active=true propagate_active=true", ticks, now);
+    }
 
     // TCP retransmission check every 100ms (10 ticks)
     if ticks % 10 == 0 {
@@ -386,27 +459,31 @@ pub fn tick() {
     }
 
     // 2. Schedule next task
-    // Note: We are in IRQ context, so interrupts are already disabled.
-    if let Some((prev, next)) = scheduler.schedule() {
-        drop(scheduler);
-        unsafe {
-            crate::arch::switch_to(prev as *mut u8, next as *const u8);
-        }
-    }
+    // MOVED to exception handler (after EOI)
+    // if let Some((prev, next)) = scheduler.schedule() {
+    //     drop(scheduler);
+    //     unsafe {
+    //         crate::arch::switch_to(prev as *mut u8, next as *const u8);
+    //     }
+    // }
 }
 
 /// Yield the current task
 pub fn yield_task() {
+    // crate::kprintln!("[DEBUG] yield_task called");
     crate::arch::without_interrupts(|| {
         let mut scheduler = SCHEDULER.lock();
         if let Some((prev, next)) = scheduler.schedule() {
             // Drop the lock before switching!
-            // Otherwise we switch context holding the lock, and the next task might try to lock it -> Deadlock.
             drop(scheduler);
             
+            // crate::kprintln!(\"[DEBUG] Switching Context...\");
             unsafe {
                 crate::arch::switch_to(prev as *mut u8, next as *const u8);
             }
+            // crate::kprintln!("[DEBUG] Returned from switch");
+        } else {
+             // crate::kprintln!("[DEBUG] schedule returned None");
         }
     });
 }

@@ -11,6 +11,7 @@ pub mod icmp;
 pub mod udp;
 pub mod tcp;
 pub mod socket;
+pub use socket::SocketFile;
 
 // Re-export key types for convenience
 pub use ip::Ipv4Addr;

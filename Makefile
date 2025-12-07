@@ -33,6 +33,7 @@ KERNEL_ELF := $(BUILD_DIR)/kernel.elf
 KERNEL_IMG := $(BUILD_DIR)/kernel8.img
 KERNEL_BIN := $(BUILD_DIR)/kernel.bin
 BOOT_OBJ := $(BUILD_DIR)/boot.o
+SD_IMG := sd.img
 
 # Linker script
 LINKER := $(BOOT_DIR)/linker.ld
@@ -46,7 +47,7 @@ RUSTFLAGS := -C link-arg=-T$(LINKER)
 # BUILD RULES
 # ═══════════════════════════════════════════════════════════════════════════════
 
-.PHONY: all clean kernel boot image install run debug doc
+.PHONY: all clean kernel boot image install run debug doc user
 
 # Default: build everything
 all: image
@@ -112,6 +113,22 @@ install: image
 		exit 1; \
 	fi
 
+# Build user applications
+user:
+	@echo "╔═══════════════════════════════════════════════════════════════╗"
+	@echo "║  Building User Applications                                  ║"
+	@echo "╚═══════════════════════════════════════════════════════════════╝"
+	cd user/init && cargo build --release --target $(TARGET)
+	cd user/services/counter && cargo build --release --target $(TARGET)
+	cd user/services/hello && cargo build --release --target $(TARGET)
+
+# Create SD card image with user apps
+sd_image: user
+	@echo "╔═══════════════════════════════════════════════════════════════╗"
+	@echo "║  Creating SD Card Image (FAT32)                              ║"
+	@echo "╚═══════════════════════════════════════════════════════════════╝"
+	./scripts/create_image.sh
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # EMULATION
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -120,10 +137,12 @@ install: image
 QEMU = qemu-system-aarch64
 QEMU_FLAGS = -machine virt -cpu cortex-a72 -smp 4 -m 1G \
              -nographic -serial mon:stdio -semihosting \
+             -netdev user,id=net0 -device virtio-net-device,netdev=net0 \
+             -drive file=$(SD_IMG),if=none,id=hd0,format=raw -device virtio-blk-device,drive=hd0 \
              -kernel $(KERNEL_IMG)
 
 run: LINKER := $(BOOT_DIR)/linker_qemu.ld
-run: image
+run: image sd_image
 	@echo "Starting QEMU (Note: Pi 5 emulation is limited)..."
 	$(QEMU) $(QEMU_FLAGS)
 

@@ -373,6 +373,28 @@ pub unsafe fn write64(addr: usize, value: u64) {
 #[cfg(feature = "test_mocks")]
 pub unsafe fn write64(_addr: usize, _value: u64) {}
 
+/// Read a 8-bit value from a memory-mapped register
+#[inline]
+#[cfg(not(feature = "test_mocks"))]
+pub unsafe fn read8(addr: usize) -> u8 {
+    core::ptr::read_volatile(addr as *const u8)
+}
+
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn read8(_addr: usize) -> u8 { 0 }
+
+/// Write a 8-bit value to a memory-mapped register
+#[inline]
+#[cfg(not(feature = "test_mocks"))]
+pub unsafe fn write8(addr: usize, value: u8) {
+    core::ptr::write_volatile(addr as *mut u8, value);
+}
+
+#[inline]
+#[cfg(feature = "test_mocks")]
+pub unsafe fn write8(_addr: usize, _value: u8) {}
+
 /// Modify a 32-bit register: clear bits in mask, then set bits in value
 #[inline]
 pub unsafe fn modify32(addr: usize, mask: u32, value: u32) {
@@ -551,6 +573,12 @@ core::arch::global_asm!(
     // x0 = entry point
     // x1 = stack pointer
     // x2 = argument
+
+    // Ensure D-Cache is cleaned and I-Cache is invalidated for the new code
+    "dsb ish",
+    "ic iallu",
+    "dsb ish",
+    "isb",
 
     // Mask all interrupts (DAIF) during transition
     "msr daifset, #0xf",

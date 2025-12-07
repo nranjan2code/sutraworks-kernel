@@ -5,6 +5,14 @@ edition = "2021"
 
 [dependencies]
 
+[[bin]]
+name = "init"
+path = "src/main.rs"
+
+[[bin]]
+name = "listener"
+path = "src/listener.rs"
+
 [profile.release]
 panic = "abort"
 lto = true

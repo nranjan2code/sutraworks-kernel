@@ -1,111 +1,77 @@
-use alloc::collections::VecDeque;
-use crate::net::ip::Ipv4Addr;
-use crate::net::tcp::TcpState;
+//! Socket Filesystem Interface
+//! 
+//! Bridges the VFS `FileOps` trait with the Network Stack.
 
-/// Socket Type
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SocketType {
-    Stream,   // TCP
-    Datagram, // UDP
+use alloc::vec::Vec;
+use alloc::sync::Arc;
+use core::any::Any;
+use crate::fs::vfs::FileStat;
+use crate::fs::{FileOps, SeekFrom};
+use crate::net::udp;
+use crate::kprintln;
+
+/// A File representing a bound UDP socket
+pub struct SocketFile {
+    pub port: u16,
 }
 
-/// Network Socket
-pub struct Socket {
-    pub socket_type: SocketType,
-    pub state: TcpState, // Only relevant for TCP
-    pub local_port: u16,
-    pub remote_addr: Ipv4Addr,
-    pub remote_port: u16,
-    pub recv_buffer: VecDeque<u8>,
-    pub send_buffer: VecDeque<u8>,
+impl SocketFile {
+    pub fn new(port: u16) -> Self {
+        Self { port }
+    }
 }
 
-impl Socket {
-    pub fn new(socket_type: SocketType) -> Self {
-        Self {
-            socket_type,
-            state: TcpState::Closed,
-            local_port: 0,
-            remote_addr: Ipv4Addr::ANY,
-            remote_port: 0,
-            recv_buffer: VecDeque::new(),
-            send_buffer: VecDeque::new(),
-        }
-    }
-    
-    pub fn bind(&mut self, port: u16) -> Result<(), &'static str> {
-        if self.local_port != 0 {
-            return Err("Socket already bound");
-        }
-        self.local_port = port;
-        Ok(())
-    }
-    
-    pub fn connect(&mut self, addr: Ipv4Addr, port: u16) -> Result<(), &'static str> {
-        self.remote_addr = addr;
-        self.remote_port = port;
+impl FileOps for SocketFile {
+    fn read(&mut self, _buf: &mut [u8]) -> Result<usize, &'static str> {
+        // Standard read() pulls payload only? 
+        // Or should we return error and force recvfrom?
+        // Ideally `read` should return just data for connected sockets.
+        // For connectionless, it returns data from the first packet in queue.
         
-        if self.socket_type == SocketType::Stream {
-            // Start TCP Handshake
-            self.state = TcpState::SynSent;
-            // In a real stack, we would send a SYN packet here.
-            // For now, we just update state.
-        }
+        // This is a blocking read in a real OS, but here we are non-blocking or just check queue.
+        // Let's implement non-blocking read for now.
         
-        Ok(())
-    }
-    
-    pub fn send(&mut self, data: &[u8]) -> usize {
-        for &byte in data {
-            self.send_buffer.push_back(byte);
+        if let Some(msg) = udp::recv_from(self.port) {
+            let len = core::cmp::min(_buf.len(), msg.payload.len());
+            _buf[..len].copy_from_slice(&msg.payload[..len]);
+            Ok(len)
+        } else {
+            Ok(0) // No data (EAGAIN in unix)
         }
-        // In a real stack, this would trigger packet transmission.
-        data.len()
     }
-    
-    pub fn recv(&mut self, buf: &mut [u8]) -> usize {
-        let mut count = 0;
-        for byte in buf.iter_mut() {
-            if let Some(val) = self.recv_buffer.pop_front() {
-                *byte = val;
-                count += 1;
-            } else {
-                break;
-            }
-        }
-        count
-    }
-}
 
-use crate::fs::vfs::{FileOps, FileStat, SeekFrom};
+    fn write(&mut self, _buf: &[u8]) -> Result<usize, &'static str> {
+        // write() on UDP socket requires connect() first, which we don't have.
+        // So this should probably error or default to broadcast?
+        Err("Use sendto instead")
+    }
 
-impl FileOps for Socket {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, &'static str> {
-        Ok(self.recv(buf))
-    }
-    
-    fn write(&mut self, buf: &[u8]) -> Result<usize, &'static str> {
-        Ok(self.send(buf))
-    }
-    
     fn seek(&mut self, _pos: SeekFrom) -> Result<u64, &'static str> {
-        Err("Socket does not support seeking")
+        Err("Cannot seek on socket")
     }
-    
+
     fn close(&mut self) -> Result<(), &'static str> {
-        self.state = TcpState::Closed;
+        kprintln!("[Socket] Closing port {}", self.port);
+        udp::unregister_listener(self.port)?;
         Ok(())
     }
-    
+
     fn stat(&self) -> Result<FileStat, &'static str> {
         Ok(FileStat {
             size: 0,
-            mode: 0, 
-            inode: 0,
+            mode: 0, // S_IFSOCK
+            inode: 0, // TODO
         })
     }
     
-    fn as_any(&mut self) -> &mut dyn core::any::Any {
+    fn as_any(&mut self) -> &mut dyn Any {
         self
+    }
+}
+
+impl Drop for SocketFile {
+    fn drop(&mut self) {
+        // Ensure we unregister if dropped without close
+        let _ = udp::unregister_listener(self.port);
     }
 }

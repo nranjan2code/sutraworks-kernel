@@ -52,6 +52,7 @@ pub trait FileOps: Send + Sync + Any {
     fn seek(&mut self, pos: SeekFrom) -> Result<u64, &'static str>;
     fn close(&mut self) -> Result<(), &'static str>;
     fn stat(&self) -> Result<FileStat, &'static str>;
+    fn readdir(&mut self) -> Result<Option<DirEntry>, &'static str> { Err("Not a directory") }
     fn as_any(&mut self) -> &mut dyn Any;
 }
 

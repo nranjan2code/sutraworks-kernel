@@ -235,15 +235,11 @@ impl Periodic {
 pub fn set_timer_interrupt(us: u64) {
     let ticks = us_to_ticks(us);
     unsafe {
-        // Write to CNTP_TVAL_EL0 (Timer Value Register)
-        // This sets the timer to expire in `ticks` from now
-        core::arch::asm!("msr cntp_tval_el0, {}", in(reg) ticks, options(nostack));
+        // Write to CNTV_TVAL_EL0 (Virtual Timer Value Register)
+        core::arch::asm!("msr cntv_tval_el0, {}", in(reg) ticks, options(nostack));
         
-        // Enable timer and unmask interrupt in CNTP_CTL_EL0 (Control Register)
-        // Bit 0: ENABLE (1 = enabled)
-        // Bit 1: IMASK (0 = unmasked/interrupt enabled)
-        // Value: 1
-        core::arch::asm!("msr cntp_ctl_el0, {}", in(reg) 1u64, options(nostack));
+        // Enable timer and unmask interrupt in CNTV_CTL_EL0
+        core::arch::asm!("msr cntv_ctl_el0, {}", in(reg) 1u64, options(nostack));
     }
 }
 
@@ -251,6 +247,6 @@ pub fn set_timer_interrupt(us: u64) {
 pub fn disable_timer_interrupt() {
     unsafe {
         // Disable timer (Bit 0 = 0)
-        core::arch::asm!("msr cntp_ctl_el0, {}", in(reg) 0u64, options(nostack));
+        core::arch::asm!("msr cntv_ctl_el0, {}", in(reg) 0u64, options(nostack));
     }
 }

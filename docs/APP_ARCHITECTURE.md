@@ -14,6 +14,10 @@ In the Intent Kernel, the operating system is not a passive resource manager; it
 ### "Code is an Implementation Detail"
 Users (and declarative apps) should express *what* they want, not *how* to do it. The system resolves the "how" at runtime based on available Capabilities (Skills).
 
+> [!WARNING]
+> **NO IMPERATIVE LOGIC:**
+> Apps MUST NOT contain imperative code (loops, if-statements, string parsing). They define a graph of Semantic Intents. Any logic must be encapsulated in a reusable **Skill** (Rust/WASM).
+
 ---
 
 ## 2. Architecture Overview

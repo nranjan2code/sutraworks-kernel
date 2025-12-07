@@ -71,6 +71,14 @@ Use this ONLY for:
 Calculates the Internet Checksum (RFC 1071) for a buffer.
 Used by IP, ICMP, UDP, and TCP.
 
+### `kernel::net::udp::register_listener(port: u16) -> Result<(), NetworkError>`
+Registers a kernel-level listener for a specific UDP port. Used by `sys_bind_udp`.
+
+### `kernel::net::socket::SocketFile`
+Wraps a bound UDP port in a File Descriptor interface independently of the file system.
+- `read()`: Non-blocking, returns packet data.
+- `close()`: Unregisters the listener.
+
 ## 6. Neural Intent Architecture
 
 ### `intent::temporal::summate(concept_id: ConceptID, strength: f32, timestamp: u64)`
