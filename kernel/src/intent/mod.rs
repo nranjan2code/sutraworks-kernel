@@ -535,21 +535,31 @@ impl IntentExecutor {
     }
 
     fn handle_list_files(&self) {
-        crate::kprintln!("╔═══════════════════════════════════════╗");
+        crate::kprintln!("╔═══════════════════════════════════════════════════════════╗");
         crate::kprintln!("║            FILE LISTING               ║");
         crate::kprintln!("╠═══════════════════════════════════════╣");
         
-        // Use VFS to list root directory
-        // In kernel space, we can access VFS directly if we have appropriate handles
-        // For MVP, we'll try to use the Global VFS if exposed, or just print a placeholder 
-        // until we wire up kernel-space VFS access.
+        // Ensure VFS is initialized
+        // let vfs = crate::fs::vfs::VFS.lock(); // This might deadlock if VFS uses kprintln/UART? 
+        // No, VFS lock is a SpinLock<VfsManager>. kprintln uses UART lock.
+        // But if VFS calls kprintln inside (it does in init), that's fine (nesting different locks).
         
-        // TODO: Properly acquire VFS handle in kernel space
-        crate::kprintln!("║ [DIR]  /                              ║");
-        crate::kprintln!("║  - init                               ║");
-        crate::kprintln!("║  - counter                            ║");
-        crate::kprintln!("║  - hello                              ║");
-        crate::kprintln!("║  - EFI                                ║");
+        let vfs = crate::fs::vfs::VFS.lock();
+        match vfs.read_dir("/") {
+             Ok(entries) => {
+                 for entry in entries {
+                     let size = entry.size;
+                     let type_str = if entry.is_dir { "<DIR>" } else { "     " };
+                     // Truncate name to fit if needed
+                     let name = if entry.name.len() > 15 { &entry.name[0..15] } else { &entry.name };
+                     crate::kprintln!("║ {} {:<15} {:>8} B ║", type_str, name, size);
+                 }
+             }
+             Err(e) => {
+                 crate::kprintln!("║ [ERROR] Failed to list: {:<12} ║", e);
+             }
+        }
+
         crate::kprintln!("╚═══════════════════════════════════════╝");
         crate::kprintln!("[INTENT] LIST_FILES executed");
     }
