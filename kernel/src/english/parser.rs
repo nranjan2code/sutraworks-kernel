@@ -172,13 +172,27 @@ impl EnglishParser {
         }
 
         best_match.map(|(_, concept_id, name, confidence)| {
-            Intent {
-                concept_id,
-                confidence,
-                data: IntentData::None,
-                name,
-                ..Intent::new(concept_id)
+            let mut intent = Intent::new(concept_id);
+            intent.confidence = confidence;
+            intent.name = name; // This is a static string, careful. Intent struct has static str? Yes.
+
+            // Argument Handling
+            // If the intent is READ_FILE, we need to find the filename.
+            // Simplified logic: The first word that is NOT the command keyword is the filename.
+            if concept_id == concepts::READ_FILE {
+                for token in input.split_whitespace() {
+                     let word = token.trim_matches(|c| c == '?' || c == '!' || c == '.' || c == ',');
+                     // Is this the command?
+                     if word == "cat" || word == "read" || word == "open" {
+                         continue;
+                     }
+                     // If it's not the command, it's likely the argument
+                     intent.data = IntentData::String(String::from(word));
+                     break; // Only one argument supported for now
+                }
             }
+            
+            intent
         })
     }
 

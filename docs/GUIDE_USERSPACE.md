@@ -61,18 +61,23 @@ pub extern "C" fn _start() -> ! {
 ```
 
 ## Available Syscalls
-| Syscall | Description | Usage |
-|---------|-------------|-------|
-| `SYS_PRINT` | Debug output to kernel console | `print("msg")` |
-| `SYS_SLEEP` | Sleep for N milliseconds | `sleep(ms)` |
-| `SYS_YIELD` | Yield timeslice manually | `yield_now()` |
-| `SYS_PARSE_INTENT` | Trigger a kernel intent | `parse_intent("cmd")` |
-| `SYS_SPAWN` | Spawn process | `spawn("name")` |
-| `SYS_IPC_SEND` | Send message to PID | `ipc_send(pid, msg)` |
-| `SYS_IPC_RECV` | Blocking receive | `ipc_recv(&mut buf)` |
-| `SYS_ANNOUNCE` | Register capability | `announce(CONCEPT_ID)` |
-| `SYS_BIND_UDP` | Bind UDP port | `syscall1(23, port)` |
-| `SYS_RECVFROM` | Receive UDP packet | `syscall4(24, fd, ...)` |
+
+> [!WARNING]
+> **Restricted Syscalls**: Syscalls marked with 🔒 require the `Driver` capability. 
+> Standard User Agents MUST use `SYS_PARSE_INTENT`.
+
+| Syscall | Description | Usage | Restricted? |
+|---------|-------------|-------|-------------|
+| `SYS_PRINT` | Debug output to kernel console | `print("msg")` | 🔒 YES |
+| `SYS_SLEEP` | Sleep for N milliseconds | `sleep(ms)` | NO |
+| `SYS_YIELD` | Yield timeslice manually | `yield_now()` | NO |
+| `SYS_PARSE_INTENT` | Trigger a kernel intent | `parse_intent("cmd")` | **NO (Preferred)** |
+| `SYS_SPAWN` | Spawn process | `spawn("name")` | 🔒 YES |
+| `SYS_IPC_SEND` | Send message to PID | `ipc_send(pid, msg)` | NO |
+| `SYS_IPC_RECV` | Blocking receive | `ipc_recv(&mut buf)` | NO |
+| `SYS_ANNOUNCE` | Register capability | `announce(CONCEPT_ID)` | NO |
+| `SYS_BIND_UDP` | Bind UDP port | `syscall1(23, port)` | 🔒 YES |
+| `SYS_RECVFROM` | Receive UDP packet | `syscall4(24, fd, ...)` | 🔒 YES |
 
 ## Service Agent Pattern
 To create a background service that handles intents:

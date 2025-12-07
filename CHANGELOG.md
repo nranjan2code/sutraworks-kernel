@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Locked Down (December 7, 2025) - 🏰 Architectural Hardening & Syscall Gating
+- **Semantic Tollbooth (Syscall Gating)**
+  - **Change**: Restricted imperative I/O syscalls (`OPEN`, `READ`, `WRITE`, `PRINT`, `BIND_UDP`, `RECVFROM`) to privileged agents only.
+  - **Mechanism**: Introduced `CapabilityType::Driver` (Token ID 13).
+  - **Impact**: Standard user apps MUST use `SYS_PARSE_INTENT` (22) for all operations. Direct hardware/filesystem access is now constitutionally blocked for non-drivers.
+- **Intent-First API Refactoring**
+  - **Change**: Removed hardcoded `match` handlers in `IntentExecutor`.
+  - **New System**: Dynamic handler registration via `system.rs` for `help`, `status`, `ls`, etc.
+  - **Impact**: Clean separation of concerns. Adding a new system command no longer requires modifying the core executor loop.
+- **Documentation Synchronization**
+  - **Audit**: Updated `ARCHITECTURE.md`, `SECURITY.md`, `README.md`, and `GUIDE_USERSPACE.md` to reflect the strict "No Hybrid Logic" rule and the new security model.
+
 ### Verified (December 6, 2025) - 🧠 Intent-Native Architecture
 - **Shell Intent Integration**
   - **Change**: Refactored `user/init` shell to route all commands through `SYS_PARSE_INTENT` syscall (22) instead of classical string matching.

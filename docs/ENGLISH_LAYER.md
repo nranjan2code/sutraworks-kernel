@@ -81,7 +81,24 @@ kernel/src/english/
 "STAT" → parse as steno → STATUS intent (confidence: 1.0)
 ```
 
-### 2. Natural Language Responses (responses.rs)
+### 2. Argument Extraction (parser.rs)
+
+The parser can now extract arguments for specific intents that require data (like filenames).
+
+**Logic**:
+1.  Identify the command keyword (e.g., "cat", "read").
+2.  Capture the remaining non-keyword tokens as the argument string.
+3.  Pack into `IntentData::String`.
+
+**Example**:
+```rust
+"cat config.txt" 
+  → Keyword: "cat" (READ_FILE)
+  → Data: "config.txt"
+  → Result: Intent { concept_id: READ_FILE, data: String("config.txt") }
+```
+
+### 3. Natural Language Responses (responses.rs)
 
 **Before** (steno-only):
 ```
@@ -115,7 +132,7 @@ Stenographic Engine:
 Status: All systems operational ✓
 ```
 
-### 3. Conversation Context (context.rs)
+### 4. Conversation Context (context.rs)
 
 **Stateful Understanding**:
 
@@ -140,7 +157,7 @@ Memory: 2.4GB / 8GB used (30%)
 
 Auto-upgrades based on usage (20 commands → Intermediate, 100 → Advanced)
 
-### 4. Synonym Expansion (synonyms.rs)
+### 5. Synonym Expansion (synonyms.rs)
 
 **50+ Mappings**:
 
@@ -163,7 +180,7 @@ Auto-upgrades based on usage (20 commands → Intermediate, 100 → Advanced)
 "mem" → "memory"
 ```
 
-### 5. Comprehensive Phrase Database (phrases.rs)
+### 6. Comprehensive Phrase Database (phrases.rs)
 
 **200+ Phrases** covering:
 

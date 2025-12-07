@@ -298,11 +298,12 @@ if let Err(violation) = security.check_intent(...) {
 }
 ```
 
-**Protection Against**:
-- Intent spam / DoS attacks
 - Privilege escalation attempts
 - Handler hijacking / ROP attacks
 - Semantic anomalies / unusual patterns
+
+### ✅ Semantic Tollbooth (Syscall Gating) ✨ NEW! (Sprint 17)
+Direct imperative I/O (`open`, `read`, `write`) is **restricted** to privileged drivers. Standard User Agents MUST use `SYS_PARSE_INTENT` to perform actions. This enforces the "Pure Intent" architecture and prevents unmonitored side effects.
 
 ### ✅ Multi-Core & Watchdog (NEW!)
 
@@ -715,6 +716,8 @@ Comprehensive allocator validation with **180,000 operations**:
 | **14. Integration** | ✅ ✨ | **Integration Tests** (QEMU, RamFS, Loopback, Process Lifecycle) |
 | **15. Multi-Tasking** | ✅ ✨ | **Semantic Process Binding**: `sys_announce`, `sys_ipc` (Biological Message Passing) |
 | **16. Neural Architecture** | ✅ ✨ | **Verified Active**: `decay_tick()`, `propagate_all()` running on timer tick |
+| **17. File System** | ✅ ✨ | **Pure Intent**: `ls`, `cat` (with argument parsing), `sys_getdents` |
+| **18. Architecture** | ✅ ✨ | **Hardening**: Semantic Tollbooth (Syscall Gating), Dynamic Intent Handlers |
 
 ### Test Coverage (Verified December 2025)
 

@@ -114,6 +114,18 @@ impl Agent {
             mailbox: SpinLock::new(VecDeque::new()),
         };
 
+        // GRANT DRIVER CAPABILITY TO KERNEL THREADS BY DEFAULT
+        unsafe {
+            if let Some(cap) = crate::kernel::capability::mint_root(
+                crate::kernel::capability::CapabilityType::Driver, 
+                0, 
+                0, 
+                crate::kernel::capability::Permissions::ALL
+            ) {
+                agent.capabilities.push(cap);
+            }
+        }
+
         let stack_top = agent.kernel_stack.top;
         
         // Align stack to 16 bytes (already aligned by page, but good practice)
@@ -213,6 +225,20 @@ impl Agent {
         // Set TTBR0 to the new User Table (with ASID)
         let vmm = agent.vmm.as_ref().expect("VMM must exist for user process");
         agent.context.ttbr0 = vmm.table_base() | ((vmm.asid() as u64) << 48);
+
+        // GRANT DRIVER CAPABILITY TEMPORARILY FOR INIT
+        // TODO: In the future, only specific driver processes should get this.
+        // For now, to keep shell working, we grant it.
+        unsafe {
+            if let Some(cap) = crate::kernel::capability::mint_root(
+                crate::kernel::capability::CapabilityType::Driver, 
+                0, 
+                0, 
+                crate::kernel::capability::Permissions::ALL
+            ) {
+                agent.capabilities.push(cap);
+            }
+        }
 
         Ok(agent)
     }
@@ -539,6 +565,16 @@ impl Agent {
         self.context.ttbr0 = vmm.table_base() | ((vmm.asid() as u64) << 48);
         
         Ok(())
+    }
+
+    /// Check if agent has a specific capability
+    pub fn has_capability(&self, cap_type: crate::kernel::capability::CapabilityType) -> bool {
+        for cap in &self.capabilities {
+            if cap.cap_type() == cap_type && cap.is_valid() {
+                return true;
+            }
+        }
+        false
     }
 }
 

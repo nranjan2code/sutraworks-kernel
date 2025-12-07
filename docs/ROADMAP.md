@@ -110,6 +110,12 @@
 - [x] **Skill Registry Connection**: Intent broadcast falls back to registered skills.
 - [x] **Verification Proof**: QEMU output confirms `[NEURAL] tick=...` messages firing every second.
 
+### Phase 14: File System & Pure Intent Features (Sprint 17) ✅
+- [x] **VFS Support**: `readdir` implementation for FAT32 (Root directory).
+- [x] **Directory Listing**: `sys_getdents64` syscall.
+- [x] **Pure Intent `ls`**: Kernel-side directory listing intent.
+- [x] **Pure Intent `cat`**: Kernel-side file reading with argument parsing, avoiding hybrid syscalls.
+
 ## Test Coverage
 
 | Module | Tests | Status |

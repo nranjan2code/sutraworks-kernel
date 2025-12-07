@@ -42,6 +42,17 @@ pub extern "C" fn _start() -> ! {
          print("[AUTOTEST] 'ls' failed.\n");
     }
 
+    // AUTO-TEST: Cat file
+    print("[AUTOTEST] Reading file via Intent (cat config.txt)...\n");
+    let cat_cmd = b"cat config.txt";
+    let cat_res = unsafe { syscall(22, cat_cmd.as_ptr() as u64, cat_cmd.len() as u64, 0, 0) };
+    
+    if cat_res == 0 {
+         print("[AUTOTEST] Intent 'cat config.txt' dispatched successfully.\n");
+    } else {
+         print("[AUTOTEST] 'cat' failed.\n");
+    }
+
     let mut shell = Shell::new();
     shell.run();
 }

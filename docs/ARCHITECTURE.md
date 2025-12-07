@@ -546,28 +546,33 @@ The kernel treats User Processes as extensions of its semantic nervous system.
 - **Asynchronous**: Send and forget (fire and reset).
 - **Semantics**: Message contains the _Trigger_ (ConceptID) and _Data_.
 
-### System Call Interface
-
+### System Call Interface & The Semantic Tollbooth
 User programs interact with the kernel via `svc #0`.
+
+> [!IMPORTANT]
+> **The Semantic Tollbooth**:
+> Direct imperative I/O syscalls (`OPEN`, `READ`, `WRITE`, `GETDENTS`) are **restricted**.
+> Only agents holding the `CapabilityType::Driver` token can execute them.
+> Standard User Agents **MUST** use `SYS_PARSE_INTENT` for all I/O.
 
 **ABI**:
 - **x8**: System Call Number
 - **x0-x7**: Arguments
 - **x0**: Return Value
 
-| Syscall | Number | Arguments | Description |
-|---------|--------|-----------|-------------|
-| `EXIT` | 0 | `code` | Terminate process |
-| `YIELD` | 1 | - | Give up CPU time slice |
-| `PRINT` | 2 | `ptr`, `len` | Print string to console |
-| `SLEEP` | 3 | `ms` | Sleep for N milliseconds |
-| `OPEN` | 4 | `path`, `flags` | Open file |
-| `CLOSE` | 5 | `fd` | Close file descriptor |
-| `READ` | 6 | `fd`, `buf`, `len` | Read from file |
-| `WRITE` | 7 | `fd`, `buf`, `len` | Write to file |
-| `BIND_UDP` | 23 | `port` | Bind UDP port (returns fd) |
-| `RECVFROM` | 24 | `fd`, `buf`, `len`, `src` | Receive UDP packet |
-| `PARSE` | 22 | `ptr`, `len` | Parse natural language intent |
+| Syscall | Number | Arguments | Description | Restriction |
+|---------|--------|-----------|-------------|-------------|
+| `EXIT` | 0 | `code` | Terminate process | None |
+| `YIELD` | 1 | - | Give up CPU time slice | None |
+| `PRINT` | 2 | `ptr`, `len` | Print string to console | **Driver Only** |
+| `SLEEP` | 3 | `ms` | Sleep for N milliseconds | None |
+| `OPEN` | 4 | `path`, `flags` | Open file | **Driver Only** |
+| `CLOSE` | 5 | `fd` | Close file descriptor | **Driver Only** |
+| `READ` | 6 | `fd`, `buf`, `len` | Read from file | **Driver Only** |
+| `WRITE` | 7 | `fd`, `buf`, `len` | Write to file | **Driver Only** |
+| `BIND_UDP` | 23 | `port` | Bind UDP port (returns fd) | **Driver Only** |
+| `RECVFROM` | 24 | `fd`, `buf`, `len`, `src` | Receive UDP packet | **Driver Only** |
+| `PARSE` | 22 | `ptr`, `len` | Parse natural language intent | **Universal** |
 
 ---
 

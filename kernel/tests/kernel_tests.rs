@@ -6,6 +6,8 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
+
 use core::panic::PanicInfo;
 use intent_kernel::*;
 
@@ -34,6 +36,7 @@ mod unit {
     pub mod memory_tests;
     pub mod capability_tests;
     pub mod intent_tests;
+    pub mod protection_tests;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -64,6 +67,10 @@ fn run_all_tests() {
     // Intent tests
     run_test("intent::test_concept_id_hashing", unit::intent_tests::test_concept_id_hashing);
     run_test("intent::test_neural_memory_basic", unit::intent_tests::test_neural_memory_basic);
+    run_test("intent::test_intent_system_initialization", unit::intent_tests::test_intent_system_initialization);
+
+    // Protection tests
+    run_test("protection::test_syscall_protection", unit::protection_tests::test_syscall_protection);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -89,6 +96,9 @@ pub extern "C" fn kernel_main() -> ! {
 
     // Initialize kernel subsystems for testing
     crate::init_for_tests();
+
+    // Register boot agent so we have a valid current agent with Driver capabilities
+    intent_kernel::kernel::scheduler::SCHEDULER.lock().register_boot_agent();
     
     crate::kprintln!("[TEST] Starting Tests...");
     

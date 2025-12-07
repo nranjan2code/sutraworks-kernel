@@ -188,6 +188,16 @@ ResourceType::Intent {
 
 Controls which intents a component can execute.
 
+### Driver (Privileged I/O)
+
+```rust
+CapabilityType::Driver // Token ID 13
+```
+
+**The Semantic Tollbooth Token**. This capability allows direct access to imperative I/O syscalls (`OPEN`, `READ`, `WRITE`, `PRINT`).
+- **Granted To**: Kernel Threads, Boot Agent, Init Process.
+- **Denied To**: Standard User Apps, downloaded Skills.
+
 ---
 
 ## Permissions

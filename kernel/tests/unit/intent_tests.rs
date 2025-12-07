@@ -54,3 +54,28 @@ fn test_neural_memory_basic() {
         }
     }
 }
+
+pub fn test_intent_system_initialization() {
+    let mut executor = IntentExecutor::new();
+    executor.init();
+    
+    // Help, Status, Reboot, Clear, Undo (5)
+    // Show, Hide (2)
+    // Store, Recall, Delete (3)
+    // Next, Prev, Back (3)
+    // Yes, No, Confirm, Cancel (4)
+    // List, Read (2)
+    // Total = 19
+    
+    assert!(executor.handler_count() >= 19, "Should register all system handlers");
+    
+    // Verify specific registration (using public dispatch API or just trusting count)
+    // We can register a custom one too
+    assert!(executor.register_handler(
+        ConceptID::from_str("TEST"), 
+        |_| crate::intent::handlers::HandlerResult::Handled, 
+        "test"
+    ), "Should register custom handler");
+    
+    assert_eq!(executor.handler_count(), 20, "Count should increase");
+}

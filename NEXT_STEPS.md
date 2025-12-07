@@ -69,10 +69,10 @@ All identified technical debt has been resolved:
 
 ## 🚀 Immediate Next Steps (Sprint 17)
 
-- [ ] **VFS**: Implement `readdir` trait in VFS/FAT32
-- [ ] **Kernel**: Add `sys_getdents` syscall for directory listing
-- [ ] **Shell**: Implement `ls` command
-- [ ] **Shell**: Implement `cat` command
+- [x] **VFS**: Implement `readdir` trait in VFS/FAT32
+- [x] **Kernel**: Add `sys_getdents` syscall for directory listing
+- [x] **Shell**: Implement `ls` command
+- [x] **Shell**: Implement `cat` command
 
 ## 🔮 Future Neural Enhancements (Optional)
 

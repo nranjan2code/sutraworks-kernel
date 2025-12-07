@@ -10,6 +10,15 @@ use alloc::sync::Arc;
 use crate::kernel::sync::SpinLock;
 use crate::fs::pipe;
 use crate::kernel::memory::paging::UserAddressSpace;
+use crate::kernel::capability::CapabilityType;
+
+/// Check if current agent has Driver capability
+fn check_privileged_io() -> bool {
+    let mut scheduler = SCHEDULER.lock();
+    scheduler.with_current_agent(|agent| {
+        agent.has_capability(CapabilityType::Driver)
+    }).unwrap_or(false)
+}
 
 /// System Call Numbers
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -172,7 +181,14 @@ pub fn dispatcher(num: u64, arg0: u64, arg1: u64, arg2: u64, arg3: u64, frame: &
         }
         SyscallNumber::Getdents64 => {
             // arg0: fd, arg1: buf_ptr, arg2: len
-            sys_getdents64(arg0, arg1, arg2)
+            // ENFORCE CAPABILITY TOLLBOOTH
+            if !check_privileged_io() {
+                crate::kprintln!("[SECURITY] sys_getdents64 DENIED: Missing Driver Capability");
+                u64::MAX // EPERM
+            } else {
+                sys_getdents64(arg0, arg1, arg2)
+            }
+
         }
         SyscallNumber::Unknown => {
             kprintln!("Unknown syscall: {}", num);
@@ -300,6 +316,12 @@ fn sys_print(ptr: u64, len: u64) -> u64 {
 }
 
 fn sys_open(path_ptr: u64, flags: u64) -> u64 {
+    // ENFORCE CAPABILITY TOLLBOOTH
+    if !check_privileged_io() {
+        crate::kprintln!("[SECURITY] sys_open DENIED: Missing Driver Capability");
+        return u64::MAX; // EPERM
+    }
+
     let ptr = path_ptr as *const u8;
     
     // Validate pointer
@@ -361,6 +383,12 @@ fn sys_close(fd: u64) -> u64 {
 }
 
 fn sys_read(fd: u64, buf_ptr: u64, len: u64) -> u64 {
+    // ENFORCE CAPABILITY TOLLBOOTH
+    if !check_privileged_io() {
+        crate::kprintln!("[SECURITY] sys_read DENIED: Missing Driver Capability");
+        return u64::MAX; // EPERM
+    }
+
     let buf_raw = buf_ptr as *mut u8;
     let len = len as usize;
     
@@ -410,6 +438,12 @@ fn sys_read(fd: u64, buf_ptr: u64, len: u64) -> u64 {
 }
 
 fn sys_write(fd: u64, buf_ptr: u64, len: u64) -> u64 {
+    // ENFORCE CAPABILITY TOLLBOOTH
+    if !check_privileged_io() {
+        crate::kprintln!("[SECURITY] sys_write DENIED: Missing Driver Capability");
+        return u64::MAX; // EPERM
+    }
+
     let buf_raw = buf_ptr as *const u8;
     let len = len as usize;
     

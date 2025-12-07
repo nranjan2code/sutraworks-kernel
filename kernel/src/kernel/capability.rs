@@ -55,6 +55,9 @@ pub enum CapabilityType {
     
     /// System control (shutdown, reboot)
     System = 12,
+
+    /// Driver privilege (Direct I/O syscalls: open, read, write)
+    Driver = 13,
 }
 
 /// Permission flags for capabilities
