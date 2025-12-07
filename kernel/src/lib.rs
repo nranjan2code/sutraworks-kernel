@@ -33,6 +33,7 @@ pub mod profiling;
 pub mod benchmarks;
 pub mod dtb;
 pub mod apps;
+pub mod llm;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TESTING FRAMEWORK

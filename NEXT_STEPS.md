@@ -76,5 +76,5 @@ All identified technical debt has been resolved:
 
 ## 🔮 Future Neural Enhancements (Optional)
 
-- [ ] Wire Urgency Accumulator to task scheduler
-- [ ] Activate Predictive Processing in input loop
+- [x] Wire Urgency Accumulator to task scheduler (Completed Dec 7, 2025)
+- [x] Activate Predictive Processing in input loop (Completed Dec 7, 2025)

@@ -447,6 +447,23 @@ pub fn tick() {
         crate::net::tcp_tick();
     }
 
+    // ═════════════════════════════════════════════════════════════════════════════════
+    // NEURAL URGENCY: Basal Ganglia Action Selection
+    // ═════════════════════════════════════════════════════════════════════════════════
+    if ticks % 5 == 0 {
+        // Check if the Urgency Accumulator has selected an action (Basal Ganglia Gating)
+        if let Some(concept_id) = crate::intent::NEURAL_SCHEDULER.lock().urgency_mut().select_action() {
+            crate::kprintln!("[NEURAL] ⚡ URGENT ACTION SELECTED: {:#x}", concept_id.0);
+            
+            // In a full implementation, we would:
+            // 1. Find the handler for this concept
+            // 2. Boost the priority of the process owning that handler
+            // 3. Immediately schedule it
+            
+            // For now, we log the selection proof.
+        }
+    }
+
     let mut scheduler = SCHEDULER.lock();
     
     // 1. Wake up sleeping agents

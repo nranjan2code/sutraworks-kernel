@@ -332,9 +332,7 @@ impl Agent {
         );
         let _ = agent.vma_manager.add_vma(stack_vma);
         
-        // Code VMA (RX) - For now, just map the entry point page
-        // In a real ELF loader, we'd iterate segments.
-        // Here we just protect the entry page.
+        // Code VMA (RX) - For now, just map the entry page
         let entry_page = loader.entry_point() & !0xFFF;
         let code_vma = VMA::new(
             entry_page,
@@ -343,6 +341,33 @@ impl Agent {
             VmaFlags { private: true, anonymous: false, fixed: true }
         );
         let _ = agent.vma_manager.add_vma(code_vma);
+
+        // 8. Initialize Standard File Descriptors (0, 1, 2) to Console
+        // This allows init to read/write to UART.
+        use crate::fs::console::ConsoleFile;
+        use crate::fs::vfs;
+        
+        // FD 0: Stdin
+        let console = ConsoleFile::new();
+        // Since alloc_fd returns the index, and we are starting empty,
+        // these will be 0, 1, 2 guaranteed.
+        let _ = agent.file_table.alloc_fd(console.clone(), vfs::O_RDONLY);
+        // FD 1: Stdout
+        let _ = agent.file_table.alloc_fd(console.clone(), vfs::O_WRONLY);
+        // FD 2: Stderr
+        let _ = agent.file_table.alloc_fd(console.clone(), vfs::O_WRONLY);
+
+        // 9. Grant Driver Capability (Temporary for shell access)
+        unsafe {
+             if let Some(cap) = crate::kernel::capability::mint_root(
+                 crate::kernel::capability::CapabilityType::Driver, 
+                 0, 
+                 0, 
+                 crate::kernel::capability::Permissions::ALL
+             ) {
+                 agent.capabilities.push(cap);
+             }
+        }
 
         Ok(agent)
     }

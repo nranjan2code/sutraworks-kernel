@@ -244,6 +244,11 @@ pub extern "C" fn kernel_main() -> ! {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
+    // DEMO: LLM INFERENCE (Phase 8)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // demo_llm(); // Commented out to save memory for Scheduler start
+
+    // ═══════════════════════════════════════════════════════════════════════════════
     // DEMO: INTENT-NATIVE APPS (Sprint 14)
     // ═══════════════════════════════════════════════════════════════════════════════
     unsafe {
@@ -514,6 +519,13 @@ async fn usb_loop() {
                 cprintln!("[USB] Intent: {}", intent.name);
                 intent::execute(&intent);
                 
+                // [NEURAL] Feed into temporal dynamics for prediction
+                let now = drivers::timer::uptime_ms();
+                let primed = intent::process_intent_activation(intent.concept_id, 1.0, now);
+                if primed > 0 {
+                    kprintln!("[NEURAL] Input primed {} next concepts", primed);
+                }
+
                 // Update Visual Layer
                 visual::handle_stroke(&stroke);
             } else {
@@ -578,6 +590,10 @@ async fn steno_loop() {
              cprintln!("[INTENT] {}", intent.name);
              intent::execute(&intent);
              
+             // [NEURAL] Feed into temporal dynamics for prediction
+             let now = drivers::timer::uptime_ms();
+             let _ = intent::process_intent_activation(intent.concept_id, 1.0, now);
+
              // Update Visual Layer
              if let Some(stroke) = steno::Stroke::from_steno(input) {
                  visual::handle_stroke(&stroke);
@@ -591,6 +607,10 @@ async fn steno_loop() {
             cprintln!("[INTENT] {}", intent.name);
             intent::execute(&intent);
             
+            // [NEURAL] Feed into temporal dynamics for prediction
+            let now = drivers::timer::uptime_ms();
+            let _ = intent::process_intent_activation(intent.concept_id, 1.0, now);
+
             // Update Visual Layer
             if let Some(stroke) = steno::Stroke::from_steno(input) {
                 visual::handle_stroke(&stroke);
@@ -802,4 +822,69 @@ fn syscall_test_task() {
             &mut frame
         );
     }
+}
+
+fn demo_llm() {
+    use crate::llm;
+    use alloc::vec;
+
+    kprintln!("\n       ════════════════════════════════════════════");
+    kprintln!("       🤖 DEMO: LLM Inference (System 2)");
+    kprintln!("       ════════════════════════════════════════════");
+
+    // 1. Configure "Tiny-Llama" (Small enough for quick demo)
+    let config = llm::Config {
+        dim: 64, // Small dim for speed/memory in demo
+        hidden_dim: 128,
+        n_layers: 2,
+        n_heads: 4,
+        n_kv_heads: 4,
+        vocab_size: 1024,
+        seq_len: 32,
+        shared_classifier: true,
+    };
+    
+    kprintln!("       [LLM] Allocating State (Dim={}, Layers={})...", config.dim, config.n_layers);
+    
+    // 2. Allocate State
+    let mut state = llm::RunState::new(&config);
+    kprintln!("       [LLM] State Allocated.");
+
+    // 3. Create Dummy Weights (Zeros)
+    // We need to own the data here
+    let dummy_data = vec![0.0f32; 1024 * 1024]; // 4MB buffer for weights
+    
+    let weights = llm::Weights {
+        token_embedding_table: &dummy_data[0..config.vocab_size * config.dim],
+        
+        rms_att_weight: &dummy_data[0..config.n_layers * config.dim],
+        rms_ffn_weight: &dummy_data[0..config.n_layers * config.dim],
+        
+        wq: &dummy_data[0..config.n_layers * config.dim * config.dim],
+        wk: &dummy_data[0..config.n_layers * config.dim * config.dim], // Simplified size
+        wv: &dummy_data[0..config.n_layers * config.dim * config.dim],
+        wo: &dummy_data[0..config.n_layers * config.dim * config.dim],
+        w1: &dummy_data[0..config.n_layers * config.hidden_dim * config.dim],
+        w2: &dummy_data[0..config.n_layers * config.dim * config.hidden_dim],
+        w3: &dummy_data[0..config.n_layers * config.hidden_dim * config.dim],
+        
+        rms_final_weight: &dummy_data[0..config.dim],
+        w_cls: None,
+    };
+    
+    // 4. Run Inference Step
+    kprintln!("       [LLM] Running Forward Pass (Token 1 -> ?)...");
+    let start = crate::profiling::rdtsc();
+    
+    llm::inference::forward(1, 0, &config, &mut state, &weights);
+    
+    let end = crate::profiling::rdtsc();
+    let cycles = end.wrapping_sub(start);
+    
+    kprintln!("       [LLM] Inference Complete.");
+    kprintln!("       Cycles: {} ", cycles);
+    
+    kprintln!("       [LLM] Logits[0]: {}", state.logits.data[0]);
+    kprintln!("       ✅ LLM Engine Online (No Weights Loaded)");
+    kprintln!("       ════════════════════════════════════════════");
 }
