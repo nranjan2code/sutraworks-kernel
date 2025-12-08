@@ -717,7 +717,9 @@ Comprehensive allocator validation with **180,000 operations**:
 | **15. Multi-Tasking** | ✅ ✨ | **Semantic Process Binding**: `sys_announce`, `sys_ipc` (Biological Message Passing) |
 | **16. Neural Architecture** | ✅ ✨ | **Verified Active**: `decay_tick()`, `propagate_all()` running on timer tick |
 | **17. File System** | ✅ ✨ | **Pure Intent**: `ls`, `cat` (with argument parsing), `sys_getdents` |
-| **18. Architecture** | ✅ ✨ | **Hardening**: Semantic Tollbooth (Syscall Gating), Dynamic Intent Handlers |
+| **17. File System** | ✅ ✨ | **Pure Intent**: `ls`, `cat` (with argument parsing), `sys_getdents` |
+| **18. App Framework** | ✅ ✨ | **Declarative Apps**: `AppManager`, `Manifest`, `SemanticLinker`, `Just-in-Time Binding` |
+| **19. Architecture** | ✅ ✨ | **Hardening**: Semantic Tollbooth (Syscall Gating), Dynamic Intent Handlers |
 
 ### Test Coverage (Verified December 2025)
 

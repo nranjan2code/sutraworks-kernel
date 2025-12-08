@@ -110,7 +110,14 @@
 - [x] **Skill Registry Connection**: Intent broadcast falls back to registered skills.
 - [x] **Verification Proof**: QEMU output confirms `[NEURAL] tick=...` messages firing every second.
 
-### Phase 14: File System & Pure Intent Features (Sprint 17) ✅
+### Phase 16: Intent App Framework (Sprint 19) ✅
+- [x] **AppManager**: Lifecycle management for declarative apps.
+- [x] **Manifest Loader**: YAML-like parsing of `.intent` manifests.
+- [x] **Semantic Linker**: Runtime binding of intents to skills (`Resolve -> Bind -> Execute`).
+- [x] **End-to-End Demo**: "Smart Doorknob" and "Hello World" apps verification.
+- [x] **Steno Integration**: Fallback to AppManager for unknown English commands.
+
+### Phase 17: File System & Pure Intent Features (Sprint 17) ✅
 - [x] **VFS Support**: `readdir` implementation for FAT32 (Root directory).
 - [x] **Directory Listing**: `sys_getdents64` syscall.
 - [x] **Pure Intent `ls`**: Kernel-side directory listing intent.

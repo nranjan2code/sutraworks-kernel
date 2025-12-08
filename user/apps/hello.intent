@@ -1,0 +1,11 @@
+app_name: "Hello World"
+description: "A simple greeting app to verify Intent App Framework"
+
+triggers:
+  - input: "Say hello"
+    intent_override: null
+
+flow:
+  - id: "greet"
+    goal: "Log Hello"
+    inputs: ["Hello from the SD Card!"]

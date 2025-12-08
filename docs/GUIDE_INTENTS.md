@@ -69,7 +69,7 @@ Create a `.intent` file:
 ```yaml
 app_name: "My App"
 triggers:
-  - input: "Do the thing"
+  - input_pattern: "Do the thing"
 flow:
   - goal: "Perform Action"
 ```

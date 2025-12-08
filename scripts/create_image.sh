@@ -33,6 +33,16 @@ else
     echo "  Warning: hello binary not found"
 fi
 
+# 1.1 Copy Intent Apps
+APPS_DIR="user/apps"
+if [ -d "$APPS_DIR" ]; then
+    mkdir -p "$ROOT_DIR/apps"
+    cp "$APPS_DIR"/*.intent "$ROOT_DIR/apps/" 2>/dev/null
+    echo "  Added: Intent Apps from $APPS_DIR"
+else
+    echo "  Warning: Apps directory not found at $APPS_DIR"
+fi
+
 # 2. Create Image (Try mtools first)
 if command -v mformat >/dev/null 2>&1; then
     echo "  Using mtools..."

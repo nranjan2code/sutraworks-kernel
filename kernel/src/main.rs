@@ -172,9 +172,13 @@ pub extern "C" fn kernel_main() -> ! {
     drivers::timer::delay_ms(100);
     drivers::gpio::activity_led(false);
     
-    // Initialize Semantic Engine
+    // Initialize Semantic Intent Engine
     kprintln!("[INIT] Semantic Intent Engine...");
     intent::init();
+
+    // Initialize Intent App Framework
+    kprintln!("[INIT] Intent App Framework...");
+    intent_kernel::apps::init();
     
     // Initialize Input Engine (Steno - fastest path)
     kprintln!("[INIT] Input Engine (Steno Path)...");
@@ -200,7 +204,7 @@ pub extern "C" fn kernel_main() -> ! {
         crate::kprintln!("       ════════════════════════════════════════════");
         
         let start_cycles = profiling::rdtsc();
-        let count = 100_000;
+        let count = 10_000;
         
         let mut neura = NEURAL_ALLOCATOR.lock(); // Lock once for the loop
         
@@ -425,7 +429,7 @@ flow:
 
     // Spawn Async Executor Agent (The "Main" Thread)
     // Spawn Async Executor Agent (The "Main" Thread)
-    // let _ = kernel::scheduler::SCHEDULER.lock().spawn_simple(async_executor_agent);
+    let _ = kernel::scheduler::SCHEDULER.lock().spawn_simple(async_executor_agent);
     kprintln!("       Spawned Async Executor Agent");
 
     // Spawn User Task (EL0 Process) from init.elf

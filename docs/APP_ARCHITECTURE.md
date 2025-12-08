@@ -54,8 +54,8 @@ description: "String"
 
 # WHEN this happens...
 triggers:
-  - input: "Natural Language Pattern"
-    intent: "ConceptID (Optional Override)"
+  - input_pattern: "Natural Language Pattern"
+    intent_override: "ConceptID (Optional)"
     parameters: [Type]
 
 # ...DO this graph of actions

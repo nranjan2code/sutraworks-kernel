@@ -37,5 +37,9 @@ pub unsafe fn init(seed: u64) {
     memory::init_dma();
     
     // Initialize capability system
+    // Initialize capability system
     capability::init();
+    
+    // Initialize Intent App Framework
+    crate::apps::init();
 }

@@ -26,7 +26,8 @@
 //! ```
 
 use crate::kernel::sync::SpinLock;
-use crate::intent::Intent;
+use crate::intent::{Intent, ConceptID, IntentData};
+use crate::apps::APP_MANAGER;
 
 pub mod stroke;
 pub mod dictionary;
@@ -78,7 +79,26 @@ pub fn process_english(text: &str) -> Option<Intent> {
         // Process the stroke as if it was typed
         engine.process(stroke)
     } else {
-        None
+        // Fallback: Check App Manager for triggers
+        let app_manager = APP_MANAGER.lock();
+        if let Some((app, _trigger)) = app_manager.find_trigger(text) {
+             crate::kprintln!("[STENO] Trigger matched App: '{}'", app.app_name);
+             if let Err(e) = app_manager.execute_app(app, text) {
+                 crate::kprintln!("[STENO] App Execution Failed: {}", e);
+             }
+             
+             // Return a synthetic intent to satisfy the caller and log activity
+             let mut intent = Intent::with_confidence(
+                 ConceptID::new(0xA000_0000), // Placeholder for App
+                 1.0
+             );
+             intent.name = "App Executed";
+             intent.data = IntentData::String(app.app_name.clone());
+             
+             Some(intent)
+        } else {
+            None
+        }
     }
 }
 
