@@ -478,6 +478,13 @@ Processes are not just binaries; they are **Semantic Agents**.
 - **Execution**: When you think "Increment", the kernel automatically routes the intent to the correct process via IPC.
 - **Nervous Impulse IPC**: Fixed-size, biological message passing (64 bytes) between agents.
 
+### ✅ System 2 Cognitive Engine (LLM) ✨ NEW!
+The kernel now features an integrated **System 2** engine for deep semantic processing, complementing the fast System 1 Intent Engine.
+- **Model**: Llama 2 Architecture (Transformer).
+- **Loading**: Streamed directly from SD card (`model.bin`) via `llm::loader`.
+- **Latency**: Orders of magnitude slower than System 1 (~300k+ cycles), running as a background task.
+- **Fail-Safe**: Includes a dummy fallback model to ensure strict boot reliability.
+
 ### 2. Intent-Native Apps Framework ✨ NEW!
 > **Full Documentation**: [docs/APP_ARCHITECTURE.md](docs/APP_ARCHITECTURE.md)
 
@@ -720,6 +727,7 @@ Comprehensive allocator validation with **180,000 operations**:
 | **17. File System** | ✅ ✨ | **Pure Intent**: `ls`, `cat` (with argument parsing), `sys_getdents` |
 | **18. App Framework** | ✅ ✨ | **Declarative Apps**: `AppManager`, `Manifest`, `SemanticLinker`, `Just-in-Time Binding` |
 | **19. Architecture** | ✅ ✨ | **Hardening**: Semantic Tollbooth (Syscall Gating), Dynamic Intent Handlers |
+| **20. System 2 Upgrade** | ✅ ✨ | **LLM Engine**: `llm::loader`, Llama 2 Inference, `OwnedWeights`, FAT32 Integration |
 
 ### Test Coverage (Verified December 2025)
 

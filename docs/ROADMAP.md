@@ -129,6 +129,11 @@
 - [x] **Public Driver Interfaces**: `VirtioNet`, `VirtioBlock` visibility corrected.
 - [x] **Code Hygiene**: Consistent `#[allow(dead_code)]` for reserved/conditional functions.
 - [x] **Style Improvements**: Auto-deref, strip_prefix, slice params, is_empty methods.
+### Phase 18: System 2 Cognitive Upgrade (Sprint 20) ✅
+- [x] **LLM Loader**: `llm::loader` with FAT32 weight loading (.bin files).
+- [x] **Memory Management**: `OwnedWeights` vs `Weights` split for zero-copy inference.
+- [x] **Inference Engine**: Transformer forward pass (Llama 2 architecture) in `no_std`.
+- [x] **Fail-Safe Boot**: Fallback dummy weights for resilient testing without SD card.
 
 ## Test Coverage
 

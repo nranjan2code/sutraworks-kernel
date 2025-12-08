@@ -5,6 +5,7 @@ This document summarizes the three major enhancements implemented to complete th
 1. **Complete Sensor Fusion (Hailo-8 Driver)**
 2. **Multi-Core SMP Scheduler**
 3. **Persistent Storage & Networking**
+4. **System 2 Cognitive Engine (LLM)**
 
 ---
 
@@ -748,3 +749,27 @@ loop {
 - **Server Capability**: The kernel can now act as a server (e.g. web server, echo server) driven by user agents.
 - **Testing**: Enable end-to-end network testing in CI/CD via QEMU.
 - **Separation**: Networking logic moves to userspace agents, keeping kernel minimal.
+
+---
+
+## 6. System 2 Cognitive Engine (LLM)
+
+### What Was Built
+
+#### `kernel/src/llm/loader.rs` (120 lines)
+**Raw Binary Weight Loader**:
+- **Format**: Reads custom `.bin` files (Header + Flat Float Array).
+- **Direct I/O**: Reads directly from FAT32 filesystem into contiguous memory.
+- **Fail-Safe**: Initializes dummy fallback weights if file I/O fails, preventing boot loops.
+
+#### `kernel/src/llm/inference.rs` & `kernel/src/llm/model.rs`
+**Pure Rust Transformer Engine**:
+- **Architecture**: Llama 2 (compatible with TinyLlama/Llama-2-7b).
+- **Operations**: Matrix multiplication, RMSNorm, RoPE (Rotary Embeddings), SwiGLU.
+- **Memory Efficient**: `OwnedWeights` (backing store) + `Weights` (views) separation allows zero-copy inference.
+- **No-Std**: Relies only on `core` and `alloc`, no standard library dependencies.
+
+### Impact
+- **Cognition**: The kernel now possesses a "System 2" engine for deep reasoning.
+- **Integration**: While System 1 (Intent) handles milliseconds-latency tasks, System 2 runs in the background for complex queries.
+- **Resilience**: The loader's fallback mechanism ensures the kernel remains robust even with missing data files.

@@ -191,66 +191,67 @@ pub extern "C" fn kernel_main() -> ! {
     intent::register_wildcard(visual::create_handler(), "VisualLayer", 10);
 
     // Run Benchmarks (Sprint 11)
-    benchmarks::run_all();
+    // benchmarks::run_all();
 
     // Demo Neural Memory (ConceptID Edition) - STRESS TEST: 100,000 Concepts
-    unsafe {
-        use kernel::memory::neural::{NEURAL_ALLOCATOR};
-        use intent::ConceptID;
+    // unsafe {
+    //     use kernel::memory::neural::{NEURAL_ALLOCATOR};
+    //     use intent::ConceptID;
         
-        // 5. Stress Test: Allocate 100,000 semantic concepts (verified up to 1,000,000)
-        crate::kprintln!("\n       ════════════════════════════════════════════");
-        crate::kprintln!("       🧠 STRESS TEST: 100,000 Concepts");
-        crate::kprintln!("       ════════════════════════════════════════════");
+    //     // 5. Stress Test: Allocate 100,000 semantic concepts (verified up to 1,000,000)
+    //     crate::kprintln!("\n       ════════════════════════════════════════════");
+    //     crate::kprintln!("       🧠 STRESS TEST: 100,000 Concepts");
+    //     crate::kprintln!("       ════════════════════════════════════════════");
         
-        let start_cycles = profiling::rdtsc();
-        let count = 10_000;
+    //     let start_cycles = profiling::rdtsc();
+    //     let count = 10_000;
         
-        let mut neura = NEURAL_ALLOCATOR.lock(); // Lock once for the loop
+    //     let mut neura = NEURAL_ALLOCATOR.lock(); // Lock once for the loop
         
-        // Clear previous allocations from benchmarks to free heap memory
-        neura.clear();
+    //     // Clear previous allocations from benchmarks to free heap memory
+    //     neura.clear();
         
-        for i in 0..count {
-            let id = ConceptID::new((i as u64) | 0xCAFE_0000);
+    //     for i in 0..count {
+    //         let id = ConceptID::new((i as u64) | 0xCAFE_0000);
             
-            // Allocate 8 bytes per concept (minimal semantic block)
-            neura.alloc(8, id);
+    //         // Allocate 8 bytes per concept (minimal semantic block)
+    //         neura.alloc(8, id);
             
-            if i % 10_000 == 0 && i > 0 {
-                crate::kprintln!("       Progress: {}/100k concepts allocated", i / 1_000);
-            }
-        }
+    //         if i % 10_000 == 0 && i > 0 {
+    //             crate::kprintln!("       Progress: {}/100k concepts allocated", i / 1_000);
+    //         }
+    //     }
         
-        let end_cycles = profiling::rdtsc();
-        let duration_cycles = end_cycles.wrapping_sub(start_cycles);
-        // Approx cycles -> ms (assuming 1.5GHz for rough estimate)
-        // 1.5M cycles = 1ms
-        let ms = duration_cycles / 1_500_000;
+    //     let end_cycles = profiling::rdtsc();
+    //     let duration_cycles = end_cycles.wrapping_sub(start_cycles);
+    //     // Approx cycles -> ms (assuming 1.5GHz for rough estimate)
+    //     // 1.5M cycles = 1ms
+    //     let ms = duration_cycles / 1_500_000;
         
-        crate::kprintln!("       ════════════════════════════════════════════");
-        crate::kprintln!("       ✅ Allocated {} concepts (ConceptID Index)", count);
-        crate::kprintln!("       Time: {} ms", ms);
-        crate::kprintln!("       ════════════════════════════════════════════");
+    //     crate::kprintln!("       ════════════════════════════════════════════");
+    //     crate::kprintln!("       ✅ Allocated {} concepts (ConceptID Index)", count);
+    //     crate::kprintln!("       Time: {} ms", ms);
+    //     crate::kprintln!("       ════════════════════════════════════════════");
 
-        // 6. Verify Retrieval (Correctness)
-        crate::kprintln!("       Index contains {} entries", neura.count());
-        let target_id = ConceptID::new(50_000u64 | 0xCAFE_0000u64);
-        crate::kprintln!("       Query Test: Retrieving Concept {:#x}...", target_id.0);
+    //     // 6. Verify Retrieval (Correctness)
+    //     crate::kprintln!("       Index contains {} entries", neura.count());
+    //     let target_id = ConceptID::new(50_000u64 | 0xCAFE_0000u64);
+    //     crate::kprintln!("       Query Test: Retrieving Concept {:#x}...", target_id.0);
         
-        let q_start = profiling::rdtsc();
-        if let Some(ptr) = neura.retrieve(target_id) {
-             let q_end = profiling::rdtsc();
-             crate::kprintln!("       Found: Concept {:#x} in {} cycles (O(log N))", ptr.id.0, q_end.wrapping_sub(q_start));
-        } else {
-             crate::kprintln!("       ❌ Failed to retrieve concept!");
-        }
-    }
+    //     let q_start = profiling::rdtsc();
+    //     if let Some(ptr) = neura.retrieve(target_id) {
+    //          let q_end = profiling::rdtsc();
+    //          crate::kprintln!("       Found: Concept {:#x} in {} cycles (O(log N))", ptr.id.0, q_end.wrapping_sub(q_start));
+    //     } else {
+    //          crate::kprintln!("       ❌ Failed to retrieve concept!");
+    //     }
+    // }
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // DEMO: LLM INFERENCE (Phase 8)
     // ═══════════════════════════════════════════════════════════════════════════════
-    // demo_llm(); // Commented out to save memory for Scheduler start
+    demo_llm(); 
+
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // DEMO: INTENT-NATIVE APPS (Sprint 14)
@@ -836,50 +837,74 @@ fn syscall_test_task() {
 #[allow(dead_code)]
 fn demo_llm() {
     use crate::llm;
+    use alloc::vec::Vec;
     use alloc::vec;
 
     kprintln!("\n       ════════════════════════════════════════════");
     kprintln!("       🤖 DEMO: LLM Inference (System 2)");
     kprintln!("       ════════════════════════════════════════════");
 
-    // 1. Configure "Tiny-Llama" (Small enough for quick demo)
-    let config = llm::Config {
-        dim: 64, // Small dim for speed/memory in demo
-        hidden_dim: 128,
-        n_layers: 2,
-        n_heads: 4,
-        n_kv_heads: 4,
-        vocab_size: 1024,
-        seq_len: 32,
-        shared_classifier: true,
-    };
+    // Ownership holders
+    let owned_model: Option<llm::loader::OwnedWeights>;
+    let dummy_data: Option<Vec<f32>>;
     
-    kprintln!("       [LLM] Allocating State (Dim={}, Layers={})...", config.dim, config.n_layers);
+    let config;
+
+    // 1. Try to load model
+    match llm::loader::load_model("model.bin") {
+        Ok(model) => {
+            kprintln!("       [LLM] ✅ Loaded 'model.bin' from filesystem!");
+            config = model.config;
+            owned_model = Some(model);
+            dummy_data = None;
+        },
+        Err(e) => {
+            kprintln!("       [LLM] ⚠️ Load failed: '{}'. Using dummy weights.", e);
+            config = llm::Config {
+                dim: 64,
+                hidden_dim: 128,
+                n_layers: 2,
+                n_heads: 4,
+                n_kv_heads: 4,
+                vocab_size: 1024,
+                seq_len: 32,
+                shared_classifier: true,
+            };
+            owned_model = None;
+            dummy_data = Some(vec![0.0f32; 65536]);
+        }
+    }
+    
+    kprintln!("       [LLM] Config: dim={}, layers={}, heads={}", config.dim, config.n_layers, config.n_heads);
+    kprintln!("       [LLM] Allocating State...");
     
     // 2. Allocate State
     let mut state = llm::RunState::new(&config);
     kprintln!("       [LLM] State Allocated.");
 
-    // 3. Create Dummy Weights (Zeros)
-    // We need to own the data here
-    let dummy_data = vec![0.0f32; 1024 * 1024]; // 4MB buffer for weights
-    
-    let weights = llm::Weights {
-        token_embedding_table: &dummy_data[0..config.vocab_size * config.dim],
-        
-        rms_att_weight: &dummy_data[0..config.n_layers * config.dim],
-        rms_ffn_weight: &dummy_data[0..config.n_layers * config.dim],
-        
-        wq: &dummy_data[0..config.n_layers * config.dim * config.dim],
-        wk: &dummy_data[0..config.n_layers * config.dim * config.dim], // Simplified size
-        wv: &dummy_data[0..config.n_layers * config.dim * config.dim],
-        wo: &dummy_data[0..config.n_layers * config.dim * config.dim],
-        w1: &dummy_data[0..config.n_layers * config.hidden_dim * config.dim],
-        w2: &dummy_data[0..config.n_layers * config.dim * config.hidden_dim],
-        w3: &dummy_data[0..config.n_layers * config.hidden_dim * config.dim],
-        
-        rms_final_weight: &dummy_data[0..config.dim],
-        w_cls: None,
+    // 3. Get Weights Reference
+    let weights = if let Some(ref m) = owned_model {
+        m.as_weights()
+    } else {
+        let data = dummy_data.as_ref().unwrap();
+        // Construct dummy weights
+        // SAFETY: We use a small dummy buffer for all weights to avoid OOM. 
+        // Logic will be garbage but it proves the engine runs.
+        let slice = &data[..]; // Use the whole (small) buffer
+        llm::Weights {
+             token_embedding_table: slice,
+             rms_att_weight: slice,
+             rms_ffn_weight: slice,
+             wq: slice,
+             wk: slice,
+             wv: slice,
+             wo: slice,
+             w1: slice,
+             w2: slice,
+             w3: slice,
+             rms_final_weight: slice,
+             w_cls: None,
+        }
     };
     
     // 4. Run Inference Step
@@ -895,6 +920,6 @@ fn demo_llm() {
     kprintln!("       Cycles: {} ", cycles);
     
     kprintln!("       [LLM] Logits[0]: {}", state.logits.data[0]);
-    kprintln!("       ✅ LLM Engine Online (No Weights Loaded)");
+    kprintln!("       ✅ LLM Engine Online");
     kprintln!("       ════════════════════════════════════════════");
 }

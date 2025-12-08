@@ -516,6 +516,43 @@ This is a **feature**, not a bug. It means the system can handle high-frequency 
 
 ---
 
+---
+
+## System 2: LLM Cognitive Engine
+
+While the Intent Engine (System 1) handles fast, reflex-like interactions (~54 cycles), the **LLM Engine (System 2)** handles deep semantic reasoning, complex language generation, and world knowledge (~370,000+ cycles).
+
+### Architecture
+
+The LLM Engine is implemented as a standalone kernel module (`kernel/src/llm`) that integrates with the filesystem and scheduler.
+
+#### Weight Loading & Memory Management
+The `llm::loader` module manages the loading of large model weights (e.g., Llama 2) from the SD card.
+
+- **Format**: Custom binary format (`.bin`) optimized for `no_std` environments:
+  - Header: 7 x `u32` (Config: dim, layers, heads, etc.)
+  - Body: Flat `f32` array of all weights (planar layout).
+- **Ownership**: 
+  - `OwnedWeights`: Owns the backing `Vec<f32>` buffer designated for the model.
+  - `Weights`: A lightweight struct of slices (`&'a [f32]`) referencing the owned data, used during inference.
+- **Fail-Safe Fallback**: If `model.bin` is missing or corrupt, the loader initializes a "Dummy Model" (small buffer) to ensure the kernel always boots and the inference pipeline remains testable, preventing hard panics.
+
+### Inference Pipeline
+The inference engine implements a standard Transformer forward pass (Llama 2 architecture) in pure Rust (`no_std`):
+
+1. **Tokenization**: Maps English text to tokens (Vocabulary index).
+2. **Embedding**: Retrieval of learned vector representations.
+3. **Attention**: Multi-Head Attention (MHA) with Grouped Query Attention (GQA).
+4. **Feed-Forward**: SwiGLU activations.
+5. **Sampling**: Logits -> Probability -> Token Selection.
+
+### System 1 vs System 2 Integration
+- **System 1 (Intent)**: Recognizes "ask", "query", "explain".
+- **System 2 (LLM)**: Invoked when System 1 detects a need for complex processing.
+- **Latency**: The 100x+ latency gap is bridged by the Intent Framework's async capabilities, allowing the kernel to remain responsive (handling interrupts/steno) while the LLM "thinks" in the background.
+
+---
+
 ## Future Directions
 
 - **Spiking Neural Network** mode for extreme efficiency

@@ -7,6 +7,7 @@ pub mod tensor;
 pub mod model;
 pub mod tokenizer;
 pub mod inference;
+pub mod loader;
 
 // Re-exports
 pub use model::{Config, RunState, Weights};

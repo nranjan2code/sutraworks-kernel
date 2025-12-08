@@ -52,9 +52,18 @@ Semantic-first kernel with multiple input paths. Everyone can use English; power
 
 ### 6. The Two Systems
 We explicitly model **System 1 (Reflex)** and **System 2 (Cognition)**:
-- **Reflex**: Lookup-based, O(1), instant (<50 cycles). Used for direct commands.
-- **Cognition**: Logic-based, O(N), deliberate (>5000 cycles). Used for scheduling, inhibiting, and learning.
-The kernel allows you to operate at reflex speed while the cognitive layer protects you in the background.
+
+- **System 1 (Reflex / Intent Engine)**:
+  - **Speed**: < 100 cycles (Spinal cord speed)
+  - **Mechanism**: O(1) Lookup, Hebbian Association, Lateral Inhibition.
+  - **Role**: Immediate action, steno input, direct commands, rapid perception.
+  
+- **System 2 (Cognition / LLM Engine)**:
+  - **Speed**: > 300,000 cycles (Cortical speed)
+  - **Mechanism**: 7B Parameter Transformer (Llama 2), Deep Semantic Reasoning.
+  - **Role**: Complex planning, ambiguity resolution, code generation, world knowledge.
+  
+The kernel runs System 1 on the high-priority "Steno Path" while System 2 runs as a background task, ensuring the system remains responsive even during deep thought.
 
 ### Neural Architecture
 

@@ -105,3 +105,15 @@ Submits an intent to the Neural Scheduler.
 Processes an input through the feedback loop to check against predictions.
 - Returns `surprise` level (0.0 = predicted, 1.0 = unexpected).
 
+
+## 7. LLM Engine
+
+### `llm::loader::load_model(fs: &Arc<SpinLock<dyn FileSystem>>) -> Result<RunState, &'static str>`
+Loads the Llama 2 model weights from `model.bin` on the filesystem.
+- Returns a `RunState` ready for inference.
+- If file missing, transparently loads a fallback Dummy Model (if enabled).
+
+### `llm::inference::forward(config: &Config, weights: &Weights, state: &mut RunState, token: usize) -> Result<(), &'static str>`
+Performs a forward pass of the Transformer model.
+- `state.logits`: Updated with the output probability distribution over the vocabulary.
+
