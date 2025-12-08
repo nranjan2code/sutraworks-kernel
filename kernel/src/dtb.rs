@@ -23,10 +23,11 @@ pub enum MachineType {
 }
 
 /// Get the detected machine type
-#[allow(unused_unsafe)]
+#[allow(unreachable_code)]
 pub fn machine_type() -> MachineType {
     // WORKAROUND: Force QemuVirt to bypass crashing DTB read.
     // The pointer passed by QEMU seems to cause a Data Abort when accessed.
+    // TODO: Investigate proper DTB parsing on real hardware.
     return MachineType::QemuVirt;
 
     let dtb_addr = unsafe { __dtb_ptr };

@@ -80,9 +80,10 @@ impl AppManifest {
                     }
                     
                     // Handle inline content after "- " if any (e.g. "- input: foo")
-                    let content = &trim[2..];
-                    if !content.is_empty() {
-                         parse_field(content, current_section, &mut triggers, &mut flow)?;
+                    if let Some(content) = trim.strip_prefix("- ") {
+                        if !content.is_empty() {
+                            parse_field(content, current_section, &mut triggers, &mut flow)?;
+                        }
                     }
                 } else {
                     // Property of current list item
@@ -120,17 +121,16 @@ fn strip_quotes(s: &str) -> String {
     }
 }
 
-fn parse_field(line: &str, section: &str, triggers: &mut Vec<Trigger>, flow: &mut Vec<FlowStep>) -> Result<(), ParseError> {
+fn parse_field(line: &str, section: &str, triggers: &mut [Trigger], flow: &mut [FlowStep]) -> Result<(), ParseError> {
     if let Some((key, val)) = split_key_val(line) {
         let val_str = strip_quotes(val);
         match section {
             "triggers" => {
                 if let Some(trigger) = triggers.last_mut() {
-                    match key {
-                        "input" => trigger.input_pattern = val_str,
-                        // intent parsing would go here
-                        _ => {}
+                    if key == "input" {
+                        trigger.input_pattern = val_str;
                     }
+                    // intent parsing would go here
                 }
             },
             "flow" => {

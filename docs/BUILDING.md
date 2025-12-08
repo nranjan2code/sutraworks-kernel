@@ -254,7 +254,7 @@ cargo +nightly build
 ### Run Unit Tests
 
 ```bash
-# Run host tests (127 tests, runs on your machine)
+# Run host tests (129 tests, runs on your machine)
 make test
 
 # Run 40-benchmark suite in QEMU
@@ -304,7 +304,7 @@ The testing infrastructure uses:
 - **Custom allocator bypass**: `#[cfg(not(test))]` on `#[global_allocator]` allows host tests to use standard library allocator
 - **Custom test framework**: `#![custom_test_frameworks]` for bare-metal QEMU tests
 
-### Current Tests (127 host tests)
+### Current Tests (129 host tests)
 
 | Module | Tests | Description |
 |--------|-------|-------------|

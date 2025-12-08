@@ -98,7 +98,7 @@ struct VirtQueue {
     idx: u32, 
 }
 
-struct VirtioBlock {
+pub struct VirtioBlock {
     base: usize,
     queue: Option<VirtQueue>,
     initialized: bool,

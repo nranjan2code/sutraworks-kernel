@@ -251,7 +251,7 @@ pub extern "C" fn kernel_main() -> ! {
     // ═══════════════════════════════════════════════════════════════════════════════
     // DEMO: INTENT-NATIVE APPS (Sprint 14)
     // ═══════════════════════════════════════════════════════════════════════════════
-    unsafe {
+    {
         use intent_kernel::apps::{manifest, linker, registry, demo};
         
         kprintln!("\n       ════════════════════════════════════════════");
@@ -498,6 +498,7 @@ flow:
     }
 }
 
+#[allow(dead_code)]
 fn async_executor_agent() {
     kprintln!("[Executor] Starting Steno-Native Async Core...");
     let mut executor = kernel::async_core::Executor::new();
@@ -507,6 +508,7 @@ fn async_executor_agent() {
 }
 
 /// USB Input Loop - polls for strokes from steno machine
+#[allow(dead_code)]
 async fn usb_loop() {
     loop {
         // Poll USB HID driver
@@ -540,6 +542,7 @@ async fn usb_loop() {
 }
 
 /// Main steno input loop - processes strokes as they arrive
+#[allow(dead_code)]
 async fn steno_loop() {
     kprintln!();
     kprintln!("╔═══════════════════════════════════════════════════════════╗");
@@ -628,6 +631,7 @@ async fn steno_loop() {
     }
 }
 
+#[allow(dead_code)]
 fn user_task() {
     let msg = "[User] Hello from EL0!\n";
     loop {
@@ -748,6 +752,7 @@ fn panic(info: &PanicInfo) -> ! {
     }
 }
 
+#[allow(dead_code)]
 fn syscall_test_task() {
     kprintln!("[TASK] Syscall Test Task Started");
     
@@ -824,6 +829,7 @@ fn syscall_test_task() {
     }
 }
 
+#[allow(dead_code)]
 fn demo_llm() {
     use crate::llm;
     use alloc::vec;

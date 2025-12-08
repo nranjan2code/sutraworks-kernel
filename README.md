@@ -52,7 +52,7 @@ make kernel
 make run
 # (Drops into Kernel Steno-Native Console; User Process runs in background)
 
-# Run 127 host tests (native)
+# Run 129 host tests (native)
 make test
 
 # Run 40-benchmark suite in QEMU

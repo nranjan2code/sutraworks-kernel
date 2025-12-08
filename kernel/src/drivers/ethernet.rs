@@ -165,7 +165,7 @@ impl EthernetDriver {
         }
 
         // Initialize TX descriptors
-        let tx_ring = unsafe { self.tx_desc_ring.unwrap().as_ptr() };
+        let tx_ring = self.tx_desc_ring.unwrap().as_ptr();
         for i in 0..RING_SIZE {
             let desc = unsafe { &mut *tx_ring.add(i) };
             let buf_addr = self.tx_buffers[i].unwrap().as_ptr() as u32;
@@ -198,7 +198,7 @@ impl EthernetDriver {
         }
 
         // Initialize RX descriptors
-        let rx_ring = unsafe { self.rx_desc_ring.unwrap().as_ptr() };
+        let rx_ring = self.rx_desc_ring.unwrap().as_ptr();
         for i in 0..RING_SIZE {
             let desc = unsafe { &mut *rx_ring.add(i) };
             let buf_addr = self.rx_buffers[i].unwrap().as_ptr() as u32;
@@ -255,7 +255,7 @@ impl EthernetDriver {
         }
 
         // Get current TX descriptor
-        let tx_ring = unsafe { self.tx_desc_ring.unwrap().as_ptr() };
+        let tx_ring = self.tx_desc_ring.unwrap().as_ptr();
         let desc = unsafe { &mut *tx_ring.add(self.tx_head) };
 
         // Check if descriptor is available
@@ -296,7 +296,7 @@ impl EthernetDriver {
         }
 
         // Get current RX descriptor
-        let rx_ring = unsafe { self.rx_desc_ring.unwrap().as_ptr() };
+        let rx_ring = self.rx_desc_ring.unwrap().as_ptr();
         let desc = unsafe { &mut *rx_ring.add(self.rx_head) };
 
         // Check if frame is available

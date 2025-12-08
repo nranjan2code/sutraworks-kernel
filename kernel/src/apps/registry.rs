@@ -56,7 +56,7 @@ impl Skill for ProcessSkill {
         }
         
         // Sender is current process (the one calling execute/syscall)
-        let sender = scheduler.current_pid().map(|p| AgentId(p)).unwrap_or(AgentId(0));
+        let sender = scheduler.current_pid().map(AgentId).unwrap_or(AgentId(0));
         
         let msg = Message {
             sender,

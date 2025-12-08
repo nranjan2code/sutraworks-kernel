@@ -86,7 +86,7 @@ struct VirtQueue {
     idx: u32, // Queue Index (0=RX, 1=TX)
 }
 
-struct VirtioNet {
+pub struct VirtioNet {
     base: usize,
     rx_queue: Option<VirtQueue>,
     tx_queue: Option<VirtQueue>,
@@ -260,11 +260,7 @@ impl VirtioNet {
         // Wait, current logic:
         // write PFN. It expects contiguous physical memory.
         
-        // Re-do alloc
-        unsafe {
-            // Free the 1 page? (Leak for now)
-            // alloc 2 pages
-        }
+        // Re-do alloc (leaking previous 1-page allocation for simplicity)
         let page2 = unsafe { memory::alloc_pages(2) }.ok_or("Queue OOM 2")?;
         unsafe { core::ptr::write_bytes(page2.as_ptr(), 0, PAGE_SIZE*2) };
         let phys = page2.as_ptr() as u64;

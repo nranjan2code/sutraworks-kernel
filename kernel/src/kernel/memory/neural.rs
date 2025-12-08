@@ -131,7 +131,7 @@ impl NeuralAllocator {
         self.current_page = self.head_page;
         if let Some(mut page) = self.current_page {
             unsafe {
-                (*page.as_mut()).used = 0;
+                page.as_mut().used = 0;
             }
         }
     }

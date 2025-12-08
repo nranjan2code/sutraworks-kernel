@@ -395,8 +395,7 @@ impl VMM {
         // Level 1 -> Level 2 (Step 2MB for next level blocks)
         let l2_table = self.get_next_table(&mut l1_table.entries[l1_idx as usize], 0x200000)?;
         
-        // Level 2 -> Level 3 (Step 4KB for next level pages)
-        let l3_table = self.get_next_table(&mut l2_table.entries[l2_idx as usize], 0x1000)?;
+        // For 2MB blocks, we write directly to L2 (no L3 table needed)
         
         // Overwrite existing block or table?
         // If it's a table, we should free it? Or error?

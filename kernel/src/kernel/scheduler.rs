@@ -293,8 +293,8 @@ impl IntentScheduler {
                 CURRENT_PIDS[core_id as usize].store(next.id.0.try_into().unwrap_or(0), Ordering::Relaxed);
             }
             
-            let prev_id = prev.id.0;
-            let next_id = next.id.0;
+            let _prev_id = prev.id.0;
+            let _next_id = next.id.0;
 
             // Push Prev to Back
             self.agents.push_back(prev);

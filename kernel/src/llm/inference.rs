@@ -114,7 +114,7 @@ pub fn forward(
         // For each head...
         {
             let kv_dim = (config.dim * config.n_kv_heads) / config.n_heads;
-            let att_size = config.n_heads * config.seq_len; // buffer size
+            let _att_size = config.n_heads * config.seq_len; // buffer size (for reference)
             
             // We need to iterate over heads.
             for h in 0..config.n_heads {
