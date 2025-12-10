@@ -407,6 +407,16 @@ flow:
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
+    // PERSISTENCE TEST
+    // ═══════════════════════════════════════════════════════════════════════════════
+    persistence_test();
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // PERSISTENCE TEST
+    // ═══════════════════════════════════════════════════════════════════════════════
+    persistence_test();
+
+    // ═══════════════════════════════════════════════════════════════════════════════
     // SYSCALL TEST
     // ═══════════════════════════════════════════════════════════════════════════════
     kprintln!("\n[KERNEL] Spawning Syscall Test Task...");
@@ -922,4 +932,40 @@ fn demo_llm() {
     kprintln!("       [LLM] Logits[0]: {}", state.logits.data[0]);
     kprintln!("       ✅ LLM Engine Online");
     kprintln!("       ════════════════════════════════════════════");
+}
+
+#[allow(dead_code)]
+fn persistence_test() {
+    kprintln!("\n[TEST] Testing Persistence...");
+    let vfs = fs::VFS.lock();
+    
+    // 1. Create file
+    match vfs.create("/persist.txt") {
+        Ok(file) => {
+            kprintln!("       Created /persist.txt");
+            let mut file = file.lock();
+            
+            // 2. Write
+            let data = b"Hello from Intent Kernel Persistence!";
+            match file.write(data) {
+                Ok(n) => kprintln!("       Written {} bytes", n),
+                Err(e) => kprintln!("       Write Failed: {}", e),
+            }
+        }
+        Err(e) => kprintln!("       Create Failed: {}", e),
+    }
+    
+    // 3. Read back
+    match vfs.open("/persist.txt", 0) {
+        Ok(file) => {
+            let mut file = file.lock();
+            let mut buf = [0u8; 64];
+            if let Ok(n) = file.read(&mut buf) {
+                if let Ok(s) = core::str::from_utf8(&buf[..n]) {
+                    kprintln!("       Read Back: '{}'", s);
+                }
+            }
+        }
+        Err(e) => kprintln!("       Open Failed: {}", e),
+    }
 }

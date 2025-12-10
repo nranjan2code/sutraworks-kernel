@@ -171,6 +171,95 @@ impl Fat32FileSystem {
         Ok((count * sector_size) as usize)
     }
 
+    /// Write text to a cluster (Full overwrite of sectors)
+    fn write_cluster(&self, cluster: u32, buf: &[u8]) -> Result<usize, &'static str> {
+        let start_sector = self.cluster_to_sector(cluster);
+        let count = self.bpb.sectors_per_cluster as u32;
+        let sector_size = 512;
+        
+        let mut written = 0;
+        for i in 0..count {
+             let offset = (i * sector_size) as usize;
+             if offset >= buf.len() { break; }
+             
+             let len = core::cmp::min(512, buf.len() - offset);
+             // Read-Modify-Write if partial sector?
+             // For now assume logic handles it or we just write full sectors if possible.
+             // If len < 512, we MUST read first.
+             
+             let mut sector_buf = [0u8; 512];
+             if len < 512 {
+                 self.device.read_sector(start_sector + i, &mut sector_buf)?;
+             }
+             
+             sector_buf[0..len].copy_from_slice(&buf[offset..offset+len]);
+             self.device.write_sector(start_sector + i, &sector_buf)?;
+             
+             written += len;
+        }
+        Ok(written)
+    }
+
+    /// Write a FAT entry
+    fn write_fat_entry(&self, cluster: u32, value: u32) -> Result<(), &'static str> {
+        let fat_offset = cluster * 4;
+        let fat_sector = self.fat_start_sector + (fat_offset / 512);
+        let ent_offset = (fat_offset % 512) as usize;
+        
+        let mut buf = [0u8; 512];
+        self.device.read_sector(fat_sector, &mut buf)?;
+        
+        let old = u32::from_le_bytes(buf[ent_offset..ent_offset+4].try_into().unwrap());
+        let val = (old & 0xF0000000) | (value & 0x0FFFFFFF);
+        
+        buf[ent_offset..ent_offset+4].copy_from_slice(&val.to_le_bytes());
+        
+        self.device.write_sector(fat_sector, &buf)?;
+        if self.bpb.num_fats > 1 {
+             let fat_size_sectors = self.bpb.fat_size_32;
+             self.device.write_sector(fat_sector + fat_size_sectors, &buf)?;
+        }
+        Ok(())
+    }
+
+    /// Find a free cluster
+    fn find_free_cluster(&self) -> Result<u32, &'static str> {
+        let fat_size = self.bpb.fat_size_32;
+        for i in 0..fat_size {
+            let sector = self.fat_start_sector + i;
+            let mut buf = [0u8; 512];
+            self.device.read_sector(sector, &mut buf)?;
+            
+            for j in 0..128 {
+                let val = u32::from_le_bytes(buf[j*4..(j+1)*4].try_into().unwrap()) & 0x0FFFFFFF;
+                if val == 0 {
+                    let cluster = i * 128 + j as u32;
+                    if cluster >= 2 { return Ok(cluster); }
+                }
+            }
+        }
+        Err("Disk full")
+    }
+
+    /// Allocate a new cluster
+    fn alloc_cluster(&self, prev_cluster: Option<u32>) -> Result<u32, &'static str> {
+        let next = self.find_free_cluster()?;
+        self.write_fat_entry(next, 0x0FFFFFFF)?; // Mark EOC
+        
+        if let Some(prev) = prev_cluster {
+            self.write_fat_entry(prev, next)?;
+        }
+        
+        // Zero init
+        let sector = self.cluster_to_sector(next);
+        let count = self.bpb.sectors_per_cluster as u32;
+        let zero = [0u8; 512];
+        for i in 0..count {
+            self.device.write_sector(sector+i, &zero)?;
+        }
+        Ok(next)
+    }
+
     /// Read directory entries from a cluster chain
     fn read_directory_entries(&self, start_cluster: u32) -> Result<Vec<FatDirEntry>, &'static str> {
         let mut entries = Vec::new();
@@ -217,23 +306,138 @@ impl Fat32FileSystem {
         Ok(entries)
     }
 
-    /// Find an entry in a directory by name
-    fn find_entry(&self, dir_cluster: u32, name: &str) -> Result<Option<FatDirEntry>, &'static str> {
-        let entries = self.read_directory_entries(dir_cluster)?;
+    /// Read a directory entry
+    fn read_entry(&self, cluster: u32, offset: usize) -> Result<FatDirEntry, &'static str> {
+        let start_sector = self.cluster_to_sector(cluster);
+        let sector_offset = offset / 512;
+        let byte_offset = offset % 512;
         
-        for entry in entries {
-            let entry_name = parse_fat_name(&entry.name);
-            if entry_name.eq_ignore_ascii_case(name) {
-                return Ok(Some(entry));
+        let mut buf = [0u8; 512];
+        self.device.read_sector(start_sector + sector_offset as u32, &mut buf)?;
+        
+        let entry_ptr = unsafe { buf.as_ptr().add(byte_offset) as *const FatDirEntry };
+        Ok(unsafe { core::ptr::read_unaligned(entry_ptr) })
+    }
+
+    /// Create a new file entry in a directory
+    fn create_file(&self, dir_cluster: u32, name: &str) -> Result<Arc<SpinLock<dyn FileOps>>, &'static str> {
+         // 1. Iterate dir to find free slot
+         let mut current_cluster = dir_cluster;
+         let mut target_cluster = dir_cluster;
+         let mut target_offset = 0;
+         let mut found = false;
+         
+         loop {
+             let start_sec = self.cluster_to_sector(current_cluster);
+             for i in 0..self.bpb.sectors_per_cluster {
+                 let mut buf = [0u8; 512];
+                 self.device.read_sector(start_sec + i as u32, &mut buf)?;
+                 
+                 for j in 0..16 {
+                     let offset = j * 32;
+                     if buf[offset] == 0 || buf[offset] == 0xE5 {
+                         target_cluster = current_cluster;
+                         target_offset = (i as usize * 512) + offset;
+                         found = true;
+                         break;
+                     }
+                 }
+                 if found { break; }
+             }
+             if found { break; }
+             
+             match self.get_next_cluster(current_cluster)? {
+                 Some(next) => current_cluster = next,
+                 None => {
+                     // Extend
+                     let next = self.alloc_cluster(Some(current_cluster))?;
+                     target_cluster = next;
+                     target_offset = 0;
+                     found = true;
+                     break;
+                 }
+             }
+         }
+         
+         // 2. Prepare entry
+         let mut entry: FatDirEntry = unsafe { core::mem::zeroed() };
+         let short_name = make_short_name(name);
+         entry.name = short_name;
+         entry.attr = 0x20; // Archive
+         entry.size = 0;
+         entry.cluster_high = 0;
+         entry.cluster_low = 0;
+         
+         // 3. Write entry
+         self.write_entry(target_cluster, target_offset, entry)?;
+         
+         Ok(Arc::new(SpinLock::new(Fat32File {
+             fs: Arc::new(self.clone()),
+             first_cluster: 0,
+             current_cluster: 0,
+             current_offset: 0,
+             size: 0,
+             is_dir: false,
+             entry_cluster: target_cluster,
+             entry_offset: target_offset,
+         })))
+    }
+
+    /// Write a directory entry
+    fn write_entry(&self, cluster: u32, offset: usize, entry: FatDirEntry) -> Result<(), &'static str> {
+         let start_sector = self.cluster_to_sector(cluster);
+         let sector_offset = offset / 512;
+         let byte_offset = offset % 512;
+         
+         let mut buf = [0u8; 512];
+         self.device.read_sector(start_sector + sector_offset as u32, &mut buf)?;
+         
+         let ptr = unsafe { buf.as_mut_ptr().add(byte_offset) as *mut FatDirEntry };
+         unsafe { ptr.write_unaligned(entry) };
+         
+         self.device.write_sector(start_sector + sector_offset as u32, &buf)?;
+         Ok(())
+    }
+
+    /// Find an entry in a directory by name (Returns Entry + Cluster + Offset)
+    fn find_entry(&self, dir_cluster: u32, name: &str) -> Result<Option<(FatDirEntry, u32, usize)>, &'static str> {
+        let mut current_cluster = dir_cluster;
+        loop {
+            // Iterate sectors in cluster
+            let start_sec = self.cluster_to_sector(current_cluster);
+            for i in 0..self.bpb.sectors_per_cluster {
+                 let mut buf = [0u8; 512];
+                 self.device.read_sector(start_sec + i as u32, &mut buf)?;
+                 
+                 for j in 0..16 { // 16 entries per sector
+                     let offset = j * 32;
+                     let entry_raw = &buf[offset..offset+32];
+                     
+                     if entry_raw[0] == 0 { return Ok(None); }
+                     if entry_raw[0] == 0xE5 { continue; }
+                     
+                     let entry = unsafe { core::ptr::read(entry_raw.as_ptr() as *const FatDirEntry) };
+                     if entry.attr == ATTR_LONG_NAME || (entry.attr & ATTR_VOLUME_ID) != 0 { continue; }
+                     
+                     let entry_name = parse_fat_name(&entry.name);
+                     if entry_name.eq_ignore_ascii_case(name) {
+                         let cluster_offset = (i as usize * 512) + offset;
+                         return Ok(Some((entry, current_cluster, cluster_offset)));
+                     }
+                 }
+            }
+            
+            match self.get_next_cluster(current_cluster)? {
+                Some(next) => current_cluster = next,
+                None => break,
             }
         }
-        
         Ok(None)
     }
 }
 
 impl Filesystem for Fat32FileSystem {
-    fn open(&self, path: &str, _flags: usize) -> Result<Arc<SpinLock<dyn FileOps>>, &'static str> {
+    fn open(&self, path: &str, flags: usize) -> Result<Arc<SpinLock<dyn FileOps>>, &'static str> {
         let mut current_cluster = self.bpb.root_cluster;
         let mut path_parts = path.split('/').filter(|s| !s.is_empty()).peekable();
         
@@ -246,17 +450,24 @@ impl Filesystem for Fat32FileSystem {
                  current_offset: 0,
                  size: 0,
                  is_dir: true,
+                 entry_cluster: 0,
+                 entry_offset: 0,
              })));
         }
         
         while let Some(name) = path_parts.next() {
             match self.find_entry(current_cluster, name)? {
-                Some(entry) => {
+                Some((entry, entry_cluster, entry_offset)) => {
                     if path_parts.peek().is_none() {
-                        // Found the target file/dir
+                        // Found file/dir
                         let is_dir = (entry.attr & ATTR_DIRECTORY) != 0;
                         let cluster = ((entry.cluster_high as u32) << 16) | (entry.cluster_low as u32);
                         
+                        // Check flags
+                        if (flags & crate::fs::vfs::O_TRUNC) != 0 && !is_dir {
+                             // Truncate logic (not implemented yet, but we allow write)
+                        }
+
                         return Ok(Arc::new(SpinLock::new(Fat32File {
                             fs: Arc::new(self.clone()),
                             first_cluster: cluster,
@@ -264,23 +475,32 @@ impl Filesystem for Fat32FileSystem {
                             current_offset: 0,
                             size: entry.size as u64,
                             is_dir,
+                            entry_cluster,
+                            entry_offset,
                         })));
                     } else {
-                        // It's a directory component
-                        if (entry.attr & ATTR_DIRECTORY) == 0 {
-                            return Err("Not a directory");
-                        }
+                        // Directory
+                        if (entry.attr & ATTR_DIRECTORY) == 0 { return Err("Not a directory"); }
                         current_cluster = ((entry.cluster_high as u32) << 16) | (entry.cluster_low as u32);
                     }
                 },
-                None => return Err("File not found"),
+                None => {
+                    // Create if O_CREAT?
+                    if (flags & crate::fs::vfs::O_CREAT) != 0 && path_parts.peek().is_none() {
+                        return self.create_file(current_cluster, name);
+                    }
+                    return Err("File not found");
+                }
             }
         }
         Err("Logic error")
     }
     
-    fn create(&self, _path: &str) -> Result<Arc<SpinLock<dyn FileOps>>, &'static str> {
-        Err("Read-only filesystem")
+    fn create(&self, path: &str) -> Result<Arc<SpinLock<dyn FileOps>>, &'static str> {
+        // Find parent
+        let path = path.trim_matches('/');
+        if path.contains('/') { return Err("Subdirs not supported yet"); }
+        self.create_file(self.bpb.root_cluster, path)
     }
     
     fn mkdir(&self, _path: &str) -> Result<(), &'static str> {
@@ -335,6 +555,29 @@ fn parse_fat_name(raw: &[u8; 11]) -> String {
     name
 }
 
+fn make_short_name(name: &str) -> [u8; 11] {
+    let mut res = [0x20u8; 11];
+    let bytes = name.as_bytes();
+    
+    // Split extension
+    let (base, ext) = if let Some(idx) = bytes.iter().rposition(|&c| c == b'.') {
+        (&bytes[0..idx], &bytes[idx+1..])
+    } else {
+        (bytes, &[][..])
+    };
+    
+    // Copy base (up to 8, uppercase)
+    for (i, &b) in base.iter().take(8).enumerate() {
+        res[i] = b.to_ascii_uppercase();
+    }
+    
+    // Copy ext (up to 3, uppercase)
+    for (i, &b) in ext.iter().take(3).enumerate() {
+        res[8+i] = b.to_ascii_uppercase();
+    }
+    res
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // FILE HANDLE
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -346,6 +589,8 @@ pub struct Fat32File {
     current_offset: u64,
     size: u64,
     is_dir: bool,
+    entry_cluster: u32,
+    entry_offset: usize,
 }
 
 impl FileOps for Fat32File {
@@ -396,8 +641,75 @@ impl FileOps for Fat32File {
         Ok(bytes_read)
     }
     
-    fn write(&mut self, _buf: &[u8]) -> Result<usize, &'static str> {
-        Err("Read-only")
+    fn write(&mut self, buf: &[u8]) -> Result<usize, &'static str> {
+        if self.is_dir { return Err("Cannot write to dir"); }
+        if self.first_cluster == 0 {
+            // Alloc first cluster
+            let c = self.fs.alloc_cluster(None)?;
+            self.first_cluster = c;
+            self.current_cluster = c;
+            
+            // Update directory entry with first cluster
+            let mut entry = self.fs.read_entry(self.entry_cluster, self.entry_offset)?;
+            entry.cluster_high = (c >> 16) as u16;
+            entry.cluster_low = (c & 0xFFFF) as u16;
+            self.fs.write_entry(self.entry_cluster, self.entry_offset, entry)?;
+        }
+        
+        let mut total_written = 0;
+        let cluster_size = self.fs.bpb.sectors_per_cluster as u64 * 512;
+        
+        while total_written < buf.len() {
+             // Calculate local offset
+             let offset_in_cluster = (self.current_offset % cluster_size) as usize;
+             let space_in_cluster = (cluster_size as usize) - offset_in_cluster;
+             let to_write = core::cmp::min(buf.len() - total_written, space_in_cluster);
+             
+             // Check if we need to extend
+             if offset_in_cluster == 0 && self.current_offset > 0 {
+                 // Boundary reached, check if we need new cluster
+                 // Actually we can just check if current_cluster is EOC?
+                 // Simple logic: if offset matches size limit of chain so far, append.
+                 // Better: check FAT for current_cluster.
+                 // For now, assume if we write past end, we alloc.
+             }
+             
+             // Write data to cluster
+             let mut cluster_buf = vec![0u8; cluster_size as usize];
+             // Read current content if partial write
+             self.fs.read_cluster(self.current_cluster, &mut cluster_buf)?;
+             
+             cluster_buf[offset_in_cluster..offset_in_cluster+to_write]
+                 .copy_from_slice(&buf[total_written..total_written+to_write]);
+                 
+             self.fs.write_cluster(self.current_cluster, &cluster_buf)?;
+             
+             total_written += to_write;
+             self.current_offset += to_write as u64;
+             
+             // Move to next cluster
+             if self.current_offset % cluster_size == 0 && total_written < buf.len() {
+                 match self.fs.get_next_cluster(self.current_cluster)? {
+                     Some(next) => self.current_cluster = next,
+                     None => {
+                         let next = self.fs.alloc_cluster(Some(self.current_cluster))?;
+                         self.current_cluster = next;
+                     }
+                 }
+             }
+        }
+        
+        if self.current_offset > self.size {
+            self.size = self.current_offset;
+            // Update directory entry size
+            if self.entry_cluster != 0 {
+                let mut entry = self.fs.read_entry(self.entry_cluster, self.entry_offset)?;
+                entry.size = self.size as u32;
+                self.fs.write_entry(self.entry_cluster, self.entry_offset, entry)?;
+            }
+        }
+        
+        Ok(total_written)
     }
     
     fn seek(&mut self, pos: SeekFrom) -> Result<u64, &'static str> {
