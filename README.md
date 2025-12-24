@@ -19,6 +19,12 @@
   <a href="#documentation">Documentation</a>
 </p>
 
+<p align="center">
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT">
+  </a>
+</p>
+
 
 ---
 
@@ -890,7 +896,9 @@ Semantic-first kernel with multiple input paths. Everyone can use natural langua
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2025 Sutra Works
 
 ---
 
