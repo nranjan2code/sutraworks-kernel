@@ -4,7 +4,7 @@
 
 The English I/O Layer is a production-grade natural language interface to Intent Kernel. It allows **everyone** to interact with the system using natural English commands, while internally the kernel processes inputs as semantic concepts.
 
-**Key Insight**: Steno is the fastest input path, but English provides universal accessibility.
+**Key Insight**: English provides universal accessibility, while specialized hardware offers maximum speed for power users.
 
 ## Architecture
 
@@ -20,7 +20,7 @@ The English I/O Layer is a production-grade natural language interface to Intent
 ┌────────────────────────────────────────────────────────────┐
 │               TRANSLATION LAYER (Bidirectional)             │
 │                                                             │
-│  English → Parser → Stroke → Intent  (INPUT)               │
+│  English → Parser → Pattern → Intent  (INPUT)              │
 │  Intent → Templates → English         (OUTPUT)             │
 └────────────────────────────────────────────────────────────┘
                             ↕

@@ -74,7 +74,7 @@ flow:
 Skills are the atomic units of execution. They are the only "code" in the system.
 
 **Types of Skills**:
-1.  **Kernel Skills**: Built-in drivers (Network, FileSystem, Steno).
+1.  **Kernel Skills**: Built-in drivers (Network, FileSystem, Input).
 2.  **WASM Skills**: Sandboxed modules downloaded from a repository.
 3.  **Remote Skills**: API calls to cloud services (LLMs, Databases).
 

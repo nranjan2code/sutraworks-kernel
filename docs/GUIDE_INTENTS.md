@@ -3,9 +3,9 @@
 This guide explains how to add new semantic capabilities ("Intents") to the Intent Kernel.
 
 ## The Semantic Path
-In this kernel, an "Intent" is the atomic unit of work. Whether triggered by English commands, Steno chords, or Agents, the execution path is:
+In this kernel, an "Intent" is the atomic unit of work. Whether triggered by English commands, hardware patterns, or Agents, the execution path is:
 
-`Input (English/Steno) -> ConceptID -> Intent Registry -> Handler`
+`Input (English/Hardware) -> ConceptID -> Intent Registry -> Handler`
 
 ## Step 1: Define the Concept
 All intents start with a ConceptID in `kernel/src/steno/concepts.rs`.
@@ -43,14 +43,14 @@ pub static PHRASES: &[(&str, ConceptID)] = &[
 ];
 ```
 
-## Step 4: Add Steno Triggers (Optional)
-If you want a dedicated steno chord, add it to `kernel/src/steno/dictionary.rs`.
+## Step 4: Add Hardware Pattern Triggers (Optional)
+If you want a dedicated hardware chord for expert users, add it to `kernel/src/steno/dictionary.rs`.
 
 ```rust
 // kernel/src/steno/dictionary.rs
 pub static DICTIONARY: &[(&str, ConceptID)] = &[
     // ...
-    ("DO-T", concepts::MY_NEW_ACTION), // "DO-T" chord
+    ("DO-T", concepts::MY_NEW_ACTION), // "DO-T" pattern
 ];
 ```
 
@@ -58,8 +58,7 @@ pub static DICTIONARY: &[(&str, ConceptID)] = &[
 - [ ] ConceptID defined?
 - [ ] Handler registered?
 - [ ] English phrase mapped?
-- [ ] (Optional) Steno chord mapped?
-- [ ] (Optional) Steno chord mapped?
+- [ ] (Optional) Hardware pattern mapped?
 
 ## Step 5: Declarative Intents (Sprint 14) ✨
 You can now define intents without writing Rust code using **App Manifests**.

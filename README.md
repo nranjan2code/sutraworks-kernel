@@ -5,36 +5,78 @@
 <h1 align="center">Intent Kernel</h1>
 
 <p align="center">
-  <strong>A Perceptual Computing Platform</strong><br>
-  <em>Where inputs become intents, and intents become action.</em>
+  <strong>A Bare-Metal Operating System for Raspberry Pi 5</strong><br>
+  <em>Semantic-first architecture with intent-based execution</em>
 </p>
 
 <p align="center">
+  <a href="#overview">Overview</a> •
+  <a href="#key-features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
-  <a href="#input-methods">Input Methods</a> •
   <a href="#architecture">Architecture</a> •
-  <a href="#documentation">Docs</a> •
-  <a href="#status">Status</a>
+  <a href="#benchmarks--performance">Benchmarks</a> •
+  <a href="#status">Status</a> •
+  <a href="#documentation">Documentation</a>
 </p>
 
 
 ---
 
-## The Vision
+## Overview
 
-What if your computer understood you **instantly**—through any input modality?
+**Intent Kernel** is a bare-metal operating system for Raspberry Pi 5 that processes inputs as semantic concepts rather than character streams.
 
-**Intent Kernel** is a bare-metal operating system for Raspberry Pi 5 that processes inputs as semantic concepts. Whether you use a steno machine (fastest), a standard keyboard (most accessible), or sensors (vision, audio), every input becomes an **intent** that executes immediately.
+The kernel implements a semantic-first architecture where inputs from multiple modalities (natural language, hardware patterns, sensors) are converted to 64-bit concept identifiers (ConceptIDs) and executed through a broadcast handler system. This eliminates character-level processing in the core execution path.
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │   Any Input  │────▶│  Semantic    │────▶│  Dictionary  │────▶│   Executor   │
-│ Steno/Keys/  │     │   Pattern    │     │ (ConceptID)  │     │  (Broadcast) │
+│ Language/HW/ │     │   Pattern    │     │ (ConceptID)  │     │  (Broadcast) │
 │ Vision/Audio │     │              │     │              │     │              │
 └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
 ```
 
-One input. One concept. Instant execution.
+**Core principle**: All inputs map to ConceptIDs before execution.
+
+---
+
+## Key Features
+
+### 1. Semantic-First Architecture
+The kernel processes inputs as 64-bit concept identifiers (ConceptIDs) rather than character strings.
+
+- **Execution path**: Input → ConceptID → Intent → Broadcast Handler
+- **Hardware pattern latency**: 54 cycles measured (QEMU Cortex-A72)
+- **English parsing latency**: 139 cycles measured
+- **Architecture**: No string parsing in core intent execution
+
+### 2. Neural Processing Model
+The intent system implements 22 computational features inspired by neuroscience literature.
+
+- **Temporal dynamics**: Activation decay (100ms), temporal summation
+- **Hierarchical layers**: 5-layer abstraction (Raw → Feature → Object → Semantic → Action)
+- **Spreading activation**: Related concepts receive predictive priming
+- **Lateral inhibition**: Competing handlers suppress each other
+- **Predictive processing**: Efference copy, surprise detection
+- **Action selection**: Urgency-based scheduling (basal ganglia model)
+
+### 3. Declarative Application Model
+Applications are defined as `.intent` manifest files rather than compiled binaries.
+
+- **Manifest format**: YAML-like syntax defining triggers and goals
+- **Semantic linker**: Runtime binding of intents to available capabilities
+- **Skill registry**: Atomic execution units (kernel drivers, WASM modules)
+- **Execution model**: Manifests describe desired outcomes, system selects implementations
+
+### 4. Dual-Process Execution
+The system implements two execution modes with different performance characteristics.
+
+- **Fast path (System 1)**: Pattern matching and handler dispatch
+  - Measured: 54 cycles average for hardware patterns
+  - Measured: 139 cycles average for English parsing
+- **Slow path (System 2)**: LLM-based inference for complex reasoning
+  - Measured: 300k+ cycles for transformer forward pass
+  - Architecture: Llama 2 implementation, weights loaded from SD card
 
 ---
 
@@ -50,7 +92,7 @@ make kernel
 
 # Run in QEMU (virt machine)
 make run
-# (Drops into Kernel Steno-Native Console; User Process runs in background)
+# (Drops into Intent Console; User Process runs in background)
 
 # Run 129 host tests (native)
 make test
@@ -73,21 +115,9 @@ make run
 
 Intent Kernel supports **multiple input modalities**, all converging to the same semantic intent system:
 
-### Steno Mode (Fastest Path)
+### English Mode
 
-Stenography is the **fastest human input method ever invented**:
-
-| Method | Speed | Latency |
-|--------|-------|---------|
-| Typing | 40-80 WPM | ~50ms |
-| Voice | 100-150 WPM | ~200ms |
-| **Steno** | **200-300 WPM** | **<0.1μs** |
-
-A stenographer doesn't type "show system status" — they press **one chord** that maps directly to a semantic concept, skipping all text processing.
-
-### English Mode (Most Accessible) ✨
-
-**You do NOT need to know stenography.** The kernel includes a production-grade English Natural Language Interface:
+The kernel includes a natural language parser supporting ~200 phrase patterns and 50 synonym expansions:
 
 ```
 Keyboard → English Text → Natural Language Parser → Intent → Execute
@@ -103,6 +133,18 @@ Keyboard → English Text → Natural Language Parser → Intent → Execute
 "open notes"        → Opens notes application
 ```
 
+### Hardware Chord Mode
+
+Direct hardware pattern input using 23-bit chord encoding (based on stenographic key layout):
+
+| Method | Speed | Latency |
+|--------|-------|---------|
+| Typing | 40-80 WPM | ~50ms |
+| Voice | 100-150 WPM | ~200ms |
+| **Hardware Chords** | **200-300 WPM** | **<0.1μs** |
+
+Single chord maps directly to ConceptID without intermediate text processing.
+
 ### Perception Mode (AI-Powered)
 
 Vision and audio inputs are processed through the Hailo-8 NPU and converted to hypervectors:
@@ -116,47 +158,45 @@ Mic    → Audio Features → Classification → ConceptID → Semantic Memory
 
 | Input Method | Latency | Learning Curve | Best For |
 |--------------|---------|----------------|----------|
-| **Steno Machine** | <0.1μs | High (months) | Power users, professionals |
 | **English Keyboard** | ~30μs | None | Everyone |
+| **Hardware Chords** | <0.1μs | High (months) | Power users, professionals |
 | **Vision/Audio** | ~50ms | None | AI perception, context |
 
-**All inputs produce the same result: a ConceptID that triggers intent execution.**
+**Architecture**: All input paths converge to ConceptID before intent execution.
 
----
+### Implementation Details
 
-## Architecture
+#### The Semantic Pattern
 
-### The Stroke
-
-Every steno chord produces a 23-bit pattern representing which keys were pressed:
+Hardware chord input produces 23-bit patterns representing key combinations:
 
 ```
 Position:  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22
 Key:       #  S-  T-  K-  P-  W-  H-  R-  A-  O-  *  -E  -U  -F  -R  -P  -B  -L  -G  -T  -S  -D  -Z
 ```
 
-### The Dictionary
+#### The Dictionary
 
-Strokes map to **concepts**, not text:
+Input patterns map to **concepts**, not text:
 
-**Single-Stroke Briefs:**
-| Stroke | Notation | Concept | Action |
-|--------|----------|---------|--------|
+**Single-Input Patterns:**
+| Pattern | Notation | Concept | Action |
+|---------|----------|---------|--------|
 | `0x42` | `STAT` | STATUS | Display system status |
 | `0x400` | `*` | UNDO | Undo last action |
 | `0x1A4` | `HELP` | HELP | Show help |
 | `0x...` | `SHRO` | SHOW | Display something |
 
-**Multi-Stroke Briefs:**
-| Strokes | Notation | Concept | Action |
-|---------|----------|---------|--------|
+**Multi-Input Sequences:**
+| Count | Notation | Concept | Action |
+|-------|----------|---------|--------|
 | 2 | `RAOE/PWOOT` | REBOOT | Restart system |
 | 2 | `SHUT/TKOUPB` | SHUTDOWN | Power off |
 | 2 | `SKROL/UP` | SCROLL_UP | Scroll display up |
 | 3 | `TPHU/TPAOEU/-L` | NEW_FILE | Create new file |
 | 3 | `KP-U/EUPB/TPO` | CPU_INFO | Show CPU info |
 
-### The Broadcast (1:N)
+#### The Broadcast (1:N)
 
 Intents are **broadcast** to all interested listeners, not just dispatched to a single handler. This mimics the brain's motor control system.
 
@@ -166,7 +206,7 @@ Intent ("GRASP") ────┬────▶ Motor Cortex (Move Arm)
                      └────▶ Proprioception (Expect Weight)
 ```
 
-### Sensor Fusion (N:1)
+#### Sensor Fusion (N:1)
 
 The **Perception Layer** fuses data from all active sensors into a single "World Model".
 
@@ -176,14 +216,14 @@ Lidar (Virtual)  ──┼──▶ Perception Manager ──▶ World Model
 Touch Sensors    ──┘
 ```
 
-### The Flow
+#### The Flow
 
 ```rust
-// A stroke comes in from hardware
-let stroke = Stroke::from_raw(0x42);
+// An input pattern comes in from hardware
+let pattern = InputPattern::from_raw(0x42);
 
 // The engine processes it
-if let Some(intent) = steno::process_stroke(stroke) {
+if let Some(intent) = input::process_pattern(pattern) {
     // The executor broadcasts it
     intent::execute(&intent);
 }
@@ -191,33 +231,78 @@ if let Some(intent) = steno::process_stroke(stroke) {
 
 ---
 
-## Features
+## System Capabilities
 
-### ✅ Stroke History
-64-entry ring buffer with full undo/redo support.
+The kernel implements a comprehensive feature set across multiple subsystems:
+
+### Input Processing
+- **Input History**: 64-entry ring buffer with undo/redo support
+- **Multi-Input Sequences**: Support for 2-8 input patterns with 500ms timeout and prefix matching
+- **Unified Input Mode**: Natural language and hardware patterns as first-class citizens
+
+### Intent Execution
+- **User-Defined Handlers**: Custom handler registration for any ConceptID
+- **Priority Queue**: Deferred and prioritized intent execution with deadlines
+- **Intent Security**: Multi-layered security with spam detection and privilege checking (20 cycles overhead)
+
+### System Security
+- **Capability Security**: Fine-grained permission control
+- **Semantic Tollbooth**: Syscall gating restricting direct I/O to privileged drivers
+- **VMM Isolation**: TTBR0 switching with kernel protection
+- **Safe Stack Architecture**: VMM-backed stacks with guard pages
+
+### Multi-Core Support
+- **SMP Scheduler**: 4-core work-stealing scheduler with per-core run queues
+- **Watchdog Core**: Dedicated core 3 for health monitoring and deadlock detection
+- **4-Level Priority**: Idle, Normal, High, Realtime scheduling
+
+### Storage & Networking
+- **Persistent Storage**: SD card driver with SDHCI, DMA, and write support
+- **TCP/IP Stack**: Full implementation with Ethernet, ARP, IPv4, ICMP, UDP, TCP
+- **Userspace Networking**: UDP/TCP socket operations available to user processes
+
+### Perception & AI
+- **Vision Processing**: Hailo-8 NPU with YOLO tensor parsing and NMS algorithm
+- **Audio Processing**: ZCR + Energy classification (Speech/Noise/Silence)
+- **Sensor Fusion**: N:1 aggregation from multiple detectors
+
+### Neural Architecture
+- **22 Active Features**: Temporal dynamics, hierarchical processing, spreading activation, lateral inhibition, predictive processing
+- **Semantic Memory**: HDC-based content-addressable storage with O(log N) retrieval
+
+### Application Framework
+- **Declarative Apps**: `.intent` manifest files for code-free application development
+- **Semantic Linker**: Runtime binding of intents to available skills
+- **Semantic Process Binding**: Dynamic intent handler registration via `sys_announce`
+
+### System 2 Cognition
+- **LLM Engine**: Llama 2 transformer implementation with weight loading from SD card
+- **Dual-Process**: Fast path (54 cycles) and slow path (300k+ cycles) execution modes
+
+---
+
+_The following detailed subsections have been consolidated above for improved readability._
+
+<details>
+<summary>Legacy Feature List (Click to expand)</summary>
+
+### Multi-Input Sequences
+Real multi-input support with prefix matching and timeout:
 
 ```rust
-steno::undo();  // Undo last stroke
-steno::redo();  // Redo if possible
-```
-
-### ✅ Multi-Stroke Briefs
-Real multi-stroke support with prefix matching and timeout:
-
-```rust
-// 2-stroke briefs
+// 2-input sequences
 "RAOE/PWOOT" → REBOOT
 "SHUT/TKOUPB" → SHUTDOWN
 "RAOE/KAUL" → RECALL
 
-// 3-stroke briefs
+// 3-input sequences
 "TPHU/TPAOEU/-L" → NEW_FILE
 "KP-U/EUPB/TPO" → CPU_INFO
 ```
 
-- 500ms timeout between strokes
+- 500ms timeout between inputs
 - Prefix matching (waits when partial match exists)
-- 20+ built-in multi-stroke entries
+- 20+ built-in multi-input entries
 
 ### ✅ User-Defined Handlers
 Register custom handlers for any concept:
@@ -252,7 +337,7 @@ if !has_capability(CapabilityType::System) {
 
 ### ✅ Heads-Up Display (HUD)
 Real-time visualization of the input stream and intent execution log.
-- **Input Tape**: Scrolling log of inputs (steno strokes or English commands).
+- **Input Tape**: Scrolling log of all input patterns and commands.
 - **Intent Stream**: Visual log of recognized semantic actions.
 - **Status Bar**: Real-time WPM and input statistics.
 
@@ -324,15 +409,18 @@ Direct imperative I/O (`open`, `read`, `write`) is **restricted** to privileged 
 - Watchdog latency: <1ms target
 - Zero overhead on worker cores
 
-### ✅ Dual Input Mode
-Power users can still use raw steno:
+### ✅ Unified Input Mode
+All input methods are first-class:
 
 ```rust
-// Steno notation (for speed)
-steno::process_steno("STAT");    // Direct stroke → intent
+// Natural language (accessible to everyone)
+english::parse("show status");   // Natural text → intent
 
-// Hybrid mode (mix both)
-english::parse("STAT");          // Recognizes steno too!
+// Direct patterns (for expert speed)
+input::process_pattern("STAT");  // Pattern → intent
+
+// Hybrid mode (system understands both)
+english::parse("STAT");          // Recognizes patterns too!
 ```
 
 ### ✅ Secure Base
@@ -411,8 +499,8 @@ See [NEURAL_ARCHITECTURE.md](docs/NEURAL_ARCHITECTURE.md) for complete documenta
 ### ✅ Multi-Core SMP ✨ COMPLETE!
 Production-grade 4-core scheduler with advanced features:
 - **Per-Core Run Queues**: Minimizes lock contention
-- **4-Level Priority**: Idle, Normal, High, Realtime (< 100μs for steno)
-- **Core Affinity**: Pin tasks to specific cores (Core 0 = steno, Core 1 = vision, Core 2 = audio, Core 3 = network)
+- **4-Level Priority**: Idle, Normal, High, Realtime (< 100μs for fast input)
+- **Core Affinity**: Pin tasks to specific cores (Core 0 = input, Core 1 = vision, Core 2 = audio, Core 3 = network)
 - **Work Stealing**: Automatic load balancing across cores
 - **Power Efficiency**: WFI (Wait For Interrupt) on idle cores
 
@@ -450,7 +538,7 @@ cprintln!("Intent executed: {}", intent.name);
 
 ### ✅ Semantic Visual Interface (SVI) ✨ NEW!
 A broadcast-based, intent-reactive GUI that reflects the kernel's semantic state.
-- **Projections**: Ephemeral visual elements (StenoTape, IntentLog, Status, Help).
+- **Projections**: Ephemeral visual elements (InputTape, IntentLog, Status, Help).
 - **Perception Overlay**: Visualizes active sensors and object detections.
 - **Memory Graph**: Visualizes HDC neural memory nodes in real-time.
 - **Broadcast Listener**: The GUI observes intents rather than driving them.
@@ -461,7 +549,7 @@ Full preemptive multitasking OS capabilities:
 - **Preemptive Scheduler**: Round-Robin scheduling with 10ms time slices.
 - **Process Isolation**: Full address space separation (Kernel=EL1, User=EL0).
 - **System Calls**: `yield`, `sleep`, `print`, `exit`, `sys_parse_intent`, and File I/O.
-- **Intent-Native Shell**: Kernel-side console that accepts English or Steno input directly.
+- **Intent-Native Shell**: Kernel-side console that accepts natural language or direct pattern input.
 - **Preemption**: Correct interrupt-driven context switching (Virtual Timer).
 - **User Program**: `no_std` Rust userland support.
 
@@ -485,15 +573,17 @@ The kernel now features an integrated **System 2** engine for deep semantic proc
 - **Latency**: Orders of magnitude slower than System 1 (~300k+ cycles), running as a background task.
 - **Fail-Safe**: Includes a dummy fallback model to ensure strict boot reliability.
 
-### 2. Intent-Native Apps Framework ✨ NEW!
+### 2. Intent-Native Apps Framework
 > **Full Documentation**: [docs/APP_ARCHITECTURE.md](docs/APP_ARCHITECTURE.md)
 
 "Applications" in this OS are not compiled binaries—they are **Semantic Manifests**.
-*   **Manifest**: A declarative graph of storage (`.intent` file).
+*   **Manifest**: A declarative graph (`.intent` file).
 *   **Semantic Linker**: A runtime that binds your intent to the best available **Skill**.
 *   **Skill**: The atomic unit of execution (WASM/Rust).
 
 See the [App Architecture Guide](docs/APP_ARCHITECTURE.md) to build your first app.
+
+</details>
 
 ---
 
@@ -502,9 +592,9 @@ See the [App Architecture Guide](docs/APP_ARCHITECTURE.md) to build your first a
 ```
 intent-kernel/
 ├── kernel/src/
-│   ├── steno/              # Stenographic engine
-│   │   ├── stroke.rs       # 23-bit stroke patterns
-│   │   ├── dictionary.rs   # Stroke → Intent mapping
+│   ├── steno/              # Hardware chord input engine
+│   │   ├── stroke.rs       # 23-bit input patterns
+│   │   ├── dictionary.rs   # Pattern → Intent mapping
 │   │   ├── engine.rs       # State machine
 │   │   └── history.rs      # Undo/redo buffer
 │   ├── english/            # ✨ English I/O Layer
@@ -544,7 +634,7 @@ intent-kernel/
 │   │   ├── ethernet.rs     # ✨ Ethernet MAC driver
 │   │   └── usb/            # USB Host Controller
 │   │       ├── xhci.rs     # xHCI driver
-│   │       └── hid.rs      # HID protocol (steno machines)
+│   │       └── hid.rs      # HID protocol (keyboard devices)
 │   └── kernel/             # Core OS
 │       ├── capability.rs   # Security
 │       ├── scheduler.rs    # Single-core scheduler
@@ -570,7 +660,7 @@ Intent Kernel uses a **4-core architecture** optimized for the Raspberry Pi 5:
 Raspberry Pi 5 - 4× Cortex-A76 @ 2.4GHz
 ┌─────────────────────────────────────────────┐
 │  WORKER CORES (0-2): Intent Processing     │
-│  • Core 0: Realtime priority (steno input) │
+│  • Core 0: Realtime priority (fast input)  │
 │  • Core 1: General task execution          │
 │  • Core 2: General task execution          │
 │  • Work-stealing load balancing            │
@@ -657,7 +747,7 @@ Raspberry Pi 5 - 4× Cortex-A76 @ 2.4GHz
 
 **All tests run on QEMU virt platform (Cortex-A72 @ 62MHz timer frequency)**
 
-### Complete 40-Benchmark Suite 🚀 (Verified December 2025)
+### 40-Benchmark Suite (Verified December 2025)
 
 The Intent Kernel includes a **40-benchmark suite** across 11 categories, tailored to semantic computing:
 
@@ -667,7 +757,7 @@ The Intent Kernel includes a **40-benchmark suite** across 11 categories, tailor
 | **Neural** | 3 | Decay: 15 cycles, Propagate: 157 cycles, Select: 5.9k cycles |
 | Semantic Memory | 1 | Neural Alloc: 142 cycles, Retrieval: O(log N) |
 | Perception | 2 | Sensor fusion: 0 cycles, Perceive+Store: 73 cycles |
-| Multi-Modal | 5 | Steno: 54 cycles, English: 139 cycles |
+| Multi-Modal | 5 | Direct input: 54 cycles, English: 139 cycles |
 | Process/Agent | 6 | Context switch: 474 cycles, Preemption: 14 cycles |
 | Lock/Sync | 5 | SpinLock: 19 cycles, IPI: 106 cycles |
 | Interrupt | 4 | Timer jitter: 125 max cycles |
@@ -675,9 +765,9 @@ The Intent Kernel includes a **40-benchmark suite** across 11 categories, tailor
 | Memory | 2 | Slab: 28 cycles, Buddy: 43 cycles |
 | Stress Test | 1 | **180k ops @ 29 cycles avg** |
 
-### Extreme Stress Test Results (Verified December 2025) 🚀
+### Stress Test Results (Verified December 2025)
 
-Comprehensive allocator validation with **180,000 operations**:
+Allocator validation across 180,000 operations:
 
 | Test | Operations | Avg Cycles | Throughput | Status |
 |------|-----------|-----------|------------|--------|
@@ -687,7 +777,7 @@ Comprehensive allocator validation with **180,000 operations**:
 | Mixed Workload (8B-4KB) | 20,000 | 33 | 1.9M ops/sec | ✅ |
 | **Total** | **180,000** | **29** | **~3M ops/sec** | ✅ |
 
-> **Biological Performance Profile**: The benchmark results reveal a deliberate ~100x gap between **Reflex** (steno input, 54 cycles) and **Cognition** (neural selection, 5,989 cycles). This mimics the biological distinction between spinal reflexes and cortical decision-making, ensuring the kernel is fast where it needs to be and smart where it has to be.
+> **Performance Profile**: The benchmark results show a ~100x performance gap between fast-path processing (hardware patterns, 54 cycles) and slow-path processing (neural selection, 5,989 cycles). This two-tier architecture separates reflex-level pattern matching from deliberative reasoning.
 
 ### Standard Benchmarks
 
@@ -707,7 +797,7 @@ Comprehensive allocator validation with **180,000 operations**:
 | Phase | Status | What's Done |
 |-------|--------|-------------|
 | **1. Foundation** | ✅ | Boot, UART, GPIO, Timer, Memory, Scheduler |
-| **2. Steno Engine** | ✅ | Stroke parsing, Dictionary, Engine, RTFCRE |
+| **2. Input Engine** | ✅ | Pattern parsing, Dictionary, Engine, RTFCRE |
 | **3. Intent System** | ✅ | Handlers, Queue, History, 122 tests |
 | **4. Perception** | ✅ | **Complete Hailo-8** (YOLO parser, NMS, hypervectors), HUD |
 | **5. Input/Output** | ✅ | **Real xHCI Driver**, HID Boot Protocol, Framebuffer Console |
@@ -756,14 +846,14 @@ audio ........... 3 tests ✓
 | CPU | ARM Cortex-A76 (4 cores @ 2.4GHz) |
 | RAM | 4GB / 8GB LPDDR4X |
 | AI | Hailo-8L NPU (optional) |
-| Input | Steno machine OR standard keyboard (English mode) |
+| Input | Keyboard (English mode) OR specialized hardware (chord mode) |
 
 ---
 
 ## Philosophy
 
-### 1. Strokes, Not Characters (Internally)
-The native input unit is a 23-bit stroke pattern. No character encoding. No Unicode. No string handling **in the kernel core**. However, the English I/O layer provides a natural language interface for universal accessibility.
+### 1. Intents, Not Characters (Internally)
+The native processing unit is a semantic concept. No character encoding in the core execution path. No Unicode in intent handlers. The English I/O layer provides a natural language interface for universal accessibility.
 
 ### 2. Pure Rust
 No libc. No C dependencies. Minimal crates. Everything from scratch in safe, idiomatic Rust.
@@ -775,7 +865,7 @@ No libc. No C dependencies. Minimal crates. Everything from scratch in safe, idi
 We build the future. No backward compatibility with character-based systems.
 
 ### 5. Universal Accessibility
-Semantic-first kernel with multiple input paths. Everyone can use English; power users can unlock maximum speed with steno.
+Semantic-first kernel with multiple input paths. Everyone can use natural language; power users can unlock maximum speed with specialized hardware.
 
 ---
 
@@ -806,5 +896,5 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 <p align="center">
   <strong>Intent Kernel</strong><br>
-  <em>150 years of stenography meets bare-metal computing.</em>
+  <em>Where semantic computing meets bare-metal performance.</em>
 </p>
